@@ -1,0 +1,12 @@
+__idea__
+.vs
+.vscode
+boshyst
+Debug
+DebugForRel
+Release
+RelNoOpt
+x64
+*.exe
+*.dll
+*.zip
