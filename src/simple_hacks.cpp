@@ -12,6 +12,8 @@ using std::cout;
 
 extern HWND hwnd;
 HWND mhwnd = nullptr;
+static WNDPROC oWndProc = NULL;
+static LRESULT(__stdcall* SusProc)(HWND param_1, UINT param_2, WPARAM param_3, LPARAM param_4) = nullptr;
 int last_rng_val = 0;
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
@@ -102,6 +104,8 @@ static LRESULT __stdcall DispatchMessageAHook(LPMSG lpMsg) {
         msg.wParam = 0;
         msg.lParam = 0;
         msg.hwnd = ::mhwnd;
+        SusProc(mhwnd, msg.message, msg.wParam, msg.lParam);
+        return 0;
         auto ret = DispatchMessageAOrig(&msg);
         return ret;
     }
@@ -144,10 +148,21 @@ static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
 }
 
 static SHORT(__stdcall* GetKeyStateOrig)(int k);
+static bool was_down = false;
 static SHORT __stdcall GetKeyStateHook(int k) {
     if (k == VK_LBUTTON) {
-        cout << "state lbuttom hook\n";
+        bool pressed = (GetAsyncKeyState('K') & 0x8000) != 0;
         k = 'K';
+        if (pressed && !was_down) {
+            was_down = true;
+            cout << "sus_down\n";
+            SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
+        }
+        else if (!pressed && was_down) {
+            was_down = false;
+            cout << "sus_up\n";
+            SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
+        }
     }
     return GetKeyStateOrig(k);
 }
@@ -169,16 +184,39 @@ static BOOL __stdcall GetInputStateHook() {
     return FALSE;
 }
 
+static LRESULT CALLBACK hkWindowProc(
+    _In_ HWND   hwnd,
+    _In_ UINT   uMsg,
+    _In_ WPARAM wParam,
+    _In_ LPARAM lParam
+)
+{
+    // cout << "hk\n";
+    if (0 && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP) && wParam == 'K') {
+        cout << "hkWindowProc sim\n";
+        uMsg = (uMsg == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
+        hwnd = ::mhwnd;
+        wParam = 0;
+        lParam = 0;
+        LRESULT(__stdcall *SusProc)(HWND param_1, UINT param_2, WPARAM param_3, LPARAM param_4) = nullptr;
+        SusProc = reinterpret_cast<decltype(SusProc)>(0x00441ba0);
+        return SusProc(mhwnd, uMsg, wParam, lParam);
+    }
+    return ::CallWindowProcA(oWndProc, hwnd, uMsg, wParam, lParam);
+}
+
 void init_simple_hacks() {
+    SusProc = reinterpret_cast<decltype(SusProc)>(mem::get_base() + 0x41ba0);
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
         ASS(mhwnd != nullptr);
+        // oWndProc = (WNDPROC)::SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG)hkWindowProc);
     }
-    hook(mem::addr("GetMessageA", "user32.dll"), GetMessageAHook, &GetMessageAOrig);
-    hook(mem::addr("PeekMessageA", "user32.dll"), PeekMessageAHook, &PeekMessageAOrig);
-    hook(mem::addr("DispatchMessageA", "user32.dll"), DispatchMessageAHook, &DispatchMessageAOrig);
+    // hook(mem::addr("GetMessageA", "user32.dll"), GetMessageAHook, &GetMessageAOrig);
+    // hook(mem::addr("PeekMessageA", "user32.dll"), PeekMessageAHook, &PeekMessageAOrig);
+    // hook(mem::addr("DispatchMessageA", "user32.dll"), DispatchMessageAHook, &DispatchMessageAOrig);
     hook(mem::addr("GetCursorPos", "user32.dll"), GetCursorPosHook);
-    // hook(mem::addr("GetKeyState", "user32.dll"), GetKeyStateHook, &GetKeyStateOrig);
+    hook(mem::addr("GetKeyState", "user32.dll"), GetKeyStateHook, &GetKeyStateOrig);
     // hook(mem::addr("GetAsyncKeyState", "user32.dll"), GetAsyncKeyStateHook, &GetAsyncKeyStateOrig);
     // hook(mem::addr("GetInputState", "user32.dll"), GetInputStateHook);
     // hook(mem::addr("GetFocus", "user32.dll"), GetFocusHook);
