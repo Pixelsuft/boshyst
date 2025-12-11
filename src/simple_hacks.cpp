@@ -10,6 +10,8 @@
 
 using std::cout;
 
+extern HWND hwnd;
+HWND mhwnd = nullptr;
 int last_rng_val = 0;
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
@@ -93,10 +95,15 @@ static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* p
 static LRESULT (__stdcall *DispatchMessageAOrig)(LPMSG lpMsg);
 static LRESULT __stdcall DispatchMessageAHook(LPMSG lpMsg) {
     if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_KEYUP) && lpMsg->wParam == 'K') {
-        cout << "Sim dispatch\n";
-        lpMsg->message = (lpMsg->message == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
-        lpMsg->wParam = 0;
-        lpMsg->lParam = 0;
+        MSG msg;
+        memcpy(&msg, lpMsg, sizeof(MSG));
+        cout << "Sim dispatch " << hwnd << " " << mhwnd << " " << msg.hwnd << "\n";
+        msg.message = (lpMsg->message == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
+        msg.wParam = 0;
+        msg.lParam = 0;
+        msg.hwnd = ::mhwnd;
+        auto ret = DispatchMessageAOrig(&msg);
+        return ret;
     }
     auto ret = DispatchMessageAOrig(lpMsg);
     return ret;
@@ -105,18 +112,78 @@ static LRESULT __stdcall DispatchMessageAHook(LPMSG lpMsg) {
 static BOOL (__stdcall *PeekMessageAOrig)(LPMSG lpMsg, HWND  hWnd, UINT  wMsgFilterMin, UINT  wMsgFilterMax, UINT  wRemoveMsg);
 static BOOL __stdcall PeekMessageAHook(LPMSG lpMsg, HWND  hWnd, UINT  wMsgFilterMin,UINT  wMsgFilterMax, UINT  wRemoveMsg) {
     BOOL ret = PeekMessageAOrig(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    if (wMsgFilterMin == WM_LBUTTONDOWN)
+        return FALSE;
     if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_KEYUP) && lpMsg->wParam == 'K') {
         cout << "Sim peek\n";
         lpMsg->message = (lpMsg->message == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
+        lpMsg->hwnd = mhwnd;
         lpMsg->wParam = 0;
         lpMsg->lParam = 0;
     }
     return ret;
 }
 
+static BOOL(__stdcall* GetMessageAOrig)(LPMSG lpMsg, HWND  hWnd, UINT  wMsgFilterMin, UINT  wMsgFilterMax);
+static BOOL __stdcall GetMessageAHook(LPMSG lpMsg, HWND  hWnd, UINT  wMsgFilterMin, UINT  wMsgFilterMax) {
+    BOOL ret = GetMessageAOrig(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_KEYUP) && lpMsg->wParam == 'K') {
+        cout << "Sim get\n";
+        lpMsg->message = (lpMsg->message == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
+        lpMsg->hwnd = mhwnd;
+        lpMsg->wParam = 0;
+        lpMsg->lParam = 0;
+    }
+    return ret;
+}
+
+static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
+    p->x = 84;
+    p->y = 276;
+    return ClientToScreen(hwnd, p);
+}
+
+static SHORT(__stdcall* GetKeyStateOrig)(int k);
+static SHORT __stdcall GetKeyStateHook(int k) {
+    if (k == VK_LBUTTON) {
+        cout << "state lbuttom hook\n";
+        k = 'K';
+    }
+    return GetKeyStateOrig(k);
+}
+
+static SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
+static SHORT __stdcall GetAsyncKeyStateHook(int k) {
+    if (k == VK_LBUTTON) {
+        cout << "astate lbuttom hook\n";
+        k = 'K';
+    }
+    return GetAsyncKeyStateOrig(k);
+}
+
+static HWND __stdcall GetFocusHook() {
+    return hwnd;
+}
+
+static BOOL __stdcall GetInputStateHook() {
+    return FALSE;
+}
+
 void init_simple_hacks() {
+    if (!mhwnd) {
+        mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
+        ASS(mhwnd != nullptr);
+    }
+    hook(mem::addr("GetMessageA", "user32.dll"), GetMessageAHook, &GetMessageAOrig);
     hook(mem::addr("PeekMessageA", "user32.dll"), PeekMessageAHook, &PeekMessageAOrig);
     hook(mem::addr("DispatchMessageA", "user32.dll"), DispatchMessageAHook, &DispatchMessageAOrig);
+    hook(mem::addr("GetCursorPos", "user32.dll"), GetCursorPosHook);
+    // hook(mem::addr("GetKeyState", "user32.dll"), GetKeyStateHook, &GetKeyStateOrig);
+    // hook(mem::addr("GetAsyncKeyState", "user32.dll"), GetAsyncKeyStateHook, &GetAsyncKeyStateOrig);
+    // hook(mem::addr("GetInputState", "user32.dll"), GetInputStateHook);
+    // hook(mem::addr("GetFocus", "user32.dll"), GetFocusHook);
+    // hook(mem::addr("GetForegroundWindow", "user32.dll"), GetFocusHook);
+    // hook(mem::addr("GetActiveWindow", "user32.dll"), GetFocusHook);
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);

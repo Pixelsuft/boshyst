@@ -187,6 +187,7 @@ void ui::draw() {
 			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
 			int x, y;
 			get_cursor_pos(x, y);
+			ImGui::Text("Cursor Pos: (%i, %i)", x, y);
 			// cout << x << " " << y << std::endl;
 			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 4.f, IM_COL32(255, 0, 0, 255), 10);
 		}

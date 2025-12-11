@@ -16,9 +16,9 @@ using std::cout;
 
 extern void inp_pre_init();
 
-HWND hwnd;
-bool inited;
-bool gr_hooked;
+HWND hwnd = nullptr;
+bool inited = false;
+bool gr_hooked = false;
 
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
 #if 0
