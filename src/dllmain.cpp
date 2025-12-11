@@ -43,6 +43,7 @@ static EndScene oEndScene = nullptr;
 
 static long __stdcall hkReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
+    // cout << "dev reset\n";
     ImGui_ImplDX9_InvalidateDeviceObjects();
     long result = oReset(pDevice, pPresentationParameters);
     ImGui_ImplDX9_CreateDeviceObjects();

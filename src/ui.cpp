@@ -21,14 +21,14 @@ int get_scene_id() {
 }
 
 void* get_player_ptr(int s) {
-	// W1, Tutorial, FB
-	if (s == 3 || s == 36 || s == 46) {
-		const size_t offsets[] = { 0x400000 + 0x00059A1C, 0x3FC, 0x28, 0, 0x7E8, 0x8D0, 0x80, 0 };
+	// Tutorial
+	if (s == 36) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xF0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// W2
 	if (s == 5) {
-		const size_t offsets[] = { 0x400000 + 0x59A9C, 0xA4, 0x7C0, 0xD0, 0x234, 0 };
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x3B0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// MB1
@@ -82,6 +82,11 @@ void* get_player_ptr(int s) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xB8, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
+	// FB
+	if (s == 46) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xa8, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
 	// PRIZE ROOM
 	if (s == 49) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x140, 0 };
@@ -92,8 +97,8 @@ void* get_player_ptr(int s) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE8, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// CHEETAH
-	if (s == 54) {
+	// W1, CHEETAH
+	if (s == 3 || s == 54) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
@@ -125,6 +130,7 @@ void ui::draw() {
 		return;
 	int ws[2];
 	get_win_size(ws[0], ws[1]);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]));
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]));
 	if (ImGui::Begin("Boshyst", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
@@ -177,8 +183,16 @@ void ui::draw() {
 				// draw_list->AddCircleFilled(ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), 2.f, IM_COL32(255, 0, 0, 255), 4);
 			}
 		}
+		if (conf::draw_cursor) {
+			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+			int x, y;
+			get_cursor_pos(x, y);
+			// cout << x << " " << y << std::endl;
+			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 4.f, IM_COL32(255, 0, 0, 255), 10);
+		}
 		ImGui::Text("Scene ID: %i", scene_id);
-		ImGui::Text("Last new RNG value: %i", last_rng_val);
+		// ImGui::Text("Last new RNG value: %i", last_rng_val);
 	}
+	ImGui::PopStyleVar();
 	ImGui::End();
 }

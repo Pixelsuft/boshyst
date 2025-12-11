@@ -90,7 +90,33 @@ static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* p
     return uVar1 & 0xffff0000;
 }
 
+static LRESULT (__stdcall *DispatchMessageAOrig)(LPMSG lpMsg);
+static LRESULT __stdcall DispatchMessageAHook(LPMSG lpMsg) {
+    if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_KEYUP) && lpMsg->wParam == 'K') {
+        cout << "Sim dispatch\n";
+        lpMsg->message = (lpMsg->message == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
+        lpMsg->wParam = 0;
+        lpMsg->lParam = 0;
+    }
+    auto ret = DispatchMessageAOrig(lpMsg);
+    return ret;
+}
+
+static BOOL (__stdcall *PeekMessageAOrig)(LPMSG lpMsg, HWND  hWnd, UINT  wMsgFilterMin, UINT  wMsgFilterMax, UINT  wRemoveMsg);
+static BOOL __stdcall PeekMessageAHook(LPMSG lpMsg, HWND  hWnd, UINT  wMsgFilterMin,UINT  wMsgFilterMax, UINT  wRemoveMsg) {
+    BOOL ret = PeekMessageAOrig(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_KEYUP) && lpMsg->wParam == 'K') {
+        cout << "Sim peek\n";
+        lpMsg->message = (lpMsg->message == WM_KEYDOWN) ? WM_LBUTTONDOWN : WM_LBUTTONUP;
+        lpMsg->wParam = 0;
+        lpMsg->lParam = 0;
+    }
+    return ret;
+}
+
 void init_simple_hacks() {
+    hook(mem::addr("PeekMessageA", "user32.dll"), PeekMessageAHook, &PeekMessageAOrig);
+    hook(mem::addr("DispatchMessageA", "user32.dll"), DispatchMessageAHook, &DispatchMessageAOrig);
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);

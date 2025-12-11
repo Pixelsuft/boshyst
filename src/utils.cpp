@@ -50,3 +50,12 @@ void get_win_size(int& w_buf, int& h_buf) {
 	w_buf = rect.right;
 	h_buf = rect.bottom;
 }
+
+void get_cursor_pos(int& x_buf, int& y_buf) {
+	POINT point;
+	memset(&point, 0, sizeof(point));
+	GetCursorPos(&point);
+	ScreenToClient(hwnd, &point);
+	x_buf = point.x;
+	y_buf = point.y;
+}

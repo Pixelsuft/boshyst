@@ -6,6 +6,7 @@ namespace conf {
 	extern bool menu;
 	extern bool keep_save;
 	extern bool no_cmove;
+	extern bool draw_cursor;
 	extern int pos[2];
 	extern int size[2];
 

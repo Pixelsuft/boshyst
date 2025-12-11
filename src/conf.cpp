@@ -20,6 +20,7 @@ namespace conf {
     bool menu;
     bool keep_save;
     bool no_cmove;
+    bool draw_cursor;
 }
 
 static bool starts_with(const string& mainStr, const string& prefix) {
@@ -53,7 +54,7 @@ static void read_vec2_int(const string& line, const char* patt, int* buf) {
 }
 
 void conf::read() {
-    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = false;
+    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;
@@ -83,6 +84,8 @@ void conf::read() {
             conf::keep_save = read_int(line) != 0;
         else if (starts_with(line, "no_mouse_move"))
             conf::no_cmove = read_int(line) != 0;
+        else if (starts_with(line, "draw_cursor"))
+            conf::draw_cursor = read_int(line) != 0;
         else if (starts_with(line, "win_pos"))
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
