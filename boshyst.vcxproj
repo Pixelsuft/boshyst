@@ -163,6 +163,7 @@
     <ClCompile Include="src\conf.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\input.cpp" />
+    <ClCompile Include="src\rec.cpp" />
     <ClCompile Include="src\simple_hacks.cpp" />
     <ClCompile Include="src\ui.cpp" />
     <ClCompile Include="src\utils.cpp" />
@@ -174,6 +175,7 @@
     <ClInclude Include="src\init.hpp" />
     <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\mem.hpp" />
+    <ClInclude Include="src\rec.hpp" />
     <ClInclude Include="src\ui.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

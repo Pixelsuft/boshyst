@@ -17,8 +17,8 @@ extern HWND mhwnd;
 extern void get_win_size(int& w_buf, int& h_buf);
 static LRESULT(__stdcall* SusProc)(HWND param_1, UINT param_2, WPARAM param_3, LPARAM param_4) = nullptr;
 
-static int cur_x = 0;
-static int cur_y = 0;
+static int cur_x = -100;
+static int cur_y = -100;
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
     p->x = cur_x;
     p->y = cur_y;
@@ -43,6 +43,9 @@ static SHORT __stdcall GetKeyStateHook(int k) {
                 }
             }
         }
+        // Move Mouse Outside
+        cur_x = -100;
+        cur_y = -100;
     }
     return GetKeyStateOrig(k);
 }

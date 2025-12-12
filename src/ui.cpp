@@ -1,6 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #include "ui.hpp"
 #include "conf.hpp"
+#include "rec.hpp"
 #include "mem.hpp"
 #include <imgui.h>
 #include <iostream>
@@ -8,6 +11,7 @@
 
 using std::cout;
 
+extern HWND hwnd;
 extern int last_rng_val;
 
 void* get_scene_ptr() {
@@ -125,8 +129,17 @@ void* get_player_ptr(int s) {
 	return nullptr;
 }
 
+static int cur_cnt = 0;
+static int frames_capped = 0;
 void ui::draw() {
 	conf::cur_mouse_checked = false;
+	if (cur_cnt == 0)
+		rec::init();
+	if (cur_cnt < 50 * 20)
+		rec::cap();
+	else if (cur_cnt == 50 * 20)
+		rec::stop();
+	cur_cnt++;
 	if (!conf::menu)
 		return;
 	int ws[2];

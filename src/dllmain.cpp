@@ -95,7 +95,7 @@ void try_hook_gr() {
 #else
     do {
         hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
-        Sleep(1000);
+        Sleep(2);
     } while (hwnd == nullptr);
 #endif
 #if SHOW_STAGES
