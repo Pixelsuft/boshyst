@@ -11,10 +11,9 @@
 #include "ass.hpp"
 #include "init.hpp"
 #include "ui.hpp"
+#define SHOW_STAGES 1
 
 using std::cout;
-
-extern void inp_pre_init();
 
 HWND hwnd = nullptr;
 bool inited = false;
@@ -66,7 +65,9 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         ImGui_ImplWin32_Init(hwnd);
         ImGui_ImplDX9_Init(pDevice);
         inited = true;
+#if SHOW_STAGES
         cout << "graphics inited\n";
+#endif
     }
 
     ImGui_ImplDX9_NewFrame();
@@ -85,7 +86,9 @@ void try_hook_gr() {
     if (gr_hooked)
         return;
     gr_hooked = true;
+#if SHOW_STAGES
     cout << "graphics hooking 1\n";
+#endif
     hwnd = nullptr;
 #ifdef _DEBUG
     hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
@@ -95,18 +98,30 @@ void try_hook_gr() {
         Sleep(1000);
     } while (hwnd == nullptr);
 #endif
+#if SHOW_STAGES
     cout << "graphics hooking 2\n";
+#endif
     init_simple_hacks();
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+#if SHOW_STAGES
     cout << "graphics hooking 3\n";
+#endif
     ASS(kiero::init(kiero::RenderType::Auto) == kiero::Status::Success);
+#if SHOW_STAGES
     cout << "graphics hooking 4\n";
+#endif
     ASS(kiero::bind(16, (void**)&oReset, hkReset) == kiero::Status::Success);
+#if SHOW_STAGES
     cout << "graphics hooking 5\n";
+#endif
     ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
+#if SHOW_STAGES
     cout << "graphics hooking 6\n";
+#endif
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+#if SHOW_STAGES
     cout << "graphics hooked\n";
+#endif
 }
 
 extern "C" __declspec(dllexport) void dummy_func() {}

@@ -161,6 +161,15 @@ void ui::draw() {
 			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
 			// draw_list->AddCircleFilled(ImVec2(tx, ty), 5.f, IM_COL32(255, 0, 0, 255), 12);
 		}
+		ImGui::Text("Scene ID: %i", scene_id);
+		if (conf::draw_cursor) {
+			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+			int x, y;
+			get_cursor_pos(x, y);
+			ImGui::Text("Cursor Pos: (%i, %i)", x, y);
+			// cout << x << " " << y << std::endl;
+			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 3.f, IM_COL32(255, 0, 0, 255), 8);
+		}
 		if (0) {
 			// Display all object IDs
 			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
@@ -183,15 +192,6 @@ void ui::draw() {
 				// draw_list->AddCircleFilled(ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), 2.f, IM_COL32(255, 0, 0, 255), 4);
 			}
 		}
-		if (conf::draw_cursor) {
-			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-			int x, y;
-			get_cursor_pos(x, y);
-			ImGui::Text("Cursor Pos: (%i, %i)", x, y);
-			// cout << x << " " << y << std::endl;
-			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 4.f, IM_COL32(255, 0, 0, 255), 10);
-		}
-		ImGui::Text("Scene ID: %i", scene_id);
 		// ImGui::Text("Last new RNG value: %i", last_rng_val);
 	}
 	ImGui::PopStyleVar();

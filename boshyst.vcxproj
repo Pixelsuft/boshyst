@@ -172,6 +172,7 @@
     <ClInclude Include="src\conf.hpp" />
     <ClInclude Include="src\hook.hpp" />
     <ClInclude Include="src\init.hpp" />
+    <ClInclude Include="src\input.hpp" />
     <ClInclude Include="src\mem.hpp" />
     <ClInclude Include="src\ui.hpp" />
   </ItemGroup>

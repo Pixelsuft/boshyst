@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include "input.hpp"
 #include "conf.hpp"
 #include "ass.hpp"
 
@@ -13,6 +14,7 @@ using std::string;
 using std::cout;
 
 namespace conf {
+    std::map<int, std::vector<InputEvent>> mb;
     int pos[2];
     int size[2];
     bool no_vp;
@@ -21,6 +23,7 @@ namespace conf {
     bool keep_save;
     bool no_cmove;
     bool draw_cursor;
+    bool emu_mouse;
 }
 
 static bool starts_with(const string& mainStr, const string& prefix) {
@@ -53,8 +56,24 @@ static void read_vec2_int(const string& line, const char* patt, int* buf) {
     ASS(sscanf(line.c_str(), patt, &buf[0], &buf[1]) == 2);
 }
 
+static void read_mouse_bind(const string& line) {
+    int num;
+    float x, y;
+    ASS(sscanf(line.c_str(), "%i,%f,%f", &num, &x, &y) == 3);
+    InputEvent ev;
+    ev.x = x;
+    ev.y = y;
+    auto it = conf::mb.find(num);
+    if (it == conf::mb.end()) {
+        conf::mb[num] = std::vector<InputEvent>({ std::move(ev) });
+    }
+    else {
+        it->second.push_back(std::move(ev));
+    }
+}
+
 void conf::read() {
-    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = false;
+    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;
@@ -86,10 +105,14 @@ void conf::read() {
             conf::no_cmove = read_int(line) != 0;
         else if (starts_with(line, "draw_cursor"))
             conf::draw_cursor = read_int(line) != 0;
+        else if (starts_with(line, "simulate_mouse"))
+            conf::emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "win_pos"))
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
             read_vec2_int(line, "win_size=%i,%i", size);
+        else if (starts_with(line, "mouse_bind"))
+            read_mouse_bind(line.substr(11));
     }
     ifile.close();
 #if 1
@@ -99,5 +122,7 @@ void conf::read() {
     cout << "no viewport: " << conf::no_vp << std::endl;
     cout << "keep save: " << conf::keep_save << std::endl;
     cout << "no cursor move: " << conf::no_cmove << std::endl;
+    cout << "draw cursor: " << conf::draw_cursor << std::endl;
+    cout << "emu mouse: " << conf::emu_mouse << std::endl;
 #endif
 }
