@@ -24,6 +24,7 @@ namespace conf {
     bool no_cmove;
     bool draw_cursor;
     bool emu_mouse;
+    bool cur_mouse_checked;
 }
 
 static bool starts_with(const string& mainStr, const string& prefix) {
@@ -65,7 +66,9 @@ static void read_mouse_bind(const string& line) {
     ev.y = y;
     auto it = conf::mb.find(num);
     if (it == conf::mb.end()) {
-        conf::mb[num] = std::vector<InputEvent>({ std::move(ev) });
+        std::vector<InputEvent> temp_vec;
+        temp_vec.push_back(std::move(ev));
+        conf::mb[num] = std::move(temp_vec);
     }
     else {
         it->second.push_back(std::move(ev));
@@ -74,6 +77,7 @@ static void read_mouse_bind(const string& line) {
 
 void conf::read() {
     conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = false;
+    conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;

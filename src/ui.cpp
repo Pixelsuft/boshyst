@@ -126,6 +126,7 @@ void* get_player_ptr(int s) {
 }
 
 void ui::draw() {
+	conf::cur_mouse_checked = false;
 	if (!conf::menu)
 		return;
 	int ws[2];

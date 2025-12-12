@@ -10,6 +10,7 @@ namespace conf {
 	extern bool no_cmove;
 	extern bool draw_cursor;
 	extern bool emu_mouse;
+	extern bool cur_mouse_checked;
 
 	void read();
 }
