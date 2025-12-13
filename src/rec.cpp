@@ -21,24 +21,10 @@ static std::vector<BYTE> data_buffer;
 static BITMAPINFO bmi;
 static std::pair<int, int> ws;
 
-static std::pair<int, int> win_size() {
-    RECT rect_buf = { 0, 0, 0, 0 };
-    if (GetClientRect(hwnd, &rect_buf)) {
-        return { rect_buf.right, rect_buf.bottom };
-    }
-    return { 0, 0 };
-}
-
-static std::pair<int, int> get_win_top_left() {
-    POINT point_buf = { 0, 0 };
-    if (ClientToScreen(hwnd, &point_buf)) {
-        return { point_buf.x, point_buf.y };
-    }
-    return { 0, 0 };
-}
+extern void get_win_size(int& w_buf, int& h_buf);
 
 void rec::init() {
-    srcdc = GetWindowDC(NULL);
+    srcdc = GetDC(hwnd);
     ASS(srcdc != nullptr);
     memdc = CreateCompatibleDC(srcdc);
     ASS(memdc != nullptr);
@@ -48,15 +34,14 @@ void rec::init() {
     bmi.bmiHeader.biCompression = BI_RGB;
     bmi.bmiHeader.biClrUsed = 0;
     bmi.bmiHeader.biClrImportant = 0;
-    ws = ::win_size();
+    get_win_size(ws.first, ws.second);
     bmi.bmiHeader.biWidth = ws.first;
     bmi.bmiHeader.biHeight = -ws.second;
     buffer_size = ws.first * ws.second * 4;
-    data_buffer.reserve(buffer_size);
+    data_buffer.resize(buffer_size);
     bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
     ASS(bmp != nullptr);
     old_bmp = SelectObject(memdc, bmp);
-    ASS(old_bmp != nullptr);
     std::string command = std::string("ffmpeg -y -f rawvideo") +
         " -vcodec rawvideo" +
         " -s " + std::to_string(ws.first) + "x" + std::to_string(ws.second) +
@@ -71,27 +56,24 @@ void rec::init() {
 }
 
 void rec::cap() {
-    std::pair<int, int> real_pos = get_win_top_left();
-    int real_x = real_pos.first;
-    int real_y = real_pos.second;
     BOOL bitblt_success = BitBlt(
-        memdc,                  // dest DC
-        0, 0,                   // dest x, y
-        ws.first,         // width
-        ws.second,        // height
-        srcdc,                  // source DC (screen)
-        real_x, real_y,         // source x, y (screen coords of client top left)
-        SRCCOPY | CAPTUREBLT    // Raster operation
+        memdc,
+        0, 0,
+        ws.first,
+        ws.second,
+        srcdc,
+        0, 0,
+        SRCCOPY | CAPTUREBLT
     );
     ASS(bitblt_success);
     int bits = GetDIBits(
-        memdc,                  // hdc
-        bmp,                    // hbmp
-        0,                      // start scan line
-        ws.second,        // number of scan lines
-        data_buffer.data(),     // lpbits
-        &bmi,                   // lpbi
-        DIB_RGB_COLORS          // usage
+        memdc,
+        bmp,
+        0,
+        ws.second,
+        data_buffer.data(),
+        &bmi,
+        DIB_RGB_COLORS
     );
     ASS(bits == ws.second);
     fwrite(data_buffer.data(), 1, buffer_size, proc_stdin);
