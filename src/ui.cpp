@@ -130,16 +130,17 @@ void* get_player_ptr(int s) {
 }
 
 static int cur_cnt = 0;
-static int frames_capped = 0;
 void ui::draw() {
 	conf::cur_mouse_checked = false;
-	if (cur_cnt == 0)
-		rec::init();
-	if (cur_cnt < 50 * 20)
-		rec::cap();
-	else if (cur_cnt == 50 * 20)
-		rec::stop();
-	cur_cnt++;
+	if (conf::allow_render) {
+		if (cur_cnt == 0)
+			rec::init();
+		if (cur_cnt < 50 * 20)
+			rec::cap();
+		else if (cur_cnt == 50 * 20)
+			rec::stop();
+		cur_cnt++;
+	}
 	if (!conf::menu)
 		return;
 	int ws[2];

@@ -25,6 +25,7 @@ namespace conf {
     bool draw_cursor;
     bool emu_mouse;
     bool cur_mouse_checked;
+    bool allow_render;
 }
 
 static bool starts_with(const string& mainStr, const string& prefix) {
@@ -76,7 +77,7 @@ static void read_mouse_bind(const string& line) {
 }
 
 void conf::read() {
-    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = false;
+    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
@@ -111,6 +112,8 @@ void conf::read() {
             conf::draw_cursor = read_int(line) != 0;
         else if (starts_with(line, "simulate_mouse"))
             conf::emu_mouse = read_int(line) != 0;
+        else if (starts_with(line, "allow_render"))
+            conf::allow_render = read_int(line) != 0;
         else if (starts_with(line, "win_pos"))
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))

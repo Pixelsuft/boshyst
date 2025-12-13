@@ -11,6 +11,7 @@ namespace conf {
 	extern bool draw_cursor;
 	extern bool emu_mouse;
 	extern bool cur_mouse_checked;
+	extern bool allow_render;
 
 	void read();
 }

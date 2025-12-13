@@ -11,6 +11,7 @@
 #include "ass.hpp"
 #include "init.hpp"
 #include "ui.hpp"
+#include "rec.hpp"
 #define SHOW_STAGES 1
 
 using std::cout;
@@ -138,6 +139,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         AllocConsole();
         freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         conf::read();
+        if (conf::allow_render)
+            rec::pre_hook();
         CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)app_entry, nullptr, 0, nullptr);
         // app_entry(nullptr);
         break;

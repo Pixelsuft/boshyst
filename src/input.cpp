@@ -38,14 +38,13 @@ static SHORT __stdcall GetKeyStateHook(int k) {
                 for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {
                     cur_x = (int)(eit->x * (float)w / 640.f);
                     cur_y = (int)(eit->y * (float)h / 480.f);
+                    if (cur_x < 0 || cur_y < 0)
+                        continue;
                     SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
                     SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
                 }
             }
         }
-        // Move Mouse Outside
-        cur_x = -100;
-        cur_y = -100;
     }
     return GetKeyStateOrig(k);
 }

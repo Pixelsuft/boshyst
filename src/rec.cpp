@@ -23,6 +23,10 @@ static std::pair<int, int> ws;
 
 extern void get_win_size(int& w_buf, int& h_buf);
 
+void rec::pre_hook() {
+
+}
+
 void rec::init() {
     srcdc = GetDC(hwnd);
     ASS(srcdc != nullptr);
@@ -48,7 +52,7 @@ void rec::init() {
         " -pix_fmt rgb32" +
         " -r 50" +
         " -i - -an -vcodec mpeg4" +
-        " -b 5000k" +
+        " -b 8000k" +
         " output.mp4";
         //" > nul 2>&1";
     proc_stdin = _popen(command.c_str(), "wb");
@@ -56,7 +60,7 @@ void rec::init() {
 }
 
 void rec::cap() {
-#if 0
+#if 1
     BOOL success = PrintWindow(hwnd, memdc, PW_CLIENTONLY);
 #else
     BOOL success = BitBlt(
