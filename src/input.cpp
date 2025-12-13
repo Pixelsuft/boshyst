@@ -32,7 +32,7 @@ static SHORT __stdcall GetKeyStateHook(int k) {
         int w, h;
         get_win_size(w, h);
         for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
-            bool pressed = (GetKeyStateOrig(it->first) & 0b10000000) != 0;
+            bool pressed = (GetKeyStateOrig(it->first) & 128) != 0;
             if (pressed) {
                 cout << "sus_click\n";
                 for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {

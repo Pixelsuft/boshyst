@@ -4,13 +4,13 @@
 #include "rec.hpp"
 #include "ass.hpp"
 #include <vector>
-#include <chrono>
 #include <cstdlib>
 #include <cstdio>
 #include <memory>
 #include <string>
 
 extern HWND hwnd;
+extern HWND mhwnd;
 static long buffer_size = 0;
 static HDC srcdc = nullptr;
 static HDC memdc = nullptr;
@@ -44,7 +44,7 @@ void rec::init() {
     old_bmp = SelectObject(memdc, bmp);
     std::string command = std::string("ffmpeg -y -f rawvideo") +
         " -vcodec rawvideo" +
-        " -s " + std::to_string(ws.first) + "x" + std::to_string(ws.second) +
+        " -s " + std::to_string((long long)ws.first) + "x" + std::to_string((long long)ws.second) +
         " -pix_fmt rgb32" +
         " -r 50" +
         " -i - -an -vcodec mpeg4" +
@@ -56,7 +56,10 @@ void rec::init() {
 }
 
 void rec::cap() {
-    BOOL bitblt_success = BitBlt(
+#if 0
+    BOOL success = PrintWindow(hwnd, memdc, PW_CLIENTONLY);
+#else
+    BOOL success = BitBlt(
         memdc,
         0, 0,
         ws.first,
@@ -65,7 +68,8 @@ void rec::cap() {
         0, 0,
         SRCCOPY | CAPTUREBLT
     );
-    ASS(bitblt_success);
+#endif
+    ASS(success);
     int bits = GetDIBits(
         memdc,
         bmp,
