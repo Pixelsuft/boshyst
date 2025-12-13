@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <MinHook.h>
 
 extern HWND hwnd;
 extern HWND mhwnd;
@@ -16,7 +17,9 @@ static HDC srcdc = nullptr;
 static HDC memdc = nullptr;
 static HBITMAP bmp = nullptr;
 static HGDIOBJ old_bmp = nullptr;
-static FILE* proc_stdin = nullptr;
+static HANDLE hChildStdinRead = nullptr;
+static HANDLE hChildStdinWrite = nullptr;
+static PROCESS_INFORMATION pi;
 static std::vector<BYTE> data_buffer;
 static BITMAPINFO bmi;
 static std::pair<int, int> ws;
@@ -46,17 +49,47 @@ void rec::init() {
     bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
     ASS(bmp != nullptr);
     old_bmp = SelectObject(memdc, bmp);
-    std::string command = std::string("ffmpeg -y -f rawvideo") +
+    std::string command = std::string("ffmpeg -y -f:v rawvideo") +
         " -vcodec rawvideo" +
         " -s " + std::to_string((long long)ws.first) + "x" + std::to_string((long long)ws.second) +
         " -pix_fmt rgb32" +
         " -r 50" +
         " -i - -an -vcodec mpeg4" +
-        " -b 8000k" +
+        " -b 10000k" +
         " output.mp4";
         //" > nul 2>&1";
-    proc_stdin = _popen(command.c_str(), "wb");
-    ASS(proc_stdin != nullptr);
+    hChildStdinRead = nullptr;
+    hChildStdinWrite = nullptr;
+    SECURITY_ATTRIBUTES saAttr;
+    ZeroMemory(&saAttr, sizeof(saAttr));
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = nullptr;
+    ASS(CreatePipe(&hChildStdinRead, &hChildStdinWrite, &saAttr, 0));
+    ASS(SetHandleInformation(hChildStdinWrite, HANDLE_FLAG_INHERIT, 0));
+    STARTUPINFOA si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.hStdInput = hChildStdinRead;
+    si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    ZeroMemory(&pi, sizeof(pi));
+    std::vector<char> cmd_chars(command.begin(), command.end());
+    cmd_chars.push_back('\0');
+    ASS(CreateProcessA(
+        nullptr,
+        cmd_chars.data(),
+        nullptr,
+        nullptr,
+        TRUE,
+        0,
+        nullptr,
+        nullptr,
+        &si,
+        &pi
+    ));
+    CloseHandle(hChildStdinRead);
 }
 
 void rec::cap() {
@@ -84,19 +117,29 @@ void rec::cap() {
         DIB_RGB_COLORS
     );
     ASS(bits == ws.second);
-    fwrite(data_buffer.data(), 1, buffer_size, proc_stdin);
-    fflush(proc_stdin);
+    DWORD dwWritten;
+    BOOL bSuccess = WriteFile(
+        hChildStdinWrite,
+        data_buffer.data(),
+        data_buffer.size(),
+        &dwWritten,
+        nullptr
+    );
+    ASS(bSuccess);
+    ASS(FlushFileBuffers(hChildStdinWrite));
 }
 
 void rec::stop() {
-    if (proc_stdin) {
-        _pclose(proc_stdin);
-    }
+    CloseHandle(hChildStdinWrite);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    ZeroMemory(&pi, sizeof(pi));
     if (memdc && old_bmp) SelectObject(memdc, old_bmp);
     if (bmp) DeleteObject(bmp);
     if (memdc) DeleteDC(memdc);
-    if (srcdc) ReleaseDC(NULL, srcdc);
-    proc_stdin = nullptr;
+    if (srcdc) ReleaseDC(nullptr, srcdc);
+    hChildStdinWrite = nullptr;
     memdc = nullptr;
     old_bmp = nullptr;
     bmp = nullptr;
