@@ -19,6 +19,9 @@ using std::cout;
 HWND hwnd = nullptr;
 bool inited = false;
 bool gr_hooked = false;
+bool is_hourglass = false;
+
+extern int get_scene_id();
 
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
 #if 0
@@ -83,46 +86,65 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 }
 
 extern void init_simple_hacks();
-void try_hook_gr() {
+
+void try_hook_gr2() {
     if (gr_hooked)
         return;
     gr_hooked = true;
+    if (conf::menu || 1) {
 #if SHOW_STAGES
-    cout << "graphics hooking 1\n";
+        cout << "graphics hooking 3\n";
+#endif
+        ASS(kiero::init(kiero::RenderType::Auto) == kiero::Status::Success);
+#if SHOW_STAGES
+        cout << "graphics hooking 4\n";
+#endif
+        ASS(kiero::bind(16, (void**)&oReset, hkReset) == kiero::Status::Success);
+#if SHOW_STAGES
+        cout << "graphics hooking 5\n";
+#endif
+        ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
+#if SHOW_STAGES
+        cout << "graphics hooking 6\n";
+#endif
+        ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+#if SHOW_STAGES
+        cout << "hooks enabled\n";
+#endif
+    }
+}
+
+void try_hook_gr() {
+#if SHOW_STAGES
+    cout << "before hooking 1\n";
 #endif
     hwnd = nullptr;
-#ifdef _DEBUG
-    hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
-#else
-    do {
+    if (is_hourglass) {
+        // Fuck you!!!
+        do {
+            hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
+            // Sleep(1);
+        } while (hwnd == nullptr);
+#if SHOW_STAGES
+        cout << "game hooks start 2\n";
+#endif
+        init_simple_hacks();
+        ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+        int cur_scene = -1;
+        do {
+            cur_scene = get_scene_id();
+            // Sleep(1);
+        } while (cur_scene < 2 || cur_scene > 60);
+    }
+    else {
         hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
-        Sleep(2);
-    } while (hwnd == nullptr);
-#endif
 #if SHOW_STAGES
-    cout << "graphics hooking 2\n";
+        cout << "game hooks start 2\n";
 #endif
-    init_simple_hacks();
-    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
-#if SHOW_STAGES
-    cout << "graphics hooking 3\n";
-#endif
-    ASS(kiero::init(kiero::RenderType::Auto) == kiero::Status::Success);
-#if SHOW_STAGES
-    cout << "graphics hooking 4\n";
-#endif
-    ASS(kiero::bind(16, (void**)&oReset, hkReset) == kiero::Status::Success);
-#if SHOW_STAGES
-    cout << "graphics hooking 5\n";
-#endif
-    ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
-#if SHOW_STAGES
-    cout << "graphics hooking 6\n";
-#endif
-    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
-#if SHOW_STAGES
-    cout << "graphics hooked\n";
-#endif
+        init_simple_hacks();
+        ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+    }
+    try_hook_gr2();
 }
 
 extern "C" __declspec(dllexport) void dummy_func() {}
@@ -138,6 +160,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
         AllocConsole();
         freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+        is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
         conf::read();
         if (conf::allow_render)
             rec::pre_hook();

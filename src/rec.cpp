@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include "rec.hpp"
 #include "ass.hpp"
+#include "conf.hpp"
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
@@ -15,6 +16,8 @@ using std::cout;
 
 namespace conf {
     extern std::string cap_cmd;
+    extern int cap_start;
+    extern int cap_cnt;
 }
 
 extern HWND hwnd;
@@ -156,4 +159,26 @@ void rec::stop() {
     bmp = nullptr;
     memdc = nullptr;
     srcdc = nullptr;
+}
+
+void rec::rec_tick() {
+    conf::cur_mouse_checked = false;
+    if (!conf::allow_render)
+        return;
+    static int cur_total = 0;
+    static int cur_cnt = 0;
+    cur_total++;
+    if (cur_total == conf::cap_start) {
+        rec::init();
+        rec::cap();
+        cur_cnt++;
+    }
+    else if (cur_cnt > 0) {
+        rec::cap();
+        cur_cnt++;
+        if (cur_cnt == conf::cap_cnt) {
+            rec::stop();
+            cur_cnt = 0;
+        }
+    }
 }

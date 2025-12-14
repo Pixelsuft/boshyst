@@ -6,6 +6,7 @@
 #include "hook.hpp"
 #include "mem.hpp"
 #include "conf.hpp"
+#include "rec.hpp"
 #pragma comment(lib, "Shlwapi.lib")
 
 using std::cout;
