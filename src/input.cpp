@@ -36,7 +36,7 @@ static SHORT __stdcall GetKeyStateHook(int k) {
         for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
             bool pressed = (GetKeyStateOrig(it->first) & 128) != 0;
             if (pressed) {
-                cout << "sus_click\n";
+                // cout << "sus_click\n";
                 for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {
                     cur_x = (int)(eit->x * (float)w / 640.f);
                     cur_y = (int)(eit->y * (float)h / 480.f);

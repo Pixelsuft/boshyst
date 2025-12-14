@@ -88,9 +88,11 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 extern void init_simple_hacks();
 
 void try_hook_gr2() {
+#if 0
     if (gr_hooked)
         return;
     gr_hooked = true;
+#endif
     if (conf::menu || 1) {
 #if SHOW_STAGES
         cout << "graphics hooking 3\n";
