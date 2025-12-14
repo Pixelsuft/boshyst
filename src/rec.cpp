@@ -165,6 +165,26 @@ void rec::rec_tick() {
     conf::cur_mouse_checked = false;
     if (!conf::allow_render)
         return;
+    if (conf::cap_start == 0 && conf::cap_cnt == 0) {
+        // Special case
+        static bool capturing = false;
+        char buf[32];
+        int ret = GetWindowTextA(hwnd, buf, 32);
+        ASS(ret > 0);
+        buf[ret] = '\0';
+        if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing) {
+            capturing = true;
+            rec::init();
+        }
+        else if (strcmp(buf, "I Wanna Be The Boshy S") == 0 && capturing) {
+            capturing = false;
+            rec::stop();
+        }
+        if (capturing) {
+            rec::cap();
+        }
+        return;
+    }
     static int cur_total = 0;
     static int cur_cnt = 0;
     cur_total++;
