@@ -144,7 +144,7 @@ void conf::read() {
         conf::cap_cnt = cap_end - conf::cap_start;
     }
     ifile.close();
-#if 1
+#if 0
     cout << "config: \n";
     cout << "menu: " << conf::menu << std::endl;
     cout << "god: " << conf::god << std::endl;

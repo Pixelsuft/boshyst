@@ -12,7 +12,7 @@
 #include "init.hpp"
 #include "ui.hpp"
 #include "rec.hpp"
-#define SHOW_STAGES 1
+#define SHOW_STAGES 0
 
 using std::cout;
 
