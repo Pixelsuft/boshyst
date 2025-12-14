@@ -7,8 +7,15 @@
 #include <cstdlib>
 #include <cstdio>
 #include <memory>
+#include <iostream>
 #include <string>
 #include <MinHook.h>
+
+using std::cout;
+
+namespace conf {
+    extern std::string cap_cmd;
+}
 
 extern HWND hwnd;
 extern HWND mhwnd;
@@ -25,6 +32,7 @@ static BITMAPINFO bmi;
 static std::pair<int, int> ws;
 
 extern void get_win_size(int& w_buf, int& h_buf);
+extern bool starts_with(const std::string& mainStr, const std::string& prefix);
 
 void rec::pre_hook() {
 
@@ -49,15 +57,18 @@ void rec::init() {
     bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
     ASS(bmp != nullptr);
     old_bmp = SelectObject(memdc, bmp);
-    std::string command = std::string("ffmpeg -y -f:v rawvideo") +
-        " -vcodec rawvideo" +
-        " -s " + std::to_string((long long)ws.first) + "x" + std::to_string((long long)ws.second) +
-        " -pix_fmt rgb32" +
-        " -r 50" +
-        " -i - -an -vcodec mpeg4" +
-        " -b 10000k" +
-        " output.mp4";
-        //" > nul 2>&1";
+    std::string command = "";
+    // Yea it's ugly
+    while (conf::cap_cmd.size() > 0) {
+        if (starts_with(conf::cap_cmd, "$SIZE")) {
+            command += std::to_string((long long)ws.first) + "x" + std::to_string((long long)ws.second);
+            conf::cap_cmd = conf::cap_cmd.substr(5);
+            continue;
+        }
+        command += conf::cap_cmd[0];
+        conf::cap_cmd = conf::cap_cmd.substr(1);
+    }
+    std::cout << command << '\n';
     hChildStdinRead = nullptr;
     hChildStdinWrite = nullptr;
     SECURITY_ATTRIBUTES saAttr;

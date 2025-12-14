@@ -15,8 +15,11 @@ using std::cout;
 
 namespace conf {
     std::map<int, std::vector<InputEvent>> mb;
+    string cap_cmd;
     int pos[2];
     int size[2];
+    int cap_start;
+    int cap_cnt;
     bool no_vp;
     bool god;
     bool menu;
@@ -28,7 +31,7 @@ namespace conf {
     bool allow_render;
 }
 
-static bool starts_with(const string& mainStr, const string& prefix) {
+bool starts_with(const string& mainStr, const string& prefix) {
     if (mainStr.length() < prefix.length()) {
         return false;
     }
@@ -77,6 +80,9 @@ static void read_mouse_bind(const string& line) {
 }
 
 void conf::read() {
+    conf::cap_cmd = "";
+    conf::cap_start = 0;
+    conf::cap_cnt = 50 * 60 * 60 * 10;
     conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::cur_mouse_checked = false;
     conf::menu = true;
@@ -95,8 +101,15 @@ void conf::read() {
         ass::show_err("Failed to open boshyst config");
         return;
     }
+    int cap_end = -1;
     std::string line;
     while (std::getline(ifile, line)) {
+        if (starts_with(line, "render_cmd")) {
+            // Special case
+            conf::cap_cmd = line.substr(10);
+            while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
+                conf::cap_cmd = conf::cap_cmd.substr(1);
+        }
         line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
         if (starts_with(line, "god"))
             conf::god = read_int(line) != 0;
@@ -114,12 +127,21 @@ void conf::read() {
             conf::emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "allow_render"))
             conf::allow_render = read_int(line) != 0;
+        else if (starts_with(line, "render_start"))
+            conf::cap_start = read_int(line);
+        else if (starts_with(line, "render_count"))
+            conf::cap_cnt = read_int(line);
+        else if (starts_with(line, "render_end"))
+            cap_end = read_int(line);
         else if (starts_with(line, "win_pos"))
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
             read_vec2_int(line, "win_size=%i,%i", size);
         else if (starts_with(line, "mouse_bind"))
             read_mouse_bind(line.substr(11));
+    }
+    if (cap_end > 0) {
+        conf::cap_cnt = cap_end - conf::cap_start;
     }
     ifile.close();
 #if 1

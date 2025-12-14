@@ -11,20 +11,25 @@
 
 using std::cout;
 
+namespace conf {
+	extern int cap_start;
+	extern int cap_cnt;
+}
+
 extern HWND hwnd;
 extern int last_rng_val;
 
-void* get_scene_ptr() {
+static void* get_scene_ptr() {
 	const size_t offsets[] = { 0x59A94 + 0x400000, 0x268, 0 };
 	return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 
-int get_scene_id() {
+static int get_scene_id() {
 	const size_t offsets[] = { 0x59A94 + 0x400000, 0x268, 0xA8 };
 	return *(int*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 
-void* get_player_ptr(int s) {
+static void* get_player_ptr(int s) {
 	// Tutorial
 	if (s == 36) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xF0, 0 };
@@ -129,17 +134,25 @@ void* get_player_ptr(int s) {
 	return nullptr;
 }
 
-static int cur_cnt = 0;
 void ui::draw() {
 	conf::cur_mouse_checked = false;
 	if (conf::allow_render) {
-		if (cur_cnt == 0)
+		static int cur_total = 0;
+		static int cur_cnt = 0;
+		cur_total++;
+		if (cur_total == conf::cap_start) {
 			rec::init();
-		if (cur_cnt < 50 * 20)
 			rec::cap();
-		else if (cur_cnt == 50 * 20)
-			rec::stop();
-		cur_cnt++;
+			cur_cnt++;
+		}
+		else if (cur_cnt > 0) {
+			rec::cap();
+			cur_cnt++;
+			if (cur_cnt == conf::cap_cnt) {
+				rec::stop();
+				cur_cnt = 0;
+			}
+		}
 	}
 	if (!conf::menu)
 		return;
