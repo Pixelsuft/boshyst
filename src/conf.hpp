@@ -4,6 +4,7 @@ namespace conf {
 	extern int pos[2];
 	extern int size[2];
 	extern bool no_vp;
+	extern bool no_sh;
 	extern bool god;
 	extern bool menu;
 	extern bool keep_save;

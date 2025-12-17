@@ -21,6 +21,7 @@ namespace conf {
     int cap_start;
     int cap_cnt;
     bool no_vp;
+    bool no_sh;
     bool god;
     bool menu;
     bool keep_save;
@@ -49,9 +50,9 @@ static int read_int(const string& line) {
             ret = (ret * 10) + (*it - '0');
             was_set = true;
         }
-        else if (was_eq && !was_set && *it == 't')
+        else if (was_eq && !was_set && tolower(*it) == 't')
             return 1;
-        else if (was_eq && !was_set && *it == 'f')
+        else if (was_eq && !was_set && tolower(*it) == 'f')
             return 0;
     }
     return ret;
@@ -82,8 +83,8 @@ static void read_mouse_bind(const string& line) {
 void conf::read() {
     conf::cap_cmd = "";
     conf::cap_start = 0;
-    conf::cap_cnt = 50 * 60 * 60 * 10;
-    conf::god = conf::no_vp = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
+    conf::cap_cnt = 0;
+    conf::god = conf::no_vp = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
@@ -115,6 +116,8 @@ void conf::read() {
             conf::god = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport"))
             conf::no_vp = read_int(line) != 0;
+        else if (starts_with(line, "disable_shaders"))
+            conf::no_sh = read_int(line) != 0;
         else if (starts_with(line, "menu"))
             conf::menu = read_int(line) != 0;
         else if (starts_with(line, "keep_save"))
