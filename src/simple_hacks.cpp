@@ -36,7 +36,7 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
     if (conf::god && (strcmp(s2, "Die") == 0 || strcmp(s2, "die") == 0)) {
         return -1;
     }
-    else if (conf::no_sh && strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 || strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 || strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 || strcmp(s1, "PT_BlurAndAngle.fx") == 0) {
+    else if (conf::no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 || strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 || strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 || strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
         // shaders
         // Extra: Add, Invert, Sub, Mono, Blend, XOR, OR, AND
         // cout << "!!!: " << s1 << " " << s2 << '\n';
