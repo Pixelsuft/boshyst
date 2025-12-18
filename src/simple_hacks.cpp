@@ -2,6 +2,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
 #include <shlwapi.h>
+#include <timeapi.h>
 #include <iostream>
 #include "hook.hpp"
 #include "mem.hpp"
@@ -104,6 +105,26 @@ static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* p
     return uVar1 & 0xffff0000;
 }
 
+static DWORD(__stdcall* timeGetTimeOrig)();
+static DWORD __stdcall timeGetTimeHook() {
+    cout << "time hook!\n";
+    return timeGetTimeOrig();
+}
+
+static MMRESULT(__stdcall* timeBeginPeriodOrig)(UINT uPeriod);
+static MMRESULT  __stdcall timeBeginPeriodHook(UINT uPeriod) {
+    cout << "time hook start!\n";
+    uPeriod *= 10;
+    return timeBeginPeriodOrig(10000);
+}
+
+static MMRESULT(__stdcall* timeEndPeriodOrig)(UINT uPeriod);
+static MMRESULT  __stdcall timeEndPeriodHook(UINT uPeriod) {
+    cout << "time hook end!\n";
+    uPeriod *= 10;
+    return timeEndPeriodOrig(10000);
+}
+
 void init_simple_hacks() {
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
@@ -113,6 +134,9 @@ void init_simple_hacks() {
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
+    // hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
+    // hook(mem::addr("timeBeginPeriod", "winmm.dll"), timeBeginPeriodHook, &timeBeginPeriodOrig);
+    // hook(mem::addr("timeEndPeriod", "winmm.dll"), timeEndPeriodHook, &timeEndPeriodOrig);
     hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);

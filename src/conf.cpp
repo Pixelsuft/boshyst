@@ -20,6 +20,7 @@ namespace conf {
     int size[2];
     int cap_start;
     int cap_cnt;
+    bool old_rec;
     bool no_vp;
     bool no_sh;
     bool god;
@@ -84,7 +85,7 @@ void conf::read() {
     conf::cap_cmd = "";
     conf::cap_start = 0;
     conf::cap_cnt = 0;
-    conf::god = conf::no_vp = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
+    conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
@@ -130,6 +131,8 @@ void conf::read() {
             conf::emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "allow_render"))
             conf::allow_render = read_int(line) != 0;
+        else if (starts_with(line, "old_render"))
+            conf::old_rec = read_int(line) != 0;
         else if (starts_with(line, "render_start"))
             conf::cap_start = read_int(line);
         else if (starts_with(line, "render_count"))

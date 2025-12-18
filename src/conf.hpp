@@ -5,6 +5,7 @@ namespace conf {
 	extern int size[2];
 	extern bool no_vp;
 	extern bool no_sh;
+	extern bool old_rec;
 	extern bool god;
 	extern bool menu;
 	extern bool keep_save;

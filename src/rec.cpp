@@ -107,19 +107,21 @@ void rec::init() {
 }
 
 void rec::cap() {
-#if 1
-    BOOL success = PrintWindow(hwnd, memdc, PW_CLIENTONLY);
-#else
-    BOOL success = BitBlt(
-        memdc,
-        0, 0,
-        ws.first,
-        ws.second,
-        srcdc,
-        0, 0,
-        SRCCOPY | CAPTUREBLT
-    );
-#endif
+    BOOL success;
+    if (conf::old_rec) {
+        success = BitBlt(
+            memdc,
+            0, 0,
+            ws.first,
+            ws.second,
+            srcdc,
+            0, 0,
+            SRCCOPY | CAPTUREBLT
+        );
+    }
+    else {
+        success = PrintWindow(hwnd, memdc, PW_CLIENTONLY); 
+    }
     ASS(success);
     int bits = GetDIBits(
         memdc,
