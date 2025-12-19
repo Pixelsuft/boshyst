@@ -73,6 +73,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         cout << "graphics inited\n";
 #endif
     }
+    rec::rec_tick(conf::direct_render ? pDevice : nullptr);
 
     ImGui_ImplDX9_NewFrame();
     ImGui_ImplWin32_NewFrame();

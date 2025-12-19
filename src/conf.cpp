@@ -31,6 +31,7 @@ namespace conf {
     bool emu_mouse;
     bool cur_mouse_checked;
     bool allow_render;
+    bool direct_render;
 }
 
 bool starts_with(const string& mainStr, const string& prefix) {
@@ -131,6 +132,8 @@ void conf::read() {
             conf::emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "allow_render"))
             conf::allow_render = read_int(line) != 0;
+        else if (starts_with(line, "direct_render"))
+            conf::direct_render = read_int(line) != 0;
         else if (starts_with(line, "old_render"))
             conf::old_rec = read_int(line) != 0;
         else if (starts_with(line, "render_start"))

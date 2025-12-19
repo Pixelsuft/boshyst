@@ -3,7 +3,6 @@
 #include <Windows.h>
 #include "ui.hpp"
 #include "conf.hpp"
-#include "rec.hpp"
 #include "mem.hpp"
 #include <imgui.h>
 #include <iostream>
@@ -18,7 +17,6 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 
 void ui::draw() {
-	rec::rec_tick();
 	if (!conf::menu)
 		return;
 	int ws[2];

@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <MinHook.h>
+#include <d3d9.h>
 
 using std::cout;
 
@@ -37,29 +38,45 @@ static std::pair<int, int> ws;
 extern void get_win_size(int& w_buf, int& h_buf);
 extern bool starts_with(const std::string& mainStr, const std::string& prefix);
 
+static void get_buf_size(LPDIRECT3DDEVICE9 pDevice, int& w_buf, int& h_buf) {
+    if (pDevice == nullptr) {
+        get_win_size(w_buf, h_buf);
+        return;
+    }
+    LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
+    ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
+    D3DSURFACE_DESC desc;
+    ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
+    pBackBuffer->Release();
+    w_buf = (int)desc.Width;
+    h_buf = (int)desc.Height;
+}
+
 void rec::pre_hook() {
 
 }
 
-void rec::init() {
-    srcdc = GetDC(hwnd);
-    ASS(srcdc != nullptr);
-    memdc = CreateCompatibleDC(srcdc);
-    ASS(memdc != nullptr);
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-    bmi.bmiHeader.biClrUsed = 0;
-    bmi.bmiHeader.biClrImportant = 0;
-    get_win_size(ws.first, ws.second);
-    bmi.bmiHeader.biWidth = ws.first;
-    bmi.bmiHeader.biHeight = -ws.second;
+void rec::init(void* dev) {
+    get_buf_size((LPDIRECT3DDEVICE9)dev, ws.first, ws.second);
     buffer_size = ws.first * ws.second * 4;
     data_buffer.resize(buffer_size);
-    bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
-    ASS(bmp != nullptr);
-    old_bmp = SelectObject(memdc, bmp);
+    if (dev == nullptr) {
+        srcdc = GetDC(hwnd);
+        ASS(srcdc != nullptr);
+        memdc = CreateCompatibleDC(srcdc);
+        ASS(memdc != nullptr);
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+        bmi.bmiHeader.biClrUsed = 0;
+        bmi.bmiHeader.biClrImportant = 0;
+        bmi.bmiHeader.biWidth = ws.first;
+        bmi.bmiHeader.biHeight = -ws.second;
+        bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
+        ASS(bmp != nullptr);
+        old_bmp = SelectObject(memdc, bmp);
+    }
     std::string command = "";
     // Yea it's ugly
     while (conf::cap_cmd.size() > 0) {
@@ -106,33 +123,63 @@ void rec::init() {
     CloseHandle(hChildStdinRead);
 }
 
-void rec::cap() {
-    BOOL success;
-    if (conf::old_rec) {
-        success = BitBlt(
-            memdc,
-            0, 0,
-            ws.first,
-            ws.second,
-            srcdc,
-            0, 0,
-            SRCCOPY | CAPTUREBLT
-        );
+void rec::cap(void* dev) {
+    if (dev != nullptr) {
+        LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
+        LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
+        ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
+
+        D3DSURFACE_DESC desc;
+        ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
+
+        LPDIRECT3DSURFACE9 pSysSurface = nullptr;
+        ASS(pDevice->CreateOffscreenPlainSurface(
+            desc.Width, desc.Height, desc.Format,
+            D3DPOOL_SYSTEMMEM, &pSysSurface, NULL
+        ) == D3D_OK);
+        ASS(pDevice->GetRenderTargetData(pBackBuffer, pSysSurface) == D3D_OK);
+        D3DLOCKED_RECT lockedRect;
+        auto temp_ret = pSysSurface->LockRect(&lockedRect, nullptr, D3DLOCK_READONLY);
+        ASS(temp_ret == D3D_OK);
+        if (temp_ret == D3D_OK) {
+            ASS(data_buffer.size() == desc.Width * desc.Height * 4);
+            unsigned char* pSrc = (unsigned char*)lockedRect.pBits;
+            for (UINT y = 0; y < desc.Height; ++y) {
+                memcpy(&data_buffer[y * desc.Width * 4], pSrc + (y * lockedRect.Pitch), desc.Width * 4);
+            }
+            pSysSurface->UnlockRect();
+        }
+        pSysSurface->Release();
+        pBackBuffer->Release();
     }
     else {
-        success = PrintWindow(hwnd, memdc, PW_CLIENTONLY); 
+        BOOL success;
+        if (conf::old_rec) {
+            success = BitBlt(
+                memdc,
+                0, 0,
+                ws.first,
+                ws.second,
+                srcdc,
+                0, 0,
+                SRCCOPY | CAPTUREBLT
+            );
+        }
+        else {
+            success = PrintWindow(hwnd, memdc, PW_CLIENTONLY);
+        }
+        ASS(success);
+        int bits = GetDIBits(
+            memdc,
+            bmp,
+            0,
+            ws.second,
+            data_buffer.data(),
+            &bmi,
+            DIB_RGB_COLORS
+        );
+        ASS(bits == ws.second);
     }
-    ASS(success);
-    int bits = GetDIBits(
-        memdc,
-        bmp,
-        0,
-        ws.second,
-        data_buffer.data(),
-        &bmi,
-        DIB_RGB_COLORS
-    );
-    ASS(bits == ws.second);
     DWORD dwWritten;
     BOOL bSuccess = WriteFile(
         hChildStdinWrite,
@@ -145,16 +192,18 @@ void rec::cap() {
     ASS(FlushFileBuffers(hChildStdinWrite));
 }
 
-void rec::stop() {
+void rec::stop(void* dev) {
     CloseHandle(hChildStdinWrite);
     WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     ZeroMemory(&pi, sizeof(pi));
-    if (memdc && old_bmp) SelectObject(memdc, old_bmp);
-    if (bmp) DeleteObject(bmp);
-    if (memdc) DeleteDC(memdc);
-    if (srcdc) ReleaseDC(nullptr, srcdc);
+    if (dev == nullptr) {
+        if (memdc && old_bmp) SelectObject(memdc, old_bmp);
+        if (bmp) DeleteObject(bmp);
+        if (memdc) DeleteDC(memdc);
+        if (srcdc) ReleaseDC(nullptr, srcdc);
+    }
     hChildStdinWrite = nullptr;
     memdc = nullptr;
     old_bmp = nullptr;
@@ -163,7 +212,7 @@ void rec::stop() {
     srcdc = nullptr;
 }
 
-void rec::rec_tick() {
+void rec::rec_tick(void* dev) {
     conf::cur_mouse_checked = false;
     if (!conf::allow_render)
         return;
@@ -176,14 +225,14 @@ void rec::rec_tick() {
         buf[ret] = '\0';
         if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing) {
             capturing = true;
-            rec::init();
+            rec::init(dev);
         }
         else if (strcmp(buf, "I Wanna Be The Boshy S") == 0 && capturing) {
             capturing = false;
-            rec::stop();
+            rec::stop(dev);
         }
         if (capturing) {
-            rec::cap();
+            rec::cap(dev);
         }
         return;
     }
@@ -191,15 +240,15 @@ void rec::rec_tick() {
     static int cur_cnt = 0;
     cur_total++;
     if (cur_total == conf::cap_start) {
-        rec::init();
-        rec::cap();
+        rec::init(dev);
+        rec::cap(dev);
         cur_cnt++;
     }
     else if (cur_cnt > 0) {
-        rec::cap();
+        rec::cap(dev);
         cur_cnt++;
         if (cur_cnt == conf::cap_cnt) {
-            rec::stop();
+            rec::stop(dev);
             cur_cnt = 0;
         }
     }

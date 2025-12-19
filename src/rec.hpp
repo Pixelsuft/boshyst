@@ -1,9 +1,9 @@
 #pragma once
 
 namespace rec {
-	void init();
-	void cap();
-	void stop();
-	void rec_tick();
+	void init(void* dev);
+	void cap(void* dev);
+	void stop(void* dev);
+	void rec_tick(void* dev);
 	void pre_hook();
 }
