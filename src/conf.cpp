@@ -87,7 +87,8 @@ void conf::read() {
     conf::cap_start = 0;
     conf::cap_cnt = 0;
     conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
-    conf::cur_mouse_checked = false;
+    conf::direct_render = true;
+	conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;
