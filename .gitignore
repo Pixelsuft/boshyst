@@ -7,6 +7,4 @@ DebugForRel
 Release
 RelNoOpt
 x64
-*.exe
-*.dll
 *.zip
