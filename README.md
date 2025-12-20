@@ -24,7 +24,7 @@ When **not** using direct render, capture starts from the frame you currently se
 When using direct render, capture starts from the frame you will see, and ends with the frame you currently see (back buffer capturing). <br />
 Warning: game window should **not** be resized while recording.
 ## Useful links
-[Boshyst DLL](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll) <br />
+[Boshyst DLL](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll) and [config](https://github.com/Pixelsuft/boshyst/blob/main/boshyst.conf) <br />
 [Modified wintasee.dll for hourglass r90](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) <br />
 [Modified wintasee.dll for hourglass r78](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee%20r78.dll) <br />
 Capture [start](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/start_cap.exe) and [end](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/end_cap.exe) scripts <br />
