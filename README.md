@@ -2,7 +2,7 @@
 IWBTB mod with hacks and tools to help creating TAS
 ## Building and running
 For testing, just build the DLL using Visual Studio and inject it into the game (make sure that [boshyst.conf](https://github.com/Pixelsuft/boshyst/blob/main/boshyst.conf) is in the game dir). <br />
-For hourglass (Windows XP compatible), build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files, configure includes), put it into the game folder (with config file), replace wintasee.dll with [modified version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) to automatically inject the mod when launching through the hourglass. Allow normal thread creation. <br />
+For hourglass (Windows XP compatible), build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files, configure includes), put it into the game folder (with config file), replace wintasee.dll with [modified version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) to automatically inject the mod when launching the game through the hourglass. Allow normal thread creation. <br />
 Building recording helper scripts:
 ```sh
 gcc start_cap.c -o start_cap.exe -mwindows
@@ -11,7 +11,7 @@ gcc end_cap.c -o end_cap.exe -mwindows
 ## Configuring
 See [boshyst.conf](https://github.com/Pixelsuft/boshyst/blob/main/boshyst.conf)
 ## Recording
-Use special [modified hourglass version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe). <br />
+Use special [modified hourglass r90 version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe). <br />
 Set allow_render to 1. <br />
 FFmpeg is required to be in PATH variable. <br />
 * [FFmpeg for modern Windows](https://www.gyan.dev/ffmpeg/builds/)
