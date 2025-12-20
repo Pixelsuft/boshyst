@@ -1,8 +1,13 @@
 # Boshyst
 IWBTB mod with hacks and tools to help creating TAS
-## Building
+## Building and running
 For testing, just build the DLL with Visual Studio and inject into the game (make sure that [boshyst.conf](TODO) is in the game dir) <br />
-For hourglass, build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files), put it into the game folder (with config file), replace wintasee.dll with [modified version](TODO) to automatically inject the mod.
+For hourglass (Windows XP compatible), build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files), put it into the game folder (with config file), replace wintasee.dll with [modified version](TODO) to automatically inject the mod. <br />
+Building scripts: <br />
+```sh
+gcc start_cap.c -o start_cap.exe -mwindows
+gcc end_cap.c -o end_cap.exe -mwindows
+```
 ## Mouse bindings
 TODO
 ## Recording
