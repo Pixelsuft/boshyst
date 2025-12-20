@@ -28,4 +28,4 @@ When using direct render, capture starts from the frame you will see, and ends w
 [Modified wintasee.dll for hourglass r78](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee%20r78.dll) <br />
 Capture [start](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/start_cap.exe) and [end](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/end_cap.exe) scripts <br />
 [Simple DLL Injector](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/Inject-x86.exe) (Windows 7+) <br />
-[Modified Hourglass r90 for recording](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe)
+[Modified hourglass r90 for recording](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe)
