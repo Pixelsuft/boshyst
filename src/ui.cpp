@@ -16,6 +16,8 @@ extern int last_rng_val;
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
 
+int last_scene = 0;
+
 void ui::draw() {
 	if (!conf::menu)
 		return;
@@ -26,7 +28,6 @@ void ui::draw() {
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]));
 	if (ImGui::Begin("Boshyst", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
 		// ImGui::Text("Boshyst by Pixelsuft");
-		static int last_scene = 0;
 		static int cur_frames = 0;
 		int scene_id = get_scene_id();
 		if (scene_id != last_scene) {

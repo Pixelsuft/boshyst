@@ -32,6 +32,7 @@ namespace conf {
     bool cur_mouse_checked;
     bool allow_render;
     bool direct_render;
+    bool fix_white_render;
 }
 
 bool starts_with(const string& mainStr, const string& prefix) {
@@ -87,7 +88,7 @@ void conf::read() {
     conf::cap_start = 0;
     conf::cap_cnt = 0;
     conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
-    conf::direct_render = true;
+    conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
@@ -137,6 +138,8 @@ void conf::read() {
             conf::direct_render = read_int(line) != 0;
         else if (starts_with(line, "old_render"))
             conf::old_rec = read_int(line) != 0;
+        else if (starts_with(line, "fix_white_render"))
+            conf::fix_white_render = read_int(line) != 0;
         else if (starts_with(line, "render_start"))
             conf::cap_start = read_int(line);
         else if (starts_with(line, "render_count"))

@@ -34,6 +34,7 @@ static PROCESS_INFORMATION pi;
 static std::vector<BYTE> data_buffer;
 static BITMAPINFO bmi;
 static std::pair<int, int> ws;
+static bool next_white = false;
 
 extern void get_win_size(int& w_buf, int& h_buf);
 extern bool starts_with(const std::string& mainStr, const std::string& prefix);
@@ -124,35 +125,7 @@ void rec::init(void* dev) {
 }
 
 void rec::cap(void* dev) {
-    if (dev != nullptr) {
-        LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
-        LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
-        ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
-
-        D3DSURFACE_DESC desc;
-        ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
-
-        LPDIRECT3DSURFACE9 pSysSurface = nullptr;
-        ASS(pDevice->CreateOffscreenPlainSurface(
-            desc.Width, desc.Height, desc.Format,
-            D3DPOOL_SYSTEMMEM, &pSysSurface, NULL
-        ) == D3D_OK);
-        ASS(pDevice->GetRenderTargetData(pBackBuffer, pSysSurface) == D3D_OK);
-        D3DLOCKED_RECT lockedRect;
-        auto temp_ret = pSysSurface->LockRect(&lockedRect, nullptr, D3DLOCK_READONLY);
-        ASS(temp_ret == D3D_OK);
-        if (temp_ret == D3D_OK) {
-            ASS(data_buffer.size() == desc.Width * desc.Height * 4);
-            unsigned char* pSrc = (unsigned char*)lockedRect.pBits;
-            for (UINT y = 0; y < desc.Height; ++y) {
-                memcpy(&data_buffer[y * desc.Width * 4], pSrc + (y * lockedRect.Pitch), desc.Width * 4);
-            }
-            pSysSurface->UnlockRect();
-        }
-        pSysSurface->Release();
-        pBackBuffer->Release();
-    }
-    else {
+    if (dev == nullptr) {
         BOOL success;
         if (conf::old_rec) {
             success = BitBlt(
@@ -180,6 +153,35 @@ void rec::cap(void* dev) {
         );
         ASS(bits == ws.second);
     }
+    else if (!next_white) {
+        LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
+        LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
+        ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
+
+        D3DSURFACE_DESC desc;
+        ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
+
+        LPDIRECT3DSURFACE9 pSysSurface = nullptr;
+        ASS(pDevice->CreateOffscreenPlainSurface(
+            desc.Width, desc.Height, desc.Format,
+            D3DPOOL_SYSTEMMEM, &pSysSurface, NULL
+        ) == D3D_OK);
+        ASS(pDevice->GetRenderTargetData(pBackBuffer, pSysSurface) == D3D_OK);
+        D3DLOCKED_RECT lockedRect;
+        auto temp_ret = pSysSurface->LockRect(&lockedRect, nullptr, D3DLOCK_READONLY);
+        ASS(temp_ret == D3D_OK);
+        if (temp_ret == D3D_OK) {
+            ASS(data_buffer.size() == desc.Width * desc.Height * 4);
+            unsigned char* pSrc = (unsigned char*)lockedRect.pBits;
+            for (UINT y = 0; y < desc.Height; ++y) {
+                memcpy(&data_buffer[y * desc.Width * 4], pSrc + (y * lockedRect.Pitch), desc.Width * 4);
+            }
+            pSysSurface->UnlockRect();
+        }
+        pSysSurface->Release();
+        pBackBuffer->Release();
+    }
+    next_white = false;
     DWORD dwWritten;
     BOOL bSuccess = WriteFile(
         hChildStdinWrite,
@@ -232,6 +234,10 @@ void rec::rec_tick(void* dev) {
             rec::stop(dev);
         }
         if (capturing) {
+            if (strcmp(buf, "I Wanna Be The Boshy") == 0) {
+                SetWindowTextA(hwnd, "I Wanna Be The Boshy R");
+                next_white = conf::fix_white_render;
+            }
             rec::cap(dev);
         }
         return;

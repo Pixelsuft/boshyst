@@ -15,6 +15,7 @@ namespace conf {
 	extern bool cur_mouse_checked;
 	extern bool allow_render;
 	extern bool direct_render;
+	extern bool fix_white_render;
 
 	void read();
 }
