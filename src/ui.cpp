@@ -16,11 +16,14 @@ extern int last_rng_val;
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
 
+extern bool last_reset;
 int last_scene = 0;
 
 void ui::draw() {
-	if (!conf::menu)
+	if (!conf::menu) {
+		last_reset = false;
 		return;
+	}
 	int ws[2];
 	get_win_size(ws[0], ws[1]);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -29,14 +32,20 @@ void ui::draw() {
 	if (ImGui::Begin("Boshyst", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
 		// ImGui::Text("Boshyst by Pixelsuft");
 		static int cur_frames = 0;
+		static int cur_frames2 = 0;
 		int scene_id = get_scene_id();
 		if (scene_id != last_scene) {
 			last_scene = scene_id;
+			cur_frames2 = 0;
+		}
+		if (last_reset) {
 			cur_frames = 0;
 		}
 		cur_frames++;
+		cur_frames2++;
 		uint8_t* pp = (uint8_t*)get_player_ptr(scene_id);
 		ImGui::Text("Cur Frames: %i", cur_frames);
+		ImGui::Text("Cur Frames 2: %i", cur_frames2);
 		if (pp != nullptr) {
 			static int last_x = 0;
 			static int last_y = 0;
@@ -88,4 +97,5 @@ void ui::draw() {
 	}
 	ImGui::PopStyleVar();
 	ImGui::End();
+	last_reset = false;
 }

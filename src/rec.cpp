@@ -20,6 +20,7 @@ namespace conf {
     extern int cap_start;
     extern int cap_cnt;
 }
+extern bool last_reset;
 
 extern HWND hwnd;
 extern HWND mhwnd;
@@ -36,6 +37,7 @@ static BITMAPINFO bmi;
 static std::pair<int, int> ws;
 static bool next_white = false;
 
+extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 extern void get_win_size(int& w_buf, int& h_buf);
 extern bool starts_with(const std::string& mainStr, const std::string& prefix);
 
@@ -234,8 +236,8 @@ void rec::rec_tick(void* dev) {
             rec::stop(dev);
         }
         if (capturing) {
-            if (strcmp(buf, "I Wanna Be The Boshy") == 0) {
-                SetWindowTextA(hwnd, "I Wanna Be The Boshy R");
+            if (last_reset && strcmp(buf, "I Wanna Be The Boshy") == 0) {
+                SetWindowTextAOrig(hwnd, "I Wanna Be The Boshy R");
                 next_white = conf::fix_white_render;
             }
             rec::cap(dev);

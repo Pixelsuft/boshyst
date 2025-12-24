@@ -16,6 +16,7 @@ extern void input_init();
 extern HWND hwnd;
 HWND mhwnd = nullptr;
 int last_rng_val = 0;
+bool last_reset = false;
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
@@ -111,6 +112,14 @@ static DWORD __stdcall timeGetTimeHook() {
     return timeGetTimeOrig();
 }
 
+BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
+static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
+    if (hwnd != ::hwnd)
+        return SetWindowTextAOrig(hwnd, cap);
+    last_reset = true;
+    return SetWindowTextAOrig(hwnd, cap);
+}
+
 void init_simple_hacks() {
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
@@ -122,6 +131,7 @@ void init_simple_hacks() {
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
     // hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
     hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
+    hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     DeleteFileA("onlineLicense.tmp.ini");
