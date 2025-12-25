@@ -37,9 +37,11 @@ void ui::draw() {
 		if (scene_id != last_scene) {
 			last_scene = scene_id;
 			cur_frames2 = 0;
+			cout << "New scene (" << scene_id << ")" << std::endl;
 		}
 		if (last_reset) {
-			cur_frames = 0;
+			cur_frames = -1;
+			cout << "Scene reset (" << scene_id << ")" << std::endl;
 		}
 		cur_frames++;
 		cur_frames2++;
