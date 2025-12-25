@@ -17,6 +17,7 @@ extern HWND hwnd;
 HWND mhwnd = nullptr;
 int last_rng_val = 0;
 bool last_reset = false;
+static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
@@ -59,7 +60,6 @@ static bool c_ends_with(const char* str, const char* end) {
     return memcmp(str + sl - el, end, el) == 0;
 }
 
-static HANDLE (__stdcall *CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
 static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_) {
     if (!conf::keep_save)
         return CreateFileOrig(_fn, dw_access, share_mode, sec_attr, cr_d, flags, template_);
@@ -120,6 +120,46 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     return SetWindowTextAOrig(hwnd, cap);
 }
 
+static int(__stdcall* UpdateGameFrameOrig)();
+static int __stdcall UpdateGameFrameHook() {
+    if ((GetKeyState('F') & 128) != 0) {
+        HANDLE hFile = CreateFileOrig(
+            "example.txt",
+            GENERIC_READ,
+            FILE_SHARE_READ,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+        );
+        int outver = 0;
+        int(__cdecl * LoadFunc)(HANDLE, int*);
+        LoadFunc = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
+        auto ret = LoadFunc(hFile, &outver);
+        cout << "load " << ret << " " << outver << '\n';
+        CloseHandle(hFile);
+    }
+    if ((GetKeyState('G') & 128) != 0) {
+        HANDLE hFile = CreateFileOrig(
+            "example.txt",
+            GENERIC_WRITE,
+            0,
+            nullptr,
+            CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+        );
+        bool(__cdecl * SaveFunc)(HANDLE);
+        SaveFunc = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
+        auto ret = SaveFunc(hFile);
+        cout << "save" << ret << '\n';
+        CloseHandle(hFile);
+    }
+    auto ret = UpdateGameFrameOrig();
+    // cout << "Hook!\n";
+    return ret;
+}
+
 void init_simple_hacks() {
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
@@ -134,6 +174,8 @@ void init_simple_hacks() {
     hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
+    // hook(mem::get_base() + 0x147c0, SusSceneHook, &SusSceneOrig);
+    hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <cstdint>
+#include <iostream>
 #include "ass.hpp"
 #include "mem.hpp"
 #include "ui.hpp"
@@ -67,6 +68,8 @@ void* get_scene_ptr() {
 
 int get_scene_id() {
 	const size_t offsets[] = { 0x59A94 + 0x400000, 0x268, 0xA8 };
+	// TODO: 404914
+	// std::cout << mem::ptr_from_offsets(offsets, sizeof(offsets) / 4) << std::endl;
 	return *(int*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 

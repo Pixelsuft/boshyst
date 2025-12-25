@@ -30,7 +30,7 @@ static SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
     if (k == VK_LBUTTON && !conf::cur_mouse_checked) {
         // hourglass broken
-        //conf::cur_mouse_checked = true;
+        // conf::cur_mouse_checked = true;
         int w, h;
         get_win_size(w, h);
         for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {

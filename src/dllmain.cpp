@@ -82,8 +82,8 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
     ImGui::EndFrame();
     ImGui::Render();
     ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
-
-    return oEndScene(pDevice);
+    auto ret = oEndScene(pDevice);
+    return ret;
 }
 
 extern void init_simple_hacks();
