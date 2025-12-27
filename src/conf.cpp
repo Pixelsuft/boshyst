@@ -3,12 +3,12 @@
 #include <Windows.h>
 #include <cstring>
 #include <string>
-#include <fstream>
 #include <iostream>
 #include <algorithm>
 #include "input.hpp"
 #include "conf.hpp"
 #include "ass.hpp"
+#include "fs.hpp"
 
 using std::string;
 using std::cout;
@@ -99,16 +99,16 @@ void conf::read() {
     auto cwd_ret = GetCurrentDirectoryA(MAX_PATH, path_buf);
     ASS(cwd_ret > 0);
     path_buf[cwd_ret] = '\0';
-    std::ifstream ifile;
-    ifile.open(string(path_buf) + "\\boshyst.conf");
-    ASS(ifile.is_open());
+    bfs::File ifile(string(path_buf) + "\\boshyst.conf", 0);
     if (!ifile.is_open()) {
+        // TODO: create default config
         ass::show_err("Failed to open boshyst config");
         return;
     }
     int cap_end = -1;
     std::string line;
-    while (std::getline(ifile, line)) {
+    while (ifile.read_line(line)) {
+        // cout << "line: " << line << std::endl;
         if (starts_with(line, "render_cmd")) {
             // Special case
             conf::cap_cmd = line.substr(10);
@@ -156,7 +156,6 @@ void conf::read() {
     if (cap_end > 0) {
         conf::cap_cnt = cap_end - conf::cap_start;
     }
-    ifile.close();
 #if 0
     cout << "config: \n";
     cout << "menu: " << conf::menu << std::endl;

@@ -8,6 +8,7 @@
 #include "mem.hpp"
 #include "conf.hpp"
 #include "rec.hpp"
+#include "ui.hpp"
 #include "ghidra_headers.h"
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -18,7 +19,7 @@ extern HWND hwnd;
 HWND mhwnd = nullptr;
 int last_rng_val = 0;
 bool last_reset = false;
-static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
+HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_) = CreateFileA;
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
@@ -125,8 +126,6 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 static int(__stdcall* UpdateGameFrameOrig)();
 static int __stdcall UpdateGameFrameHook() {
-    void* pState = *(void**)(mem::get_base() + 0x59a9c);
-    short* next_frame = (short*)((size_t)pState + 0x30);
     if ((GetKeyState('F') & 128) != 0) {
         HANDLE hFile = CreateFileOrig(
             "example.txt",
@@ -162,14 +161,7 @@ static int __stdcall UpdateGameFrameHook() {
         cout << "save" << ret << '\n';
         CloseHandle(hFile);
     }
-
-    // My Stuff
-    ObjectHeader* player = (ObjectHeader*)get_player_ptr(get_scene_id());
-    if (player != nullptr && 0) {
-       // player->xPos = 100;
-       // player->yPos = 100;
-        // player->redrawFlag = 1;
-    }
+    ui::pre_update();
 
     auto ret = UpdateGameFrameOrig();
     // cout << "Hook!\n";
@@ -179,17 +171,15 @@ static int __stdcall UpdateGameFrameHook() {
 static void(__cdecl* TriggerFrameTransitionOrig)(void*);
 static void __cdecl TriggerFrameTransitionHook(void* v) {
     //cout << "trans hook " << v << "\n";
-    // 00459a94
-    void* st = *(void**)0x00459a94;
-
     if (1)
         TriggerFrameTransitionOrig(v);
     return;
 }
 
+static unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static unsigned int __cdecl RandomHook(unsigned int maxv) {
-    // cout << "bless rng\n";
-    return 0;
+    cout << "bless rng" << maxv << "\n";
+    return maxv - 1;
 }
 
 void init_simple_hacks() {
@@ -209,7 +199,7 @@ void init_simple_hacks() {
     // hook(mem::get_base() + 0x147c0, SusSceneHook, &SusSceneOrig);
     hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     hook(mem::get_base() + 0x47cb0, TriggerFrameTransitionHook, &TriggerFrameTransitionOrig);
-    hook(mem::get_base() + 0x1f890, RandomHook);
+    // hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

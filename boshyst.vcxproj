@@ -162,6 +162,7 @@
     <ClCompile Include="minhook\src\trampoline.c" />
     <ClCompile Include="src\conf.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
+    <ClCompile Include="src\fs.cpp" />
     <ClCompile Include="src\input.cpp" />
     <ClCompile Include="src\rec.cpp" />
     <ClCompile Include="src\simple_hacks.cpp" />
@@ -171,6 +172,7 @@
   <ItemGroup>
     <ClInclude Include="src\ass.hpp" />
     <ClInclude Include="src\conf.hpp" />
+    <ClInclude Include="src\fs.hpp" />
     <ClInclude Include="src\hook.hpp" />
     <ClInclude Include="src\init.hpp" />
     <ClInclude Include="src\input.hpp" />

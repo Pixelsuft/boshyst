@@ -19,6 +19,10 @@ extern void* get_player_ptr(int s);
 extern bool last_reset;
 int last_scene = 0;
 
+void ui::pre_update() {
+
+}
+
 void ui::draw() {
 	if (!conf::menu) {
 		last_reset = false;

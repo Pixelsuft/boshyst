@@ -78,6 +78,9 @@
     <ClCompile Include="src\rec.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\fs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ass.hpp">
@@ -102,6 +105,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\rec.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\fs.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
