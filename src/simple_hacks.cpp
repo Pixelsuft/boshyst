@@ -170,6 +170,13 @@ static unsigned int __cdecl RandomHook(unsigned int maxv) {
     return ret;
 }
 
+static int(__stdcall* MessageBoxAOrig)(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType);
+static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) {
+    if (!conf::skip_msg)
+        return MessageBoxAOrig(hWnd, lpText, lpCaption, uType);
+    return IDNO;
+}
+
 void init_simple_hacks() {
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
@@ -182,6 +189,7 @@ void init_simple_hacks() {
     // hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
     hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
     hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);
+    hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     // hook(mem::get_base() + 0x147c0, SusSceneHook, &SusSceneOrig);

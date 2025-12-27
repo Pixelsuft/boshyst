@@ -5,6 +5,7 @@
 #include "conf.hpp"
 #include "mem.hpp"
 #include "fs.hpp"
+#include "ghidra_headers.h"
 #include <imgui.h>
 #include <iostream>
 #include <unordered_map>
@@ -30,15 +31,11 @@ static int last_scene = 0;
 static int cur_frames = 0;
 static int cur_frames2 = 0;
 static int need_save_state = 0;
-static int last_rand_max = 0;
-static int last_rand_ret = 0;
 static bool log_rng = false;
 std::unordered_map<int, int> rng_map;
 bool show_menu = true;
 
 void ui_register_rand(int maxval, int ret) {
-	last_rand_ret = ret;
-	last_rand_max = maxval;
 	if (log_rng) {
 		rng_map[maxval] = ret;
 	}
@@ -48,18 +45,16 @@ static void draw_basic_text() {
 	int ws[2];
 	get_win_size(ws[0], ws[1]);
 	int scene_id = get_scene_id();
-	uint8_t* pp = (uint8_t*)get_player_ptr(scene_id);
+	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(scene_id);
 	ImGui::Text("Cur Frames: %i", cur_frames);
 	ImGui::Text("Cur Frames 2: %i", cur_frames2);
 	if (pp != nullptr) {
 		static int last_x = 0;
 		static int last_y = 0;
-		int cur_x = *(int*)(pp + 0x4C);
-		int cur_y = *(int*)(pp + 0x54);
-		ImGui::Text("Pos: (%i, %i)", cur_x, cur_y);
-		ImGui::Text("Delta: (%i, %i)", cur_x - last_x, cur_y - last_y);
-		last_x = cur_x;
-		last_y = cur_y;
+		ImGui::Text("Pos: (%i, %i)", pp->xPos, pp->yPos);
+		ImGui::Text("Delta: (%i, %i)", pp->xPos - last_x, pp->yPos - last_y);
+		last_x = pp->xPos;
+		last_y = pp->yPos;
 	}
 	ImGui::Text("Scene ID: %i", scene_id);
 	if (conf::draw_cursor) {
@@ -107,8 +102,8 @@ static void ui_menu_draw() {
 	}
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu")) {
+		static std::string conf_path = get_config_path();
 		if (conf::first_run) {
-			static std::string conf_path = get_config_path();
 			ImGui::Text("First run info:");
 			ImGui::Text("Use 'Insert' key to toggle this menu");
 			ImGui::Text("You can edit config at \"%s\"", conf_path.c_str());
@@ -126,7 +121,6 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i", last_new_rand_val);
-			ImGui::Text("Last MMF2_Random() value: %i/%i", last_rand_ret, last_rand_max);
 			if (ImGui::Checkbox("Log MMF2_Random() map", &log_rng)) {
 				if (!log_rng)
 					rng_map.clear();
@@ -149,9 +143,11 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("No mouse move", &conf::no_cmove);
 			ImGui::Checkbox("Draw cursor", &conf::draw_cursor);
 			ImGui::Checkbox("Simulate mouse", &conf::emu_mouse);
+			ImGui::Checkbox("Skip message boxes", &conf::skip_msg);
 		}
 		if (ImGui::CollapsingHeader("Info")) {
 			ImGui::Text("Created by Pixelsuft");
+			ImGui::Text("Config path: %s", conf_path.c_str());
 			// FIXME: roken with savestates
 			// if (ImGui::Button("Reload Config")) conf::read();
 		}

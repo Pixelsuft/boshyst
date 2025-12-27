@@ -20,6 +20,7 @@ namespace conf {
 	extern bool tas_mode;
 	extern bool first_run;
 	extern bool tp_on_click;
+	extern bool skip_msg;
 
 	void read();
 }
