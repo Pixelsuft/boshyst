@@ -15,11 +15,13 @@ void ass::show_err(const char* text) {
 
 static HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
+extern HWND mhwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
 
 bool MyKeyState(int k) {
-	return GetForegroundWindow() == hwnd && (GetKeyStateOrig(k) & 128);
+	HWND fg = GetForegroundWindow();
+	return (fg == hwnd || fg == mhwnd) && (GetKeyStateOrig(k) & 128);
 }
 
 wchar_t* utf8_to_unicode(const std::string& utf8) {
@@ -109,17 +111,32 @@ int get_scene_id() {
 void* get_player_ptr(int s) {
 	// Tutorial
 	if (s == 36) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xF0, 0 };
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x80, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// W1
+	if (s == 3) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// B1, B5, B7
+	if (s == 4 || s == 14 || s == 24) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// W2
 	if (s == 5) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x3B0, 0 };
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xa58, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// MB1
 	if (s == 6) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xD8, 0 };
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x148, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// B2
+	if (s == 7) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x130, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// B2, MARIO SECRET
@@ -127,20 +144,34 @@ void* get_player_ptr(int s) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xC8, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// W3, B8
-	if (s == 8 || s == 26) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x48, 0 };
+	// W3
+	if (s == 8) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// W4-8, W11, B1, B3, B4, B5, B6, B7, B10, TELEPROOM
-	if (s == 11 || s == 13 || s == 15 || s == 22 || s == 25 || s == 35 || s == 4 || s == 10 ||
-		s == 12 || s == 14 || s == 17 || s == 24 || s == 32 || s == 29) {
+	// B3, B4, B9
+	if (s == 10 || s == 12 || s == 59) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x90, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// W4-8, W11
+	if (s == 11 || s == 13 || s == 15 || s == 22 || s == 25 || s == 35) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x38, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// W9
-	if (s == 27) {
+	// B6
+	if (s == 17) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xA0, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// W9, B10, TELEPROOM
+	if (s == 27 || s == 32 || s == 29) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x88, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// B8
+	if (s == 26) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x48, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// B9
@@ -181,11 +212,6 @@ void* get_player_ptr(int s) {
 	// BLIZZARD
 	if (s == 53) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE8, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
-	// W1
-	if (s == 3) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// GASTLY

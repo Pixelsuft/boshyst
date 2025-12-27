@@ -16,6 +16,10 @@ using std::cout;
 extern HWND hwnd;
 extern int last_new_rand_val;
 
+namespace conf {
+	extern int cap_start;
+	extern int cap_cnt;
+}
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
 extern bool MyKeyState(int k);
@@ -55,6 +59,18 @@ static void draw_basic_text() {
 		ImGui::Text("Delta: (%i, %i)", pp->xPos - last_x, pp->yPos - last_y);
 		last_x = pp->xPos;
 		last_y = pp->yPos;
+		for (size_t i = 0; i < 4000; i += 8) {
+			const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, i, 0 };
+			ObjectHeader* obj = (ObjectHeader*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+			if (!obj)
+				break;
+			if (obj->xPos == pp->xPos && obj->yPos == pp->yPos) {
+				if (ImGui::Button(std::to_string((long long)i).c_str())) {
+					obj->xPos = obj->yPos = 10;
+					obj->redrawFlag = 1;
+				}
+			}
+		}
 	}
 	ImGui::Text("Scene ID: %i", scene_id);
 	if (conf::draw_cursor) {
@@ -144,6 +160,19 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("Draw cursor", &conf::draw_cursor);
 			ImGui::Checkbox("Simulate mouse", &conf::emu_mouse);
 			ImGui::Checkbox("Skip message boxes", &conf::skip_msg);
+		}
+		if (ImGui::CollapsingHeader("Recording")) {
+			ImGui::Checkbox("Allow render", &conf::allow_render);
+			ImGui::Checkbox("Use Direct3D9 render", &conf::direct_render);
+			ImGui::Checkbox("Fix white screen (Direct3D9)", &conf::fix_white_render);
+			ImGui::Checkbox("Old render (BitBlt)", &conf::old_rec);
+			if (ImGui::Button("Start recording")) {
+				conf::cap_start = conf::cap_cnt = 0; // Hack
+				SetWindowTextA(hwnd, "I Wanna Be The Boshy R");
+			}
+			if (ImGui::Button("Stop recording")) {
+				SetWindowTextA(hwnd, "I Wanna Be The Boshy S");
+			}
 		}
 		if (ImGui::CollapsingHeader("Info")) {
 			ImGui::Text("Created by Pixelsuft");

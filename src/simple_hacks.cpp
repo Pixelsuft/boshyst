@@ -21,7 +21,9 @@ extern void get_cursor_pos_orig(int& x_buf, int& y_buf);
 extern int get_scene_id();
 void* get_player_ptr(int s);
 extern HWND hwnd;
+extern bool capturing;
 extern bool show_menu;
+extern bool next_white;
 HWND mhwnd = nullptr;
 int last_new_rand_val = 0;
 bool last_reset = false;
@@ -125,6 +127,10 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     if (hwnd != ::hwnd)
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
+    if (capturing && strcmp(cap, "I Wanna Be The Boshy") == 0) {
+        next_white = true;
+        return FALSE;
+    }
     return SetWindowTextAOrig(hwnd, cap);
 }
 
@@ -132,7 +138,13 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 static int(__stdcall* UpdateGameFrameOrig)();
 static int __stdcall UpdateGameFrameHook() {
-    if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
+    input_tick();
+    ui::pre_update();
+
+    auto ret = UpdateGameFrameOrig();
+    // TODO: remove
+    conf::tp_on_click = true;
+    if ((!show_menu || 1) && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
         // Final path has camera manipulation :(
@@ -147,10 +159,6 @@ static int __stdcall UpdateGameFrameHook() {
             player->redrawFlag = 1;
         }
     }
-    input_tick();
-    ui::pre_update();
-
-    auto ret = UpdateGameFrameOrig();
     // cout << "Hook!\n";
     return ret;
 }

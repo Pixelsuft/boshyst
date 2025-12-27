@@ -35,7 +35,8 @@ static PROCESS_INFORMATION pi;
 static std::vector<BYTE> data_buffer;
 static BITMAPINFO bmi;
 static std::pair<int, int> ws;
-static bool next_white = false;
+bool next_white = false;
+bool capturing = false;
 
 extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 extern void get_win_size(int& w_buf, int& h_buf);
@@ -223,7 +224,6 @@ void rec::rec_tick(void* dev) {
         return;
     if (conf::cap_start == 0 && conf::cap_cnt == 0) {
         // Special case
-        static bool capturing = false;
         char buf[32];
         int ret = GetWindowTextA(hwnd, buf, 32);
         ASS(ret > 0);
@@ -233,6 +233,7 @@ void rec::rec_tick(void* dev) {
             rec::init(dev);
         }
         else if (strcmp(buf, "I Wanna Be The Boshy S") == 0 && capturing) {
+            SetWindowTextAOrig(hwnd, "I Wanna Be The Boshy");
             capturing = false;
             rec::stop(dev);
         }
