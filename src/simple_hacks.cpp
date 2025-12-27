@@ -17,7 +17,7 @@ using std::cout;
 extern void input_init();
 extern HWND hwnd;
 HWND mhwnd = nullptr;
-int last_rng_val = 0;
+int last_new_rand_val = 0;
 bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
 
@@ -32,7 +32,7 @@ static short __stdcall DisplayRunObjectVPHook(void* pthis) {
 static int(__cdecl* randOrig)() = nullptr;
 static int __cdecl randHook() {
 	int ret = randOrig();
-    last_rng_val = ret;
+    last_new_rand_val = ret;
 	return ret;
 }
 

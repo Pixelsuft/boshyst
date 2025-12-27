@@ -12,7 +12,7 @@
 using std::cout;
 
 extern HWND hwnd;
-extern int last_rng_val;
+extern int last_new_rand_val;
 
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
@@ -23,6 +23,7 @@ extern bool state_load(bfs::File* file);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 extern void get_cursor_pos_orig(int& x_buf, int& y_buf);
 
+extern int last_new_rand_val;
 extern bool last_reset;
 static int last_scene = 0;
 static int cur_frames = 0;
@@ -106,6 +107,16 @@ static void ui_menu_draw() {
 		if (ImGui::CollapsingHeader("Game Info")) {
 			draw_basic_text();
 		}
+		if (ImGui::CollapsingHeader("Visual")) {
+			ImGui::Checkbox("No viewport", &conf::no_vp);
+			ImGui::Checkbox("No shaders", &conf::no_sh);
+		}
+		if (ImGui::CollapsingHeader("Gameplay")) {
+			ImGui::Checkbox("God mode", &conf::god);
+		}
+		if (ImGui::CollapsingHeader("Random")) {
+			ImGui::Text("Last rand() value: %i", last_new_rand_val);
+		}
 		if (ImGui::CollapsingHeader("State")) {
 			if (ImGui::Button("Save"))
 				need_save_state = 1;
@@ -113,11 +124,16 @@ static void ui_menu_draw() {
 			if (ImGui::Button("Load"))
 				need_save_state = 2;
 		}
+		if (ImGui::CollapsingHeader("System")) {
+			ImGui::Checkbox("Keep save", &conf::keep_save);
+			ImGui::Checkbox("No mouse move", &conf::no_cmove);
+			ImGui::Checkbox("Draw cursor", &conf::draw_cursor);
+			ImGui::Checkbox("Simulate mouse", &conf::emu_mouse);
+		}
 		if (ImGui::CollapsingHeader("Info")) {
 			ImGui::Text("Created by Pixelsuft");
 			// FIXME: roken with savestates
-			if (0 && ImGui::Button("Reload Config"))
-				conf::read();
+			// if (ImGui::Button("Reload Config")) conf::read();
 		}
 	}
 	ImGui::End();
