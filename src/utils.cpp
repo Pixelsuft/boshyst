@@ -14,13 +14,24 @@ static HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
 
 wchar_t* utf8_to_unicode(const std::string& utf8) {
-	int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), NULL, 0);
+	int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), nullptr, 0);
 	ASS(utf8.size() == 0 || size_needed > 0);
 	wchar_t* ret = (wchar_t*)std::malloc((size_t)size_needed * sizeof(wchar_t) + 2);
 	ASS(ret != nullptr);
 	int chars_converted = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), ret, size_needed);
 	ASS(chars_converted == size_needed);
 	ret[size_needed] = L'\0';
+	return ret;
+}
+
+std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, buf, -1, nullptr, 0, nullptr, nullptr);
+	ASS(size_needed > 0);
+	std::string ret(size_needed - 1, 0);
+	int chars_converted = WideCharToMultiByte(CP_UTF8, 0, buf, -1, &ret[0], size_needed, nullptr, nullptr);
+	ASS(chars_converted == size_needed);
+	if (autofree)
+		std::free(buf);
 	return ret;
 }
 

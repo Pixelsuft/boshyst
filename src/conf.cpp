@@ -33,6 +33,19 @@ namespace conf {
     bool allow_render;
     bool direct_render;
     bool fix_white_render;
+    bool tas_mode;
+    bool first_run;
+}
+
+extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
+
+std::string get_config_path() {
+    wchar_t path_buf[MAX_PATH + 1];
+    memset(path_buf, 0, sizeof(path_buf));
+    auto cwd_ret = GetCurrentDirectoryW(MAX_PATH, path_buf);
+    ASS(cwd_ret > 0);
+    path_buf[cwd_ret] = L'\0';
+    return unicode_to_utf8(path_buf, false) + "\\boshyst.conf";
 }
 
 bool starts_with(const string& mainStr, const string& prefix) {
@@ -86,9 +99,10 @@ static void read_mouse_bind(const string& line) {
 static void create_default_config(const string& path) {
     bfs::File file(path, 1);
     ASS(file.is_open());
+    ASS(file.write_line("menu = 1 // Show menu window"));
+    ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing"));
     ASS(file.write_line("win_pos = 0, 0 // Info window position"));
     ASS(file.write_line("win_size = 200, 100 // Info window size"));
-    ASS(file.write_line("menu = 1 // Show info window"));
     ASS(file.write_line(""));
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
@@ -118,25 +132,21 @@ void conf::read() {
     conf::cap_cmd = "";
     conf::cap_start = 0;
     conf::cap_cnt = 0;
-    conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
+    conf::first_run = false;
+    conf::tas_mode = conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
     conf::menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;
     size[1] = 100;
-    char path_buf[MAX_PATH + 1];
-    memset(path_buf, 0, sizeof(path_buf));
-    auto cwd_ret = GetCurrentDirectoryA(MAX_PATH, path_buf);
-    ASS(cwd_ret > 0);
-    path_buf[cwd_ret] = '\0';
-    string file_path = string(path_buf) + "\\boshyst.conf";
+    string file_path = get_config_path();
     bfs::File ifile(file_path, 0);
     if (!ifile.is_open()) {
-        cout << "Failed to open boshyst config, creating a new one at \"" << file_path << "\"" << std::endl;
         create_default_config(file_path);
         ifile = bfs::File(file_path, 0);
         ASS(ifile.is_open());
+        conf::first_run = true;
     }
     int cap_end = -1;
     string line;
@@ -147,6 +157,8 @@ void conf::read() {
         // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god"))
             conf::god = read_int(line) != 0;
+        else if (starts_with(line, "tas_mode"))
+            conf::tas_mode = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport"))
             conf::no_vp = read_int(line) != 0;
         else if (starts_with(line, "disable_shaders"))
@@ -187,17 +199,6 @@ void conf::read() {
                 conf::cap_cmd = conf::cap_cmd.substr(1);
         }
     }
-    if (cap_end > 0) {
+    if (cap_end > 0)
         conf::cap_cnt = cap_end - conf::cap_start;
-    }
-#if 0
-    cout << "config: \n";
-    cout << "menu: " << conf::menu << std::endl;
-    cout << "god: " << conf::god << std::endl;
-    cout << "no viewport: " << conf::no_vp << std::endl;
-    cout << "keep save: " << conf::keep_save << std::endl;
-    cout << "no cursor move: " << conf::no_cmove << std::endl;
-    cout << "draw cursor: " << conf::draw_cursor << std::endl;
-    cout << "emu mouse: " << conf::emu_mouse << std::endl;
-#endif
 }

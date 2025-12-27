@@ -64,8 +64,8 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
-        // TODO: tas mode?
-        // io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+        if (conf::tas_mode)
+            io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
         ImGui_ImplWin32_Init(hwnd);
         ImGui_ImplDX9_Init(pDevice);
@@ -162,10 +162,16 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        AllocConsole();
-        freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
         conf::read();
+#if defined(_DEBUG)
+        if (true) {
+#else
+        if (conf::tas_mode) {
+#endif
+            AllocConsole();
+            freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+        }
         if (conf::allow_render)
             rec::pre_hook();
         CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)app_entry, nullptr, 0, nullptr);

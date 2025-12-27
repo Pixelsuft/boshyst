@@ -16,13 +16,13 @@ extern int last_rng_val;
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
+extern std::string get_config_path();
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 extern bool last_reset;
 static int last_scene = 0;
 static int cur_frames = 0;
 static int cur_frames2 = 0;
-// TODO: change to false
 bool show_menu = true;
 
 static bool MyKeyState(int k) {
@@ -62,9 +62,13 @@ void ui::pre_update() {
 			show_menu = !show_menu;
 		}
 	}
-	else {
+	else
 		holds_insert = false;
-	}
+}
+
+static void ui_menu_draw() {
+	if (!show_menu)
+		return;
 	static bool holds_lmb = false;
 	if (MyKeyState(VK_LBUTTON)) {
 		if (!holds_lmb) {
@@ -76,13 +80,14 @@ void ui::pre_update() {
 		holds_lmb = false;
 		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
 	}
-}
-
-static void ui_menu_draw() {
-	if (!show_menu)
-		return;
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu")) {
+		if (conf::first_run) {
+			static std::string conf_path = get_config_path();
+			ImGui::Text("First run info:");
+			ImGui::Text("Use 'Insert' key to toggle this menu");
+			ImGui::Text("You can edit config at \"%s\"", conf_path.c_str());
+		}
 		draw_basic_text();
 	}
 	ImGui::End();
@@ -91,6 +96,11 @@ static void ui_menu_draw() {
 void ui::draw() {
 	if (!conf::menu) {
 		last_reset = false;
+		return;
+	}
+	if (!conf::tas_mode) {
+		last_reset = false;
+		ui_menu_draw();
 		return;
 	}
 	int scene_id = get_scene_id();
@@ -139,6 +149,5 @@ void ui::draw() {
 	}
 	ImGui::PopStyleVar();
 	ImGui::End();
-	ui_menu_draw();
 	last_reset = false;
 }

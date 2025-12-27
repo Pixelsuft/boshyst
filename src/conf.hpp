@@ -16,6 +16,8 @@ namespace conf {
 	extern bool allow_render;
 	extern bool direct_render;
 	extern bool fix_white_render;
+	extern bool tas_mode;
+	extern bool first_run;
 
 	void read();
 }
