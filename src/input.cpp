@@ -17,27 +17,28 @@ extern HWND mhwnd;
 extern void get_win_size(int& w_buf, int& h_buf);
 static LRESULT(__stdcall* SusProc)(HWND param_1, UINT param_2, WPARAM param_3, LPARAM param_4) = nullptr;
 
+extern bool show_menu;
 extern bool inited;
 static int cur_x = -100;
 static int cur_y = -100;
 
 BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
-    if (!conf::emu_mouse)
+    if (show_menu) {
+        p->x = -100;
+        p->y = -100;
+    }
+    else if (!conf::emu_mouse)
         return GetCursorPosOrig(p);
-    p->x = cur_x;
-    p->y = cur_y;
+    else {
+        p->x = cur_x;
+        p->y = cur_y;
+    }
     return ClientToScreen(hwnd, p);
 }
 
-extern bool is_hourglass;
-static SHORT(__stdcall* GetKeyStateOrig)(int k);
+SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
-    if (!conf::emu_mouse)
-        return GetKeyStateOrig(k);
-    if (k == VK_LBUTTON) {
-        // input_tick();
-    }
     return GetKeyStateOrig(k);
 }
 

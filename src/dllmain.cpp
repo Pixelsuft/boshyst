@@ -64,7 +64,8 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+        // TODO: tas mode?
+        // io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
         ImGui_ImplWin32_Init(hwnd);
         ImGui_ImplDX9_Init(pDevice);
