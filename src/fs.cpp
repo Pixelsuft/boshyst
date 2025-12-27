@@ -9,7 +9,7 @@ using bfs::File;
 
 extern wchar_t* utf8_to_unicode(const std::string& utf8);
 
-File::File(const string& path, int mode) {
+File::File(const string& path, int mode) noexcept {
     wchar_t* w_path = utf8_to_unicode(path);
     handle = (void*)CreateFileW(
         w_path,
@@ -23,6 +23,19 @@ File::File(const string& path, int mode) {
     std::free(w_path);
 }
 
+File::File(File&& other) noexcept : handle(other.handle) {
+    other.handle = INVALID_HANDLE_VALUE;
+}
+
+File& File::operator=(File&& other) noexcept {
+    if (this != &other) {
+        close();
+        handle = other.handle;
+        other.handle = INVALID_HANDLE_VALUE;
+    }
+    return *this;
+}
+
 bool File::is_open() {
 	return handle != INVALID_HANDLE_VALUE;
 }
@@ -34,12 +47,21 @@ bool File::read_line(std::string& line) {
     char buffer;
     DWORD bytesRead;
     while (ReadFile(handle, &buffer, 1, &bytesRead, nullptr) && bytesRead > 0) {
-        if (buffer == '\n')
+        if (buffer == '\n') {
+            if (line.size() == 0)
+                continue;
             break;
+        }
         if (buffer != '\r')
             line += buffer;
     }
-    return line.size() > 1;
+    return line.size() > 0;
+}
+
+bool File::write(const void* buf, size_t size) {
+    ASS(is_open());
+    DWORD bytesWritten;
+    return WriteFile(handle, buf, (DWORD)size, &bytesWritten, nullptr) && (DWORD)size == bytesWritten;
 }
 
 void File::close() {

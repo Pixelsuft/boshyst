@@ -83,6 +83,37 @@ static void read_mouse_bind(const string& line) {
     }
 }
 
+static void create_default_config(const string& path) {
+    bfs::File file(path, 1);
+    ASS(file.is_open());
+    ASS(file.write_line("win_pos = 0, 0 // Info window position"));
+    ASS(file.write_line("win_size = 200, 100 // Info window size"));
+    ASS(file.write_line("menu = 1 // Show info window"));
+    ASS(file.write_line(""));
+    ASS(file.write_line("god = 0 // God mode"));
+    ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
+    ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
+    ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
+    ASS(file.write_line(""));
+    ASS(file.write_line("allow_render = 0 // Allow video capturing"));
+    ASS(file.write_line("direct_render = 1 // Capture video directly using Direct3D 9 instead of making screenshots of the window using Win32 API"));
+    ASS(file.write_line("fix_white_render = 1 // Fix white screen when using direct render"));
+    ASS(file.write_line("old_render = 0 // Turn on this if you have rendering issues (only when not using direct render; likely will cause window content overriding)"));
+    ASS(file.write_line("render_start = 0 // Start frame (not recommended to use, see readme)"));
+    ASS(file.write_line("render_count = 0 // Frame count (not recommended to use, see readme)"));
+    ASS(file.write_line("# render_end = 0 // End frame"));
+    ASS(file.write_line("render_cmd = ffmpeg -y -f:v rawvideo -s $SIZE -pix_fmt rgb32 -r 50 -i - -an -v:c libx264 -b:v 10000k output.mp4"));
+    ASS(file.write_line(""));
+    ASS(file.write_line("no_mouse_move = 1 // Prevent mouse cursor from moving to kill the player"));
+    ASS(file.write_line("draw_cursor = 1 // Draw virtual cursor pos on screen (kinda pointless)"));
+    ASS(file.write_line("simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
+    ASS(file.write_line("# Multible mouse binds to one key are supported (order is important)"));
+    ASS(file.write_line("# Boshy selection example (via 'K' key) from F3 menu"));
+    ASS(file.write_line("mouse_bind = 75, 84.0, 276.0 // Virtual Key (here is K), X pos in [0;640), Y pos in [0;480) (move cursor and click on Quadrick)"));
+    ASS(file.write_line("mouse_bind = 75, 315.0, 406.0 // Click 'Select' button"));
+    ASS(file.write_line("mouse_bind = 75, -100, -100 // Move mouse outside (so not clicking, just move) of the window"));
+}
+
 void conf::read() {
     conf::cap_cmd = "";
     conf::cap_start = 0;
@@ -99,18 +130,21 @@ void conf::read() {
     auto cwd_ret = GetCurrentDirectoryA(MAX_PATH, path_buf);
     ASS(cwd_ret > 0);
     path_buf[cwd_ret] = '\0';
-    bfs::File ifile(string(path_buf) + "\\boshyst.conf", 0);
+    string file_path = string(path_buf) + "\\boshyst.conf";
+    bfs::File ifile(file_path, 0);
     if (!ifile.is_open()) {
-        // TODO: create default config
-        ass::show_err("Failed to open boshyst config");
-        return;
+        cout << "Failed to open boshyst config, creating a new one at \"" << file_path << "\"" << std::endl;
+        create_default_config(file_path);
+        ifile = bfs::File(file_path, 0);
+        ASS(ifile.is_open());
     }
     int cap_end = -1;
     string line;
     while (ifile.read_line(line)) {
-        // cout << "line: " << line << std::endl;
         string line_orig = line;
         line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+        // cout << "line: " << line << std::endl;
+        // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god"))
             conf::god = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport"))

@@ -244,6 +244,7 @@ static void ImGui_ImplWin32_UpdateKeyModifiers()
     io.AddKeyEvent(ImGuiKey_ModSuper, IsVkDown(VK_APPS));
 }
 
+extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static void ImGui_ImplWin32_UpdateMouseData()
 {
     ImGui_ImplWin32_Data* bd = ImGui_ImplWin32_GetBackendData();
@@ -265,7 +266,7 @@ static void ImGui_ImplWin32_UpdateMouseData()
         if (!io.WantSetMousePos && !bd->MouseTracked)
         {
             POINT pos;
-            if (::GetCursorPos(&pos) && ::ScreenToClient(bd->hWnd, &pos))
+            if (::GetCursorPosOrig(&pos) && ::ScreenToClient(bd->hWnd, &pos))
                 io.AddMousePosEvent((float)pos.x, (float)pos.y);
         }
     }
