@@ -106,15 +106,10 @@ void conf::read() {
         return;
     }
     int cap_end = -1;
-    std::string line;
+    string line;
     while (ifile.read_line(line)) {
         // cout << "line: " << line << std::endl;
-        if (starts_with(line, "render_cmd")) {
-            // Special case
-            conf::cap_cmd = line.substr(10);
-            while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
-                conf::cap_cmd = conf::cap_cmd.substr(1);
-        }
+        string line_orig = line;
         line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
         if (starts_with(line, "god"))
             conf::god = read_int(line) != 0;
@@ -152,6 +147,11 @@ void conf::read() {
             read_vec2_int(line, "win_size=%i,%i", size);
         else if (starts_with(line, "mouse_bind"))
             read_mouse_bind(line.substr(11));
+        else if (starts_with(line, "render_cmd")) {
+            conf::cap_cmd = line_orig.substr(10);
+            while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
+                conf::cap_cmd = conf::cap_cmd.substr(1);
+        }
     }
     if (cap_end > 0) {
         conf::cap_cnt = cap_end - conf::cap_start;

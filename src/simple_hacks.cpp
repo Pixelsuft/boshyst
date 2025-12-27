@@ -19,7 +19,7 @@ extern HWND hwnd;
 HWND mhwnd = nullptr;
 int last_rng_val = 0;
 bool last_reset = false;
-HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_) = CreateFileA;
+static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {

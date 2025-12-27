@@ -13,6 +13,17 @@ void ass::show_err(const char* text) {
 static HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
 
+wchar_t* utf8_to_unicode(const std::string& utf8) {
+	int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), NULL, 0);
+	ASS(utf8.size() == 0 || size_needed > 0);
+	wchar_t* ret = (wchar_t*)std::malloc((size_t)size_needed * sizeof(wchar_t) + 2);
+	ASS(ret != nullptr);
+	int chars_converted = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), ret, size_needed);
+	ASS(chars_converted == size_needed);
+	ret[size_needed] = L'\0';
+	return ret;
+}
+
 size_t mem::get_base(const char* obj_name) {
 	auto ret = (size_t)GetModuleHandleA(obj_name);
 	ASS(ret != 0);
@@ -61,15 +72,8 @@ void get_cursor_pos(int& x_buf, int& y_buf) {
 	y_buf = point.y;
 }
 
-void* get_scene_ptr() {
-	const size_t offsets[] = { 0x59A94 + 0x400000, 0x268, 0 };
-	return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-}
-
 int get_scene_id() {
 	const size_t offsets[] = { 0x59A94 + 0x400000, 0x268, 0xA8 };
-	// TODO: 404914
-	// std::cout << mem::ptr_from_offsets(offsets, sizeof(offsets) / 4) << std::endl;
 	return *(int*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 

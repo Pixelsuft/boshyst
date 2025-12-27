@@ -20,7 +20,11 @@ static LRESULT(__stdcall* SusProc)(HWND param_1, UINT param_2, WPARAM param_3, L
 extern bool inited;
 static int cur_x = -100;
 static int cur_y = -100;
+
+BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
+    if (!conf::emu_mouse)
+        return GetCursorPosOrig(p);
     p->x = cur_x;
     p->y = cur_y;
     return ClientToScreen(hwnd, p);
@@ -29,6 +33,8 @@ static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
 extern bool is_hourglass;
 static SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
+    if (!conf::emu_mouse)
+        return GetKeyStateOrig(k);
     if (k == VK_LBUTTON && !conf::cur_mouse_checked) {
         // hourglass broken
         // conf::cur_mouse_checked = !is_hourglass;
@@ -53,9 +59,7 @@ static SHORT __stdcall GetKeyStateHook(int k) {
 }
 
 void input_init() {
-    if (!conf::emu_mouse)
-        return;
     SusProc = reinterpret_cast<decltype(SusProc)>(mem::get_base() + 0x41ba0);
-    hook(mem::addr("GetCursorPos", "user32.dll"), GetCursorPosHook);
+    hook(mem::addr("GetCursorPos", "user32.dll"), GetCursorPosHook, &GetCursorPosOrig);
     hook(mem::addr("GetKeyState", "user32.dll"), GetKeyStateHook, &GetKeyStateOrig);
 }

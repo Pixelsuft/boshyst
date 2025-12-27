@@ -40,6 +40,7 @@ static bool next_white = false;
 extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 extern void get_win_size(int& w_buf, int& h_buf);
 extern bool starts_with(const std::string& mainStr, const std::string& prefix);
+extern wchar_t* utf8_to_unicode(const std::string& utf8);
 
 static void get_buf_size(LPDIRECT3DDEVICE9 pDevice, int& w_buf, int& h_buf) {
     if (pDevice == nullptr) {
@@ -101,7 +102,7 @@ void rec::init(void* dev) {
     saAttr.lpSecurityDescriptor = nullptr;
     ASS(CreatePipe(&hChildStdinRead, &hChildStdinWrite, &saAttr, 0));
     ASS(SetHandleInformation(hChildStdinWrite, HANDLE_FLAG_INHERIT, 0));
-    STARTUPINFOA si;
+    STARTUPINFOW si;
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
     si.hStdInput = hChildStdinRead;
@@ -109,11 +110,10 @@ void rec::init(void* dev) {
     si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     si.dwFlags |= STARTF_USESTDHANDLES;
     ZeroMemory(&pi, sizeof(pi));
-    std::vector<char> cmd_chars(command.begin(), command.end());
-    cmd_chars.push_back('\0');
-    ASS(CreateProcessA(
+    wchar_t* w_buf = utf8_to_unicode(command);
+    ASS(CreateProcessW(
         nullptr,
-        cmd_chars.data(),
+        w_buf,
         nullptr,
         nullptr,
         TRUE,
@@ -123,6 +123,7 @@ void rec::init(void* dev) {
         &si,
         &pi
     ));
+    std::free(w_buf);
     CloseHandle(hChildStdinRead);
 }
 

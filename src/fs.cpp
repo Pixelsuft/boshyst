@@ -1,17 +1,18 @@
 #define WIN32_LEAN_AND_MEAN
 #include "fs.hpp"
 #include "ass.hpp"
+#include <cstdlib>
 #include <Windows.h>
 
 using std::string;
 using bfs::File;
 
-extern HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
+extern wchar_t* utf8_to_unicode(const std::string& utf8);
 
 File::File(const string& path, int mode) {
-    // TODO: CreateFileW
-    handle = (void*)CreateFileOrig(
-        path.c_str(),
+    wchar_t* w_path = utf8_to_unicode(path);
+    handle = (void*)CreateFileW(
+        w_path,
         mode == 1 ? GENERIC_WRITE : GENERIC_READ,
         mode == 1 ? 0 : FILE_SHARE_READ,
         nullptr,
@@ -19,6 +20,7 @@ File::File(const string& path, int mode) {
         FILE_ATTRIBUTE_NORMAL,
         nullptr
     );
+    std::free(w_path);
 }
 
 bool File::is_open() {
