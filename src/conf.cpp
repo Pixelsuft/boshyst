@@ -36,6 +36,7 @@ namespace conf {
     bool fix_white_render;
     bool tas_mode;
     bool first_run;
+    bool tp_on_click;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -138,6 +139,7 @@ void conf::read() {
     conf::tas_mode = conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
+    conf::tp_on_click = false;
     conf::menu_hotkey = 45;
     conf::menu = true;
     pos[0] = pos[1] = 0;

@@ -16,6 +16,11 @@ void ass::show_err(const char* text) {
 static HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
+extern SHORT(__stdcall* GetKeyStateOrig)(int k);
+
+bool MyKeyState(int k) {
+	return GetForegroundWindow() == hwnd && (GetKeyStateOrig(k) & 128);
+}
 
 wchar_t* utf8_to_unicode(const std::string& utf8) {
 	int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), nullptr, 0);

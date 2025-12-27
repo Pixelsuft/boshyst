@@ -1,5 +1,5 @@
 # Boshyst
-IWBTB mod with hacks and tools to help creating TAS
+IWBTB mod with hacks and tools to help speedrunning and creating TAS
 ## Building and running
 For testing, just build the DLL using Visual Studio and inject it into the game process (`boshyst.conf` config will be created is in the game dir). <br />
 For hourglass (Windows XP compatible), build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files, configure includes), put it into the game folder (with config file, also set `tas_mode` to 1 in config), replace `wintasee.dll` with [modified version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) to automatically inject the mod when launching the game through the hourglass. Allow normal thread creation. <br />

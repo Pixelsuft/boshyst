@@ -17,7 +17,7 @@ extern int last_new_rand_val;
 
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
-extern SHORT(__stdcall* GetKeyStateOrig)(int k);
+extern bool MyKeyState(int k);
 extern std::string get_config_path();
 extern bool state_save(bfs::File* file);
 extern bool state_load(bfs::File* file);
@@ -35,10 +35,6 @@ static int last_rand_ret = 0;
 static bool log_rng = false;
 std::unordered_map<int, int> rng_map;
 bool show_menu = true;
-
-static bool MyKeyState(int k) {
-	return GetForegroundWindow() == hwnd && (GetKeyStateOrig(k) & 128);
-}
 
 void ui_register_rand(int maxval, int ret) {
 	last_rand_ret = ret;
@@ -126,6 +122,7 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);
+			ImGui::Checkbox("Teleport on click (WIP)", &conf::tp_on_click);
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i", last_new_rand_val);

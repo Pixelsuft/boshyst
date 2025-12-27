@@ -19,6 +19,7 @@ namespace conf {
 	extern bool fix_white_render;
 	extern bool tas_mode;
 	extern bool first_run;
+	extern bool tp_on_click;
 
 	void read();
 }

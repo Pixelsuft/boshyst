@@ -16,7 +16,12 @@ using std::cout;
 
 extern void input_init();
 extern void ui_register_rand(int maxval, int ret);
+extern bool MyKeyState(int k);
+extern void get_cursor_pos_orig(int& x_buf, int& y_buf);
+extern int get_scene_id();
+void* get_player_ptr(int s);
 extern HWND hwnd;
+extern bool show_menu;
 HWND mhwnd = nullptr;
 int last_new_rand_val = 0;
 bool last_reset = false;
@@ -127,6 +132,21 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 static int(__stdcall* UpdateGameFrameOrig)();
 static int __stdcall UpdateGameFrameHook() {
+    if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
+        int scene_id = get_scene_id();
+        auto player = (ObjectHeader*)get_player_ptr(scene_id);
+        // Final path has camera manipulation :(
+        if (player && scene_id != 38) {
+            int x, y, w, h;
+            get_win_size(w, h);
+            get_cursor_pos_orig(x, y);
+            player->xPos -= player->xPos % 640;
+            player->yPos -= player->yPos % 480;
+            player->xPos += x * 640 / w;
+            player->yPos += y * 480 / h;
+            player->redrawFlag = 1;
+        }
+    }
     input_tick();
     ui::pre_update();
 
