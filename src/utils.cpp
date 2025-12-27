@@ -4,7 +4,10 @@
 #include <iostream>
 #include "ass.hpp"
 #include "mem.hpp"
+#include "fs.hpp"
 #include "ui.hpp"
+
+using std::cout;
 
 void ass::show_err(const char* text) {
 	MessageBoxA(nullptr, text, "Boshyst error!", MB_ICONERROR);
@@ -12,6 +15,7 @@ void ass::show_err(const char* text) {
 
 static HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
+extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 
 wchar_t* utf8_to_unicode(const std::string& utf8) {
 	int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), nullptr, 0);
@@ -78,6 +82,15 @@ void get_cursor_pos(int& x_buf, int& y_buf) {
 	POINT point;
 	memset(&point, 0, sizeof(point));
 	GetCursorPos(&point);
+	ScreenToClient(hwnd, &point);
+	x_buf = point.x;
+	y_buf = point.y;
+}
+
+void get_cursor_pos_orig(int& x_buf, int& y_buf) {
+	POINT point;
+	memset(&point, 0, sizeof(point));
+	GetCursorPosOrig(&point);
 	ScreenToClient(hwnd, &point);
 	x_buf = point.x;
 	y_buf = point.y;
@@ -196,4 +209,32 @@ void* get_player_ptr(int s) {
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	return nullptr;
+}
+
+bool state_save(bfs::File* file) {
+	bool(__cdecl * SaveFunc)(HANDLE);
+	SaveFunc = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
+	if (file == nullptr) {
+		// TODO: actually make save/load dialog
+		SaveFunc(INVALID_HANDLE_VALUE);
+		return true;
+	}
+	// TODO: write needed info
+	auto ret = SaveFunc(file->get_handle());
+	cout << "save ret: " << ret << "\n";
+	return true;
+}
+
+bool state_load(bfs::File* file) {
+	int outver = 0;
+	int(__cdecl * LoadFunc)(HANDLE, int*);
+	LoadFunc = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
+	if (file == nullptr) {
+		LoadFunc(INVALID_HANDLE_VALUE, &outver);
+		return true;
+	}
+	// TODO: read needed info
+	auto ret = LoadFunc(file->get_handle(), &outver);
+	cout << "load ret: " << ret << "\n";
+	return true;
 }

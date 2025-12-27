@@ -20,6 +20,7 @@ namespace conf {
     int size[2];
     int cap_start;
     int cap_cnt;
+    int menu_hotkey;
     bool old_rec;
     bool no_vp;
     bool no_sh;
@@ -103,6 +104,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing"));
     ASS(file.write_line("win_pos = 0, 0 // Info window position"));
     ASS(file.write_line("win_size = 200, 100 // Info window size"));
+    ASS(file.write_line("menu_hotkey = 45 // Default menu toggle hotkey, VK_INSERT"));
     ASS(file.write_line(""));
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
@@ -136,6 +138,7 @@ void conf::read() {
     conf::tas_mode = conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save = conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
+    conf::menu_hotkey = 45;
     conf::menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;
@@ -155,45 +158,47 @@ void conf::read() {
         line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
         // cout << "line: " << line << std::endl;
         // cout << "orig: " << line_orig << std::endl;
-        if (starts_with(line, "god"))
+        if (starts_with(line, "god="))
             conf::god = read_int(line) != 0;
-        else if (starts_with(line, "tas_mode"))
+        else if (starts_with(line, "tas_mode="))
             conf::tas_mode = read_int(line) != 0;
-        else if (starts_with(line, "disable_viewport"))
+        else if (starts_with(line, "disable_viewport="))
             conf::no_vp = read_int(line) != 0;
-        else if (starts_with(line, "disable_shaders"))
+        else if (starts_with(line, "disable_shaders="))
             conf::no_sh = read_int(line) != 0;
-        else if (starts_with(line, "menu"))
+        else if (starts_with(line, "menu_hotkey="))
+            conf::menu_hotkey = read_int(line);
+        else if (starts_with(line, "menu="))
             conf::menu = read_int(line) != 0;
-        else if (starts_with(line, "keep_save"))
+        else if (starts_with(line, "keep_save="))
             conf::keep_save = read_int(line) != 0;
-        else if (starts_with(line, "no_mouse_move"))
+        else if (starts_with(line, "no_mouse_move="))
             conf::no_cmove = read_int(line) != 0;
-        else if (starts_with(line, "draw_cursor"))
+        else if (starts_with(line, "draw_cursor="))
             conf::draw_cursor = read_int(line) != 0;
-        else if (starts_with(line, "simulate_mouse"))
+        else if (starts_with(line, "simulate_mouse="))
             conf::emu_mouse = read_int(line) != 0;
-        else if (starts_with(line, "allow_render"))
+        else if (starts_with(line, "allow_render="))
             conf::allow_render = read_int(line) != 0;
-        else if (starts_with(line, "direct_render"))
+        else if (starts_with(line, "direct_render="))
             conf::direct_render = read_int(line) != 0;
-        else if (starts_with(line, "old_render"))
+        else if (starts_with(line, "old_render="))
             conf::old_rec = read_int(line) != 0;
-        else if (starts_with(line, "fix_white_render"))
+        else if (starts_with(line, "fix_white_render="))
             conf::fix_white_render = read_int(line) != 0;
-        else if (starts_with(line, "render_start"))
+        else if (starts_with(line, "render_start="))
             conf::cap_start = read_int(line);
-        else if (starts_with(line, "render_count"))
+        else if (starts_with(line, "render_count="))
             conf::cap_cnt = read_int(line);
-        else if (starts_with(line, "render_end"))
+        else if (starts_with(line, "render_end="))
             cap_end = read_int(line);
-        else if (starts_with(line, "win_pos"))
+        else if (starts_with(line, "win_pos="))
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
             read_vec2_int(line, "win_size=%i,%i", size);
-        else if (starts_with(line, "mouse_bind"))
+        else if (starts_with(line, "mouse_bind="))
             read_mouse_bind(line.substr(11));
-        else if (starts_with(line, "render_cmd")) {
+        else if (starts_with(line, "render_cmd=")) {
             conf::cap_cmd = line_orig.substr(10);
             while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
                 conf::cap_cmd = conf::cap_cmd.substr(1);

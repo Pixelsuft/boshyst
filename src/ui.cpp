@@ -4,6 +4,7 @@
 #include "ui.hpp"
 #include "conf.hpp"
 #include "mem.hpp"
+#include "fs.hpp"
 #include <imgui.h>
 #include <iostream>
 #include <cstdint>
@@ -17,12 +18,16 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
 extern std::string get_config_path();
+extern bool state_save(bfs::File* file);
+extern bool state_load(bfs::File* file);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern void get_cursor_pos_orig(int& x_buf, int& y_buf);
 
 extern bool last_reset;
 static int last_scene = 0;
 static int cur_frames = 0;
 static int cur_frames2 = 0;
+static int need_save_state = 0;
 bool show_menu = true;
 
 static bool MyKeyState(int k) {
@@ -51,12 +56,14 @@ static void draw_basic_text() {
 		int x, y;
 		get_cursor_pos(x, y);
 		ImGui::Text("Cursor Pos: (%i, %i)", x * 640 / ws[0], y * 480 / ws[1]);
+		get_cursor_pos_orig(x, y);
+		ImGui::Text("Orig Cursor Pos: (%i, %i)", x * 640 / ws[0], y * 480 / ws[1]);
 	}
 }
 
 void ui::pre_update() {
 	static bool holds_insert = false;
-	if (MyKeyState(VK_INSERT)) {
+	if (MyKeyState(conf::menu_hotkey)) {
 		if (!holds_insert) {
 			holds_insert = true;
 			show_menu = !show_menu;
@@ -64,6 +71,14 @@ void ui::pre_update() {
 	}
 	else
 		holds_insert = false;
+	if (need_save_state == 1) {
+		need_save_state = 0;
+		state_save(nullptr);
+	}
+	else if (need_save_state == 2) {
+		need_save_state = 0;
+		state_load(nullptr);
+	}
 }
 
 static void ui_menu_draw() {
@@ -88,7 +103,22 @@ static void ui_menu_draw() {
 			ImGui::Text("Use 'Insert' key to toggle this menu");
 			ImGui::Text("You can edit config at \"%s\"", conf_path.c_str());
 		}
-		draw_basic_text();
+		if (ImGui::CollapsingHeader("Game Info")) {
+			draw_basic_text();
+		}
+		if (ImGui::CollapsingHeader("State")) {
+			if (ImGui::Button("Save"))
+				need_save_state = 1;
+			ImGui::SameLine();
+			if (ImGui::Button("Load"))
+				need_save_state = 2;
+		}
+		if (ImGui::CollapsingHeader("Info")) {
+			ImGui::Text("Created by Pixelsuft");
+			// FIXME: roken with savestates
+			if (0 && ImGui::Button("Reload Config"))
+				conf::read();
+		}
 	}
 	ImGui::End();
 }

@@ -126,41 +126,6 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 static int(__stdcall* UpdateGameFrameOrig)();
 static int __stdcall UpdateGameFrameHook() {
-    if ((GetKeyState('F') & 128) != 0) {
-        HANDLE hFile = CreateFileOrig(
-            "example.txt",
-            GENERIC_READ,
-            FILE_SHARE_READ,
-            nullptr,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr
-        );
-        ASS(hFile != nullptr);
-        int outver = 0;
-        int(__cdecl * LoadFunc)(HANDLE, int*);
-        LoadFunc = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
-        auto ret = LoadFunc(hFile, &outver);
-        cout << "load " << ret << " " << outver << '\n';
-        CloseHandle(hFile);
-    }
-    if ((GetKeyState('G') & 128) != 0) {
-        HANDLE hFile = CreateFileOrig(
-            "example.txt",
-            GENERIC_WRITE,
-            0,
-            nullptr,
-            CREATE_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr
-        );
-        ASS(hFile != nullptr);
-        bool(__cdecl * SaveFunc)(HANDLE);
-        SaveFunc = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
-        auto ret = SaveFunc(hFile);
-        cout << "save" << ret << '\n';
-        CloseHandle(hFile);
-    }
     input_tick();
     ui::pre_update();
 
