@@ -15,6 +15,7 @@
 using std::cout;
 
 extern void input_init();
+extern void ui_register_rand(int maxval, int ret);
 extern HWND hwnd;
 HWND mhwnd = nullptr;
 int last_new_rand_val = 0;
@@ -144,8 +145,9 @@ static void __cdecl TriggerFrameTransitionHook(void* v) {
 
 static unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static unsigned int __cdecl RandomHook(unsigned int maxv) {
-    cout << "bless rng" << maxv << "\n";
-    return maxv - 1;
+    auto ret = RandomOrig(maxv);
+    ui_register_rand(maxv, ret);
+    return ret;
 }
 
 void init_simple_hacks() {
@@ -165,7 +167,7 @@ void init_simple_hacks() {
     // hook(mem::get_base() + 0x147c0, SusSceneHook, &SusSceneOrig);
     hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     hook(mem::get_base() + 0x47cb0, TriggerFrameTransitionHook, &TriggerFrameTransitionOrig);
-    // hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
+    hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

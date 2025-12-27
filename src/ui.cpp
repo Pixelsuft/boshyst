@@ -7,6 +7,7 @@
 #include "fs.hpp"
 #include <imgui.h>
 #include <iostream>
+#include <unordered_map>
 #include <cstdint>
 
 using std::cout;
@@ -29,10 +30,22 @@ static int last_scene = 0;
 static int cur_frames = 0;
 static int cur_frames2 = 0;
 static int need_save_state = 0;
+static int last_rand_max = 0;
+static int last_rand_ret = 0;
+static bool log_rng = false;
+std::unordered_map<int, int> rng_map;
 bool show_menu = true;
 
 static bool MyKeyState(int k) {
 	return GetForegroundWindow() == hwnd && (GetKeyStateOrig(k) & 128);
+}
+
+void ui_register_rand(int maxval, int ret) {
+	last_rand_ret = ret;
+	last_rand_max = maxval;
+	if (log_rng) {
+		rng_map[maxval] = ret;
+	}
 }
 
 static void draw_basic_text() {
@@ -116,6 +129,16 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i", last_new_rand_val);
+			ImGui::Text("Last MMF2_Random() value: %i/%i", last_rand_ret, last_rand_max);
+			if (ImGui::Checkbox("Log MMF2_Random() map", &log_rng)) {
+				if (!log_rng)
+					rng_map.clear();
+			}
+			if (log_rng) {
+				ImGui::Text("Max range: Value");
+				for (auto it = rng_map.begin(); it != rng_map.end(); it++)
+					ImGui::Text("%i: %i", it->first, it->second);
+			}
 		}
 		if (ImGui::CollapsingHeader("State")) {
 			if (ImGui::Button("Save"))
