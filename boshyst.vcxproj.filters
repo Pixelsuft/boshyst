@@ -110,5 +110,8 @@
     <ClInclude Include="src\fs.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ghidra_headers.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -173,6 +173,7 @@
     <ClInclude Include="src\ass.hpp" />
     <ClInclude Include="src\conf.hpp" />
     <ClInclude Include="src\fs.hpp" />
+    <ClInclude Include="src\ghidra_headers.h" />
     <ClInclude Include="src\hook.hpp" />
     <ClInclude Include="src\init.hpp" />
     <ClInclude Include="src\input.hpp" />

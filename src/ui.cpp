@@ -17,10 +17,39 @@ extern int get_scene_id();
 extern void* get_player_ptr(int s);
 
 extern bool last_reset;
-int last_scene = 0;
+static int last_scene = 0;
+static int cur_frames = 0;
+static int cur_frames2 = 0;
 
 void ui::pre_update() {
 
+}
+
+static void draw_basic_text() {
+	int ws[2];
+	get_win_size(ws[0], ws[1]);
+	int scene_id = get_scene_id();
+	uint8_t* pp = (uint8_t*)get_player_ptr(scene_id);
+	ImGui::Text("Cur Frames: %i", cur_frames);
+	ImGui::Text("Cur Frames 2: %i", cur_frames2);
+	if (pp != nullptr) {
+		static int last_x = 0;
+		static int last_y = 0;
+		int cur_x = *(int*)(pp + 0x4C);
+		int cur_y = *(int*)(pp + 0x54);
+		ImGui::Text("Pos: (%i, %i)", cur_x, cur_y);
+		ImGui::Text("Delta: (%i, %i)", cur_x - last_x, cur_y - last_y);
+		last_x = cur_x;
+		last_y = cur_y;
+	}
+	ImGui::Text("Scene ID: %i", scene_id);
+	if (conf::draw_cursor) {
+		ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+		int x, y;
+		get_cursor_pos(x, y);
+		ImGui::Text("Cursor Pos: (%i, %i)", x * 640 / ws[0], y * 480 / ws[1]);
+		draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 3.f, IM_COL32(255, 0, 0, 255), 8);
+	}
 }
 
 void ui::draw() {
@@ -28,15 +57,10 @@ void ui::draw() {
 		last_reset = false;
 		return;
 	}
-	int ws[2];
-	get_win_size(ws[0], ws[1]);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]));
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]));
 	if (ImGui::Begin("Boshyst", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
-		// ImGui::Text("Boshyst by Pixelsuft");
-		static int cur_frames = 0;
-		static int cur_frames2 = 0;
 		int scene_id = get_scene_id();
 		if (scene_id != last_scene) {
 			last_scene = scene_id;
@@ -49,36 +73,10 @@ void ui::draw() {
 		}
 		cur_frames++;
 		cur_frames2++;
-		uint8_t* pp = (uint8_t*)get_player_ptr(scene_id);
-		ImGui::Text("Cur Frames: %i", cur_frames);
-		ImGui::Text("Cur Frames 2: %i", cur_frames2);
-		if (pp != nullptr) {
-			static int last_x = 0;
-			static int last_y = 0;
-			int cur_x = *(int*)(pp + 0x4C);
-			int cur_y = *(int*)(pp + 0x54);
-			// ImGui::Text("Pointer: %p", pp);
-			// ImGui::Text("Pointer 2: %p", get_scene_ptr());
-			ImGui::Text("Pos: (%i, %i)", cur_x, cur_y);
-			ImGui::Text("Delta: (%i, %i)", cur_x - last_x, cur_y - last_y);
-			last_x = cur_x;
-			last_y = cur_y;
-			float tx = (float)(cur_x % 640) * (float)ws[0] / 640.f;
-			float ty = (float)(cur_y % 480) * (float)ws[1] / 480.f;
-			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-			// draw_list->AddCircleFilled(ImVec2(tx, ty), 5.f, IM_COL32(255, 0, 0, 255), 12);
-		}
-		ImGui::Text("Scene ID: %i", scene_id);
-		if (conf::draw_cursor) {
-			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-			int x, y;
-			get_cursor_pos(x, y);
-			ImGui::Text("Cursor Pos: (%i, %i)", x, y);
-			// cout << x << " " << y << std::endl;
-			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 3.f, IM_COL32(255, 0, 0, 255), 8);
-		}
+		draw_basic_text();
 		if (0) {
 			// Display all object IDs
+			uint8_t* pp;
 			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
 			const ImFont* font = ImGui::GetFont();
 			for (size_t i = 0; i < 2000; i += 8) {
@@ -99,7 +97,6 @@ void ui::draw() {
 				// draw_list->AddCircleFilled(ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), 2.f, IM_COL32(255, 0, 0, 255), 4);
 			}
 		}
-		// ImGui::Text("Last new RNG value: %i", last_rng_val);
 	}
 	ImGui::PopStyleVar();
 	ImGui::End();

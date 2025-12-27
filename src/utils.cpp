@@ -154,8 +154,8 @@ void* get_player_ptr(int s) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE8, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// W1, CHEETAH
-	if (s == 3 || s == 54) {
+	// W1
+	if (s == 3) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
@@ -177,6 +177,11 @@ void* get_player_ptr(int s) {
 	// ELEVATOR
 	if (s == 51) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x138, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// CHEETAHMEN
+	if (s == 54) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	return nullptr;

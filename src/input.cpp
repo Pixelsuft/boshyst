@@ -35,27 +35,29 @@ static SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
     if (!conf::emu_mouse)
         return GetKeyStateOrig(k);
-    if (k == VK_LBUTTON && !conf::cur_mouse_checked) {
-        // hourglass broken
-        // conf::cur_mouse_checked = !is_hourglass;
-        int w, h;
-        get_win_size(w, h);
-        for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
-            bool pressed = (GetKeyStateOrig(it->first) & 128) != 0;
-            if (pressed) {
-                // cout << "sus_click\n";
-                for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {
-                    cur_x = (int)(eit->x * (float)w / 640.f);
-                    cur_y = (int)(eit->y * (float)h / 480.f);
-                    if (cur_x < 0 || cur_y < 0)
-                        continue;
-                    SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
-                    SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
-                }
+    if (k == VK_LBUTTON) {
+        // input_tick();
+    }
+    return GetKeyStateOrig(k);
+}
+
+void input_tick() {
+    int w, h;
+    get_win_size(w, h);
+    for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
+        bool pressed = (GetKeyStateOrig(it->first) & 128) != 0;
+        if (pressed) {
+            // cout << "sus_click\n";
+            for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {
+                cur_x = (int)(eit->x * (float)w / 640.f);
+                cur_y = (int)(eit->y * (float)h / 480.f);
+                if (cur_x < 0 || cur_y < 0)
+                    continue;
+                SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
+                SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
             }
         }
     }
-    return GetKeyStateOrig(k);
 }
 
 void input_init() {

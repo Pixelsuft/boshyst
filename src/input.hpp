@@ -7,4 +7,5 @@ struct InputEvent {
 	float y;
 };
 
+void input_tick();
 void input_init();

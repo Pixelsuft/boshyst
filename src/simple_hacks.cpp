@@ -2,13 +2,13 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
 #include <shlwapi.h>
-//#include <timeapi.h>
 #include <iostream>
 #include "hook.hpp"
 #include "mem.hpp"
 #include "conf.hpp"
 #include "rec.hpp"
 #include "ui.hpp"
+#include "input.hpp"
 #include "ghidra_headers.h"
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -161,6 +161,7 @@ static int __stdcall UpdateGameFrameHook() {
         cout << "save" << ret << '\n';
         CloseHandle(hFile);
     }
+    input_tick();
     ui::pre_update();
 
     auto ret = UpdateGameFrameOrig();
