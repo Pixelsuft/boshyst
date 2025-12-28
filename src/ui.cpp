@@ -36,8 +36,17 @@ static int cur_frames = 0;
 static int cur_frames2 = 0;
 static int need_save_state = 0;
 static bool log_rng = false;
+bool fix_rng = false;
+float fix_rng_val = 0.f;
 std::unordered_map<int, int> rng_map;
 bool show_menu = true;
+
+#undef min
+#undef max
+template<typename T>
+inline T mclamp(T v, T minv, T maxv) {
+	return std::max(std::min(v, maxv), minv);
+}
 
 void ui_register_rand(int maxval, int ret) {
 	if (log_rng) {
@@ -70,6 +79,7 @@ static void draw_basic_text() {
 		static int last_y = 0;
 		ImGui::Text("Pos: (%i, %i)", pp->xPos, pp->yPos);
 		ImGui::Text("Delta: (%i, %i)", pp->xPos - last_x, pp->yPos - last_y);
+		ImGui::Text("Align: %i", pp->xPos % 3);
 		last_x = pp->xPos;
 		last_y = pp->yPos;
 		if (0) {
@@ -154,6 +164,10 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i", last_new_rand_val);
+			ImGui::Checkbox("Fix MMF2_Random() value (0 - 100)", &fix_rng);
+			if (ImGui::SliderFloat("Value##MMF2_Random()", &fix_rng_val, 0.f, 100.f)) {
+				fix_rng_val = mclamp(fix_rng_val, 0.f, 100.f);
+			}
 			if (ImGui::Checkbox("Log MMF2_Random() map", &log_rng)) {
 				if (!log_rng)
 					rng_map.clear();

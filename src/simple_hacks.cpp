@@ -24,6 +24,8 @@ extern HWND hwnd;
 extern bool capturing;
 extern bool show_menu;
 extern bool next_white;
+extern bool fix_rng;
+extern float fix_rng_val;
 HWND mhwnd = nullptr;
 int last_new_rand_val = 0;
 bool last_reset = false;
@@ -39,7 +41,15 @@ static short __stdcall DisplayRunObjectVPHook(void* pthis) {
 
 static int(__cdecl* randOrig)() = nullptr;
 static int __cdecl randHook() {
-	int ret = randOrig();
+    int ret;
+    if (fix_rng) {
+        if (fix_rng_val == 100.f)
+            ret = RAND_MAX - 1;
+        else
+            ret = (unsigned int)((float)RAND_MAX * fix_rng_val / 100.f);
+    }
+    else
+	    ret = randOrig();
     last_new_rand_val = ret;
 	return ret;
 }
@@ -170,7 +180,15 @@ static void __cdecl TriggerFrameTransitionHook(void* v) {
 
 static unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static unsigned int __cdecl RandomHook(unsigned int maxv) {
-    auto ret = RandomOrig(maxv);
+    unsigned int ret;
+    if (fix_rng) {
+        if (fix_rng_val == 100.f)
+            ret = maxv - 1;
+        else
+            ret = (unsigned int)((float)maxv * fix_rng_val / 100.f);
+    }
+    else
+        ret = RandomOrig(maxv);
     ui_register_rand(maxv, ret);
     return ret;
 }
