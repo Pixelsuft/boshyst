@@ -6,6 +6,7 @@
 #include "mem.hpp"
 #include "fs.hpp"
 #include "ui.hpp"
+#include <map>
 
 using std::cout;
 
@@ -18,10 +19,31 @@ extern HWND hwnd;
 extern HWND mhwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
+static std::map<int, bool> key_states;
 
 bool MyKeyState(int k) {
 	HWND fg = GetForegroundWindow();
 	return (fg == hwnd || fg == mhwnd) && (GetKeyStateOrig(k) & 128);
+}
+
+int JustKeyState(int k) {
+	auto it = key_states.find(k);
+	auto st = MyKeyState(k);
+	if (it == key_states.end()) {
+		key_states[k] = st;
+		return st ? 1 : 0;
+	}
+	if (st) {
+		if (!it->second) {
+			it->second = true;
+			return 1;
+		}
+	}
+	else if (it->second) {
+		it->second = false;
+		return -1;
+	}
+	return 0;
 }
 
 wchar_t* utf8_to_unicode(const std::string& utf8) {

@@ -22,6 +22,7 @@ namespace conf {
 }
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
+extern int JustKeyState(int k);
 extern bool MyKeyState(int k);
 extern std::string get_config_path();
 extern bool state_save(bfs::File* file);
@@ -72,10 +73,7 @@ static void draw_basic_text() {
 	get_win_size(ws[0], ws[1]);
 	int scene_id = get_scene_id();
 	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(scene_id);
-	int inGameFrames = *(int*)(*(size_t*)(0x00459a9c) + 0xd0);
-	ImGui::Text("Cur Frames: %i", cur_frames);
-	ImGui::Text("Cur Frames 2: %i", cur_frames2);
-	ImGui::Text("In-Game Frames: %i", inGameFrames);
+	int inGameFrames = *(int*)(*(size_t*)(mem::get_base() + 0x59a9c) + 0xd0);
 	if (pp != nullptr) {
 		static int last_x = 0;
 		static int last_y = 0;
@@ -106,6 +104,9 @@ static void draw_basic_text() {
 			}
 		}
 	}
+	ImGui::Text("Cur Frames: %i", cur_frames);
+	ImGui::Text("Cur Frames 2: %i", cur_frames2);
+	ImGui::Text("In-Game Frames: %i", inGameFrames);
 	ImGui::Text("Scene ID: %i", scene_id);
 	if (conf::draw_cursor) {
 		int x, y;
@@ -116,16 +117,9 @@ static void draw_basic_text() {
 	}
 }
 
-void ui::pre_update() {
-	static bool holds_insert = false;
-	if (MyKeyState(conf::menu_hotkey)) {
-		if (!holds_insert) {
-			holds_insert = true;
-			show_menu = !show_menu;
-		}
-	}
-	else
-		holds_insert = false;
+void ui::pre_update() {;
+	if (JustKeyState(conf::menu_hotkey) == 1)
+		show_menu = !show_menu;
 	if (need_save_state == 1) {
 		need_save_state = 0;
 		state_save(nullptr);
@@ -141,16 +135,22 @@ static void ui_menu_draw() {
 		post_draw();
 		return;
 	}
-	static bool holds_lmb = false;
-	if (MyKeyState(VK_LBUTTON)) {
-		if (!holds_lmb) {
-			holds_lmb = true;
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
-		}
-	}
-	else if (holds_lmb) {
-		holds_lmb = false;
+	auto temp_state = JustKeyState(VK_LBUTTON);
+	if (temp_state == 1)
+		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
+	else if (temp_state == -1)
 		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
+	const int keys_to_check[] = {
+		VK_LCONTROL, VK_RCONTROL, '0', '1', '2',
+		'3', '4', '5', '6', '7', '8', '9', VK_DECIMAL, VK_OEM_COMMA, VK_OEM_PERIOD,
+		VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_LSHIFT, VK_RSHIFT, VK_BACK, VK_SPACE, VK_DELETE
+	};
+	for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
+		temp_state = JustKeyState(keys_to_check[i]);
+		if (temp_state == 1)
+			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, keys_to_check[i], 0);
+		else if (temp_state == -1)
+			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, keys_to_check[i], 0);
 	}
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu")) {
