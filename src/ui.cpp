@@ -45,8 +45,21 @@ void ui_register_rand(int maxval, int ret) {
 	}
 }
 
+static void post_draw() {
+	if (conf::draw_cursor) {
+		int x, y;
+		get_cursor_pos(x, y);
+		if (x >= 0 && y >= 0) {
+			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 3.f, IM_COL32(255, 0, 0, 255), 8);
+		}
+	}
+}
+
 static void draw_basic_text() {
-	int ws[2];
+	if (IsIconic(hwnd))
+		return; // FIXME: WTF why it crashes without it
+	static int ws[2];
 	get_win_size(ws[0], ws[1]);
 	int scene_id = get_scene_id();
 	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(scene_id);
@@ -59,15 +72,17 @@ static void draw_basic_text() {
 		ImGui::Text("Delta: (%i, %i)", pp->xPos - last_x, pp->yPos - last_y);
 		last_x = pp->xPos;
 		last_y = pp->yPos;
-		for (size_t i = 0; i < 4000; i += 8) {
-			const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, i, 0 };
-			ObjectHeader* obj = (ObjectHeader*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-			if (!obj)
-				break;
-			if (std::abs(obj->xPos - pp->xPos) <= 10 && std::abs(obj->yPos - pp->yPos) <= 10) {
-				if (ImGui::Button(std::to_string((long long)i).c_str())) {
-					obj->xPos = obj->yPos = 10;
-					obj->redrawFlag = 1;
+		if (0) {
+			for (size_t i = 0; i < 4000; i += 8) {
+				const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, i, 0 };
+				ObjectHeader* obj = (ObjectHeader*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+				if (!obj)
+					break;
+				if (std::abs(obj->xPos - pp->xPos) <= 10 && std::abs(obj->yPos - pp->yPos) <= 10) {
+					if (ImGui::Button(std::to_string((long long)i).c_str())) {
+						obj->xPos = obj->yPos = 10;
+						obj->redrawFlag = 1;
+					}
 				}
 			}
 		}
@@ -103,8 +118,10 @@ void ui::pre_update() {
 }
 
 static void ui_menu_draw() {
-	if (!show_menu)
+	if (!show_menu) {
+		post_draw();
 		return;
+	}
 	static bool holds_lmb = false;
 	if (MyKeyState(VK_LBUTTON)) {
 		if (!holds_lmb) {
@@ -133,7 +150,7 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);
-			ImGui::Checkbox("Teleport on click (WIP)", &conf::tp_on_click);
+			ImGui::Checkbox("Teleport with mouse (BETA)", &conf::tp_on_click);
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i", last_new_rand_val);
@@ -182,6 +199,7 @@ static void ui_menu_draw() {
 		}
 	}
 	ImGui::End();
+	post_draw();
 }
 
 void ui::draw() {
@@ -231,14 +249,9 @@ void ui::draw() {
 				draw_list->AddText(font, ImGui::GetFontSize(), ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), IM_COL32(255, 0, 0, 255), buf);
 			}
 		}
-		if (conf::draw_cursor) {
-			int x, y;
-			get_cursor_pos(x, y);
-			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 3.f, IM_COL32(255, 0, 0, 255), 8);
-		}
 	}
 	ImGui::PopStyleVar();
 	ImGui::End();
 	last_reset = false;
+	post_draw();
 }

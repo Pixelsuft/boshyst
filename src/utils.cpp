@@ -115,97 +115,90 @@ static void* get_player_by_id(int idx) {
 
 void* get_player_ptr(int s) {
 	// FIXME: W4, W5, B8
+	switch (s) {
 	// Tutorial
-	if (s == 36)
+	case 36:
 		return get_player_by_id(0x80);
-	// W1
-	if (s == 3)
+	// W1, W3, METAL GEAR
+	case 3:
+	case 8:
+	case 23:
 		return get_player_by_id(0xE0);
 	// MARIO SECRET
-	if (s == 33)
+	case 33:
 		return get_player_by_id(0x68);
-	// B1, B5, B7
-	if (s == 4 || s == 14 || s == 24)
+	// B1, B5, B7, W8, POKEWORLD, CHEETAHMEN
+	case 4:
+	case 14:
+	case 24:
+	case 25:
+	case 50:
+	case 54:
 		return get_player_by_id(0x70);
 	// W2
-	if (s == 5)
+	case 5:
 		return get_player_by_id(0xA58);
 	// MB1
-	if (s == 6)
+	case 6:
 		return get_player_by_id(0x148);
-	// B2
-	if (s == 7)
+	// B2, GASTLY
+	case 7:
+	case 9:
 		return get_player_by_id(0x130);
-	// B2
-	if (s == 7)
-		return get_player_by_id(0xC8);
-	// W3
-	if (s == 8)
-		return get_player_by_id(0xE0);
-	// B3, B4, W11
-	if (s == 10 || s == 12 || s == 35)
+	// B3, B4, W11, B9
+	case 10:
+	case 12:
+	case 35:
+	case 59:
 		return get_player_by_id(0x90);
 	// W4
-	if (s == 11)
+	case 11:
 		return get_player_by_id(0x100);
 	// W5
-	if (s == 13)
+	case 13:
 		return get_player_by_id(0x38);
 	// W6
-	if (s == 15)
+	case 15:
 		return get_player_by_id(0x110);
 	// B6
-	if (s == 17)
+	case 17:
 		return get_player_by_id(0xA0);
-	// W7
-	if (s == 22)
+	// W7, Gardius
+	case 22:
+	case 39:
 		return get_player_by_id(0x150);
 	// B10, TELEPROOM
-	if (s == 32 || s == 29)
+	case 32:
+	case 29:
 		return get_player_by_id(0x88);
 	// B8
-	if (s == 26)
+	case 26:
 		return get_player_by_id(0x48);
 	// W9, W10
-	if (s == 27 || s == 31)
+	case 27:
+	case 31:
 		return get_player_by_id(0xB8);
-	// B9
-	if (s == 59)
-		return get_player_by_id(0x90);
 	// KAPPA
-	if (s == 37)
+	case 37:
 		return get_player_by_id(0xB0);
 	// FB
-	if (s == 46)
+	case 46:
 		return get_player_by_id(0xA8);
 	// PRIZE ROOM
-	if (s == 49)
+	case 49:
 		return get_player_by_id(0x140);
-	// GASTLY
-	if (s == 9)
-		return get_player_by_id(0x130);
-	// W8, POKEWORLD
-	if (s == 25 || s == 50)
-		return get_player_by_id(0x70);
 	// BLIZZARD
-	if (s == 53)
+	case 53:
 		return get_player_by_id(0x78);
-	// METAL GEAR
-	if (s == 23)
-		return get_player_by_id(0xE0);
 	// ELEVATOR
-	if (s == 51)
+	case 51:
 		return get_player_by_id(0x138);
 	// FINAL PATH
-	if (s == 38)
+	case 38:
 		return get_player_by_id(0x58);
-	// CHEETAHMEN
-	if (s == 54)
-		return get_player_by_id(0x70);
-	// Gardius
-	if (s == 39)
-		return get_player_by_id(0x150);
-	return nullptr;
+	default:
+		return nullptr;
+	}
 }
 
 bool state_save(bfs::File* file) {

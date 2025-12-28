@@ -24,12 +24,12 @@ static int cur_y = -100;
 
 BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
-    if (show_menu) {
+    if (!conf::emu_mouse && !show_menu)
+        return GetCursorPosOrig(p);
+    if (show_menu && !conf::emu_mouse) {
         p->x = -100;
         p->y = -100;
-    }
-    else if (!conf::emu_mouse)
-        return GetCursorPosOrig(p);
+    } 
     else {
         p->x = cur_x;
         p->y = cur_y;

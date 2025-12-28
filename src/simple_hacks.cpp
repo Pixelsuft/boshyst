@@ -142,9 +142,7 @@ static int __stdcall UpdateGameFrameHook() {
     ui::pre_update();
 
     auto ret = UpdateGameFrameOrig();
-    // TODO: remove
-    conf::tp_on_click = true;
-    if ((!show_menu || 1) && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
+    if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
         if (player) {
