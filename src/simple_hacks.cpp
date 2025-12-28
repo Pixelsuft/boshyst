@@ -200,6 +200,14 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
     return IDNO;
 }
 
+static void(__cdecl* TriggerEventOrig)(ObjectHeader* obj, int p2);
+static void __cdecl TriggerEventHook(ObjectHeader* obj, int p2) {
+    if (MyKeyState('F') && obj != get_player_ptr(get_scene_id()))
+        return;
+    // cout << "trigger\n";
+    TriggerEventOrig(obj, p2);
+}
+
 void init_simple_hacks() {
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
@@ -219,6 +227,7 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     hook(mem::get_base() + 0x47cb0, TriggerFrameTransitionHook, &TriggerFrameTransitionOrig);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
+    // hook(mem::get_base() + 0x48110, TriggerEventHook, &TriggerEventOrig);
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

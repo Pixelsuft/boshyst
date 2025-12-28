@@ -72,8 +72,10 @@ static void draw_basic_text() {
 	get_win_size(ws[0], ws[1]);
 	int scene_id = get_scene_id();
 	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(scene_id);
+	int inGameFrames = *(int*)(*(size_t*)(0x00459a9c) + 0xd0);
 	ImGui::Text("Cur Frames: %i", cur_frames);
 	ImGui::Text("Cur Frames 2: %i", cur_frames2);
+	ImGui::Text("In-Game Frames: %i", inGameFrames);
 	if (pp != nullptr) {
 		static int last_x = 0;
 		static int last_y = 0;
@@ -82,6 +84,13 @@ static void draw_basic_text() {
 		ImGui::Text("Align: %i", pp->xPos % 3);
 		last_x = pp->xPos;
 		last_y = pp->yPos;
+
+		if (1) {
+			auto anim = (AnimController*)((int)&pp->handle + pp->field100_0xb8);
+			pp->redrawFlag = 1;
+			// anim->currentSpeed = 0;
+		}
+
 		if (0) {
 			for (size_t i = 0; i < 4000; i += 8) {
 				const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, i, 0 };
@@ -221,11 +230,6 @@ void ui::draw() {
 		last_reset = false;
 		return;
 	}
-	if (!conf::tas_mode) {
-		last_reset = false;
-		ui_menu_draw();
-		return;
-	}
 	int scene_id = get_scene_id();
 	if (scene_id != last_scene) {
 		last_scene = scene_id;
@@ -236,12 +240,17 @@ void ui::draw() {
 		cur_frames = -1;
 		cout << "Scene reset (" << scene_id << ")" << std::endl;
 	}
+	cur_frames++;
+	cur_frames2++;
+	if (!conf::tas_mode) {
+		last_reset = false;
+		ui_menu_draw();
+		return;
+	}
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]));
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]));
 	if (ImGui::Begin("Boshyst Info", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
-		cur_frames++;
-		cur_frames2++;
 		draw_basic_text();
 		if (0) {
 			// Display all object IDs
