@@ -108,157 +108,103 @@ int get_scene_id() {
 	return *(int*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 
+static void* get_player_by_id(int idx) {
+	const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, (size_t)idx, 0 };
+	return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+}
+
 void* get_player_ptr(int s) {
+	// FIXME: W4, W5, B8
 	// Tutorial
-	if (s == 36) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x80, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 36)
+		return get_player_by_id(0x80);
 	// W1
-	if (s == 3) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 3)
+		return get_player_by_id(0xE0);
 	// MARIO SECRET
-	if (s == 33) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x68, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 33)
+		return get_player_by_id(0x68);
 	// B1, B5, B7
-	if (s == 4 || s == 14 || s == 24) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 4 || s == 14 || s == 24)
+		return get_player_by_id(0x70);
 	// W2
-	if (s == 5) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xa58, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 5)
+		return get_player_by_id(0xA58);
 	// MB1
-	if (s == 6) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x148, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 6)
+		return get_player_by_id(0x148);
 	// B2
-	if (s == 7) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x130, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 7)
+		return get_player_by_id(0x130);
 	// B2
-	if (s == 7) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xC8, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 7)
+		return get_player_by_id(0xC8);
 	// W3
-	if (s == 8) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
-	// B3, B4, B9, W11
-	if (s == 10 || s == 12 || s == 59 || s == 35) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x90, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 8)
+		return get_player_by_id(0xE0);
+	// B3, B4, W11
+	if (s == 10 || s == 12 || s == 35)
+		return get_player_by_id(0x90);
 	// W4
-	if (s == 11) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x100, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
-	// W5, W8
-	if (s == 13 || s == 25) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x38, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 11)
+		return get_player_by_id(0x100);
+	// W5
+	if (s == 13)
+		return get_player_by_id(0x38);
 	// W6
-	if (s == 15) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x110, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 15)
+		return get_player_by_id(0x110);
 	// B6
-	if (s == 17) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xA0, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 17)
+		return get_player_by_id(0xA0);
 	// W7
-	if (s == 22) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x150, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 22)
+		return get_player_by_id(0x150);
 	// B10, TELEPROOM
-	if (s == 32 || s == 29) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x88, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 32 || s == 29)
+		return get_player_by_id(0x88);
 	// B8
-	if (s == 26) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x48, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 26)
+		return get_player_by_id(0x48);
 	// W9, W10
-	if (s == 27 || s == 31) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xB8, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 27 || s == 31)
+		return get_player_by_id(0xB8);
 	// B9
-	if (s == 59) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x28, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 59)
+		return get_player_by_id(0x90);
 	// KAPPA
-	if (s == 37) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xB0, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 37)
+		return get_player_by_id(0xB0);
 	// FB
-	if (s == 46) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xa8, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 46)
+		return get_player_by_id(0xA8);
 	// PRIZE ROOM
-	if (s == 49) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x140, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 49)
+		return get_player_by_id(0x140);
 	// GASTLY
-	if (s == 9) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x130, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
-	// POKEWORLD
-	if (s == 50) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 9)
+		return get_player_by_id(0x130);
+	// W8, POKEWORLD
+	if (s == 25 || s == 50)
+		return get_player_by_id(0x70);
 	// BLIZZARD
-	if (s == 53) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x78, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 53)
+		return get_player_by_id(0x78);
 	// METAL GEAR
-	if (s == 23) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 23)
+		return get_player_by_id(0xE0);
 	// ELEVATOR
-	if (s == 51) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x138, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 51)
+		return get_player_by_id(0x138);
 	// FINAL PATH
-	if (s == 38) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x58, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 38)
+		return get_player_by_id(0x58);
 	// CHEETAHMEN
-	if (s == 54) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 54)
+		return get_player_by_id(0x70);
 	// Gardius
-	if (s == 39) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x150, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
+	if (s == 39)
+		return get_player_by_id(0x150);
 	return nullptr;
 }
 
