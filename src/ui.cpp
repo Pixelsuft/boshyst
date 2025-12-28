@@ -64,7 +64,7 @@ static void draw_basic_text() {
 			ObjectHeader* obj = (ObjectHeader*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 			if (!obj)
 				break;
-			if (obj->xPos == pp->xPos && obj->yPos == pp->yPos) {
+			if (std::abs(obj->xPos - pp->xPos) <= 10 && std::abs(obj->yPos - pp->yPos) <= 10) {
 				if (ImGui::Button(std::to_string((long long)i).c_str())) {
 					obj->xPos = obj->yPos = 10;
 					obj->redrawFlag = 1;

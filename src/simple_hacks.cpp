@@ -147,8 +147,7 @@ static int __stdcall UpdateGameFrameHook() {
     if ((!show_menu || 1) && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
-        // Final path has camera manipulation :(
-        if (player && scene_id != 38) {
+        if (player) {
             int x, y, w, h;
             get_win_size(w, h);
             get_cursor_pos_orig(x, y);
