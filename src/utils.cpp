@@ -109,7 +109,6 @@ int get_scene_id() {
 }
 
 void* get_player_ptr(int s) {
-	// TODO: scene 23 (W8 P2), 50 (secret pokemon)
 	// Tutorial
 	if (s == 36) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x80, 0 };
@@ -205,11 +204,6 @@ void* get_player_ptr(int s) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x28, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// W11-cobrat
-	if (s == 35) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x480, 0xC, 0 };
-		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-	}
 	// KAPPA
 	if (s == 37) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xB0, 0 };
@@ -230,14 +224,19 @@ void* get_player_ptr(int s) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x130, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
-	// POKEWORLD, BLIZZARD
-	if (s == 50 || s == 53) {
+	// POKEWORLD
+	if (s == 50) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// BLIZZARD
+	if (s == 53) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x78, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// METAL GEAR
 	if (s == 23) {
-		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x418, 0 };
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0xE0, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	// ELEVATOR
@@ -253,6 +252,11 @@ void* get_player_ptr(int s) {
 	// CHEETAHMEN
 	if (s == 54) {
 		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x70, 0 };
+		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	}
+	// Gardius
+	if (s == 39) {
+		const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, 0x150, 0 };
 		return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 	}
 	return nullptr;
