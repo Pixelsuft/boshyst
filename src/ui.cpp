@@ -168,6 +168,7 @@ static void ui_menu_draw() {
 		if (ImGui::CollapsingHeader("Visual")) {
 			ImGui::Checkbox("No viewport", &conf::no_vp);
 			ImGui::Checkbox("No shaders", &conf::no_sh);
+			ImGui::Checkbox("No transitions", &conf::no_trans);
 		}
 		if (ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);

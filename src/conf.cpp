@@ -39,6 +39,7 @@ namespace conf {
     bool tp_on_click;
     bool skip_msg;
     bool input_in_menu;
+    bool no_trans;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -112,6 +113,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
     ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
+    ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(""));
     ASS(file.write_line("allow_render = 0 // Allow video capturing"));
@@ -138,7 +140,8 @@ void conf::read() {
     conf::cap_start = 0;
     conf::cap_cnt = 0;
     conf::first_run = false;
-    conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec = conf::no_sh = conf::keep_save =
+    conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
+        conf::no_sh = conf::keep_save = conf::no_trans =
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
@@ -171,6 +174,8 @@ void conf::read() {
             conf::no_vp = read_int(line) != 0;
         else if (starts_with(line, "disable_shaders="))
             conf::no_sh = read_int(line) != 0;
+        else if (starts_with(line, "disable_transitions="))
+            conf::no_trans = read_int(line) != 0;
         else if (starts_with(line, "menu_hotkey="))
             conf::menu_hotkey = read_int(line);
         else if (starts_with(line, "menu="))

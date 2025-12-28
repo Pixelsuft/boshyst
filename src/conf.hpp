@@ -22,6 +22,7 @@ namespace conf {
 	extern bool tp_on_click;
 	extern bool skip_msg;
 	extern bool input_in_menu;
+	extern bool no_trans;
 
 	void read();
 }
