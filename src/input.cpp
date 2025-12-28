@@ -24,7 +24,7 @@ static int cur_y = -100;
 
 BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
-    if (!conf::emu_mouse && !show_menu)
+    if (!conf::emu_mouse && (!show_menu || conf::tas_mode))
         return GetCursorPosOrig(p);
     if (show_menu && !conf::emu_mouse) {
         p->x = -100;
@@ -39,7 +39,24 @@ static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
 
 SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
+    if (show_menu && !conf::tas_mode && !conf::input_in_menu) {
+        for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
+            if (keys_to_check[i] == k)
+                return 0;
+        }
+    }
     return GetKeyStateOrig(k);
+}
+
+SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
+static SHORT __stdcall GetAsyncKeyStateHook(int k) {
+    if (show_menu && !conf::tas_mode && !conf::input_in_menu) {
+        for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
+            if (keys_to_check[i] == k)
+                return 0;
+        }
+    }
+    return GetAsyncKeyStateOrig(k);
 }
 
 void input_tick() {
@@ -65,4 +82,5 @@ void input_init() {
     SusProc = reinterpret_cast<decltype(SusProc)>(mem::get_base() + 0x41ba0);
     hook(mem::addr("GetCursorPos", "user32.dll"), GetCursorPosHook, &GetCursorPosOrig);
     hook(mem::addr("GetKeyState", "user32.dll"), GetKeyStateHook, &GetKeyStateOrig);
+    hook(mem::addr("GetAsyncKeyState", "user32.dll"), GetAsyncKeyStateHook, &GetAsyncKeyStateOrig);
 }

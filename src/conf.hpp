@@ -21,6 +21,7 @@ namespace conf {
 	extern bool first_run;
 	extern bool tp_on_click;
 	extern bool skip_msg;
+	extern bool input_in_menu;
 
 	void read();
 }

@@ -207,9 +207,10 @@ static bool ImGui_ImplWin32_UpdateMouseCursor()
     return true;
 }
 
+extern SHORT(__stdcall* GetKeyStateOrig)(int k);
 static bool IsVkDown(int vk)
 {
-    return (::GetKeyState(vk) & 0x8000) != 0;
+    return (::GetKeyStateOrig(vk) & 0x8000) != 0;
 }
 
 static void ImGui_ImplWin32_AddKeyEvent(ImGuiKey key, bool down, int native_keycode, int native_scancode = -1)

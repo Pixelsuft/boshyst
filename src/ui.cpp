@@ -5,6 +5,7 @@
 #include "conf.hpp"
 #include "mem.hpp"
 #include "fs.hpp"
+#include "input.hpp"
 #include "ghidra_headers.h"
 #include <imgui.h>
 #include <iostream>
@@ -118,7 +119,7 @@ static void draw_basic_text() {
 }
 
 void ui::pre_update() {;
-	if (JustKeyState(conf::menu_hotkey) == 1)
+	if (!conf::tas_mode && JustKeyState(conf::menu_hotkey) == 1)
 		show_menu = !show_menu;
 	if (need_save_state == 1) {
 		need_save_state = 0;
@@ -135,22 +136,23 @@ static void ui_menu_draw() {
 		post_draw();
 		return;
 	}
-	auto temp_state = JustKeyState(VK_LBUTTON);
-	if (temp_state == 1)
-		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
-	else if (temp_state == -1)
-		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
-	const int keys_to_check[] = {
-		VK_LCONTROL, VK_RCONTROL, '0', '1', '2',
-		'3', '4', '5', '6', '7', '8', '9', VK_DECIMAL, VK_OEM_COMMA, VK_OEM_PERIOD,
-		VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_LSHIFT, VK_RSHIFT, VK_BACK, VK_SPACE, VK_DELETE
-	};
-	for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
-		temp_state = JustKeyState(keys_to_check[i]);
+	if (!conf::tas_mode) {
+		auto temp_state = JustKeyState(VK_LBUTTON);
 		if (temp_state == 1)
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, keys_to_check[i], 0);
+			ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
 		else if (temp_state == -1)
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, keys_to_check[i], 0);
+			ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
+		for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
+			int k = keys_to_check[i];
+			temp_state = JustKeyState(k);
+			if (temp_state == 1) {
+				ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, k, 0);
+				if (k >= '0' && k <= '9')
+					ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, k, 0);
+			}
+			else if (temp_state == -1)
+				ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, k, 0);
+		}
 	}
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu")) {
@@ -173,7 +175,7 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i", last_new_rand_val);
-			ImGui::Checkbox("Fix MMF2_Random() value (0 - 100)", &fix_rng);
+			ImGui::Checkbox("Fixed MMF2_Random() value %", &fix_rng);
 			if (ImGui::SliderFloat("Value##MMF2_Random()", &fix_rng_val, 0.f, 100.f)) {
 				fix_rng_val = mclamp(fix_rng_val, 0.f, 100.f);
 			}
@@ -200,6 +202,7 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("Draw cursor", &conf::draw_cursor);
 			ImGui::Checkbox("Simulate mouse", &conf::emu_mouse);
 			ImGui::Checkbox("Skip message boxes", &conf::skip_msg);
+			ImGui::Checkbox("Allow in-game keyboard in menu", &conf::input_in_menu);
 		}
 		if (ImGui::CollapsingHeader("Recording")) {
 			ImGui::Checkbox("Allow render", &conf::allow_render);

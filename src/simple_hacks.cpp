@@ -159,6 +159,7 @@ static int __stdcall UpdateGameFrameHook() {
             int x, y, w, h;
             get_win_size(w, h);
             get_cursor_pos_orig(x, y);
+            // TODO: how to map cursor pos into game properly?
             player->xPos -= player->xPos % 640;
             player->yPos -= player->yPos % 480;
             player->xPos += x * 640 / w;

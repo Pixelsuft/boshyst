@@ -38,6 +38,7 @@ namespace conf {
     bool first_run;
     bool tp_on_click;
     bool skip_msg;
+    bool input_in_menu;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -141,7 +142,7 @@ void conf::read() {
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
-    conf::tp_on_click = false;
+    conf::tp_on_click = conf::input_in_menu = false;
     conf::menu_hotkey = 45;
     conf::menu = true;
     pos[0] = pos[1] = 0;
