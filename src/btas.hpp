@@ -5,6 +5,6 @@ extern unsigned long tas_time;
 
 namespace btas {
 	short TasGetKeyState(int k);
-	void on_before_update();
+	bool on_before_update();
 	void init();
 }

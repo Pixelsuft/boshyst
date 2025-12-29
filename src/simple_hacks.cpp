@@ -119,7 +119,7 @@ static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* p
     return uVar1 & 0xffff0000;
 }
 
-static DWORD(__stdcall* timeGetTimeOrig)();
+DWORD(__stdcall* timeGetTimeOrig)();
 static DWORD __stdcall timeGetTimeHook() {
     if (!is_btas)
         return timeGetTimeOrig();
@@ -150,13 +150,14 @@ static int __stdcall UpdateGameFrameHook() {
             btas::init();
     }
     try_to_hook_graphics();
+    if (is_btas && btas::on_before_update()) {
+        return UpdateGameFrameOrig();
+    }
+
     input_tick();
     ui::pre_update();
 
-    if (is_btas)
-        btas::on_before_update();
     auto ret = UpdateGameFrameOrig();
-
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
@@ -199,10 +200,10 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
 }
 
 void init_game_loop() {
-    if (is_btas)
-        hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
+    if (is_btas)
+        hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
 }
 
