@@ -27,8 +27,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 extern int last_new_rand_val;
 extern bool last_reset;
 static int last_scene = 0;
-static int cur_frames = 0;
-static int cur_frames2 = 0;
+int cur_frames = 0;
+int cur_frames2 = 0;
 static int need_save_state = 0;
 static bool log_rng = false;
 bool fix_rng = false;

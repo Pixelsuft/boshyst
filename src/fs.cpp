@@ -57,6 +57,12 @@ bool File::read_line(std::string& line) {
     return line.size() > 0;
 }
 
+bool File::read(void* buf, size_t size) {
+    ASS(is_open());
+    DWORD bytesRead;
+    return ReadFile(handle, buf, (DWORD)size, &bytesRead, nullptr) && (DWORD)size == bytesRead;
+}
+
 bool File::write(const void* buf, size_t size) {
     ASS(is_open());
     DWORD bytesWritten;

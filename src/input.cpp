@@ -38,6 +38,8 @@ static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
 
 SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
+    if (is_btas)
+        return btas::TasGetKeyState(k);
     if (show_menu && !conf::tas_mode && !conf::input_in_menu) {
         for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
             if (keys_to_check[i] == k)
@@ -49,6 +51,8 @@ static SHORT __stdcall GetKeyStateHook(int k) {
 
 SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 static SHORT __stdcall GetAsyncKeyStateHook(int k) {
+    if (is_btas)
+        return btas::TasGetKeyState(k);
     if (show_menu && !conf::tas_mode && !conf::input_in_menu) {
         for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
             if (keys_to_check[i] == k)

@@ -15,6 +15,7 @@ namespace bfs {
 		File(const std::string& path, int mode) NOEXCEPT;
 		bool is_open();
 		bool read_line(std::string& line);
+		bool read(void* buf, size_t size);
 		bool write(const void* buf, size_t size);
 		inline bool write_line(const std::string& line) {
 			return write((line + "\r\n").c_str(), line.size() + 2);

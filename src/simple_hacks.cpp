@@ -125,7 +125,7 @@ static DWORD __stdcall timeGetTimeHook() {
         return timeGetTimeOrig();
     // cout << "time hook!\n";
     // tas_time += 1;
-    return tas_time;
+    return btas::get_time();
 }
 
 BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
