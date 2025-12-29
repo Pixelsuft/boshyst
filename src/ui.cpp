@@ -84,10 +84,11 @@ static void draw_basic_text() {
 		last_x = pp->xPos;
 		last_y = pp->yPos;
 
-		if (1) {
-			auto anim = (AnimController*)((int)&pp->handle + pp->field100_0xb8);
+		if (0) {
+			auto anim = (AnimController*)((int)&pp->handle + pp->animControlleroffset);
 			pp->redrawFlag = 1;
-			// anim->currentSpeed = 0;
+			// anim->currentSpeedOrLikelyCounter = 0;
+			ImGui::Text("Test anim: %i", anim->currentSpeedOrLikelyCounter);
 		}
 
 		if (0) {
@@ -136,26 +137,25 @@ static void ui_menu_draw() {
 		post_draw();
 		return;
 	}
-	if (!conf::tas_mode) {
-		auto temp_state = JustKeyState(VK_LBUTTON);
-		if (temp_state == 1)
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
-		else if (temp_state == -1)
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
-		for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
-			int k = keys_to_check[i];
-			temp_state = JustKeyState(k);
-			if (temp_state == 1) {
-				ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, k, 0);
-				if (k >= '0' && k <= '9')
-					ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, k, 0);
-			}
-			else if (temp_state == -1)
-				ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, k, 0);
+	auto temp_state = JustKeyState(VK_LBUTTON);
+	if (temp_state == 1)
+		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
+	else if (temp_state == -1)
+		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
+	for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
+		int k = keys_to_check[i];
+		temp_state = JustKeyState(k);
+		if (temp_state == 1) {
+			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, k, 0);
+			if (k >= '0' && k <= '9')
+				ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, k, 0);
 		}
+		else if (temp_state == -1)
+			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, k, 0);
 	}
+	ImGui::SetNextWindowSize(ImVec2(400.f, 400.f), ImGuiCond_Once);
 	ImGui::SetNextWindowFocus();
-	if (ImGui::Begin("Boshyst Menu")) {
+	if (ImGui::Begin("Boshyst Menu", nullptr, ImGuiWindowFlags_NoSavedSettings)) {
 		static std::string conf_path = get_config_path();
 		if (conf::first_run) {
 			ImGui::Text("First run info:");

@@ -67,6 +67,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         if (conf::tas_mode)
             io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+        io.IniFilename = nullptr;
         ImGui_ImplWin32_Init(hwnd);
         ImGui_ImplDX9_Init(pDevice);
         inited = true;

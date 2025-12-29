@@ -162,14 +162,14 @@ static int __stdcall UpdateGameFrameHook() {
             int x, y, w, h;
             get_win_size(w, h);
             get_cursor_pos_orig(x, y);
-            // TODO: how to map cursor pos into game properly?
-            player->xPos -= player->xPos % 640;
-            player->yPos -= player->yPos % 480;
-            player->xPos += x * 640 / w;
-            player->yPos += y * 480 / h;
+            // TODO: how to map cursor pos into game properly (scaling)?
+            RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+            player->xPos = pState->currentViewportX + x * 640 / w;
+            player->yPos = pState->currentViewportY + y * 480 / h;
             player->redrawFlag = 1;
         }
     }
+
     // cout << "Hook!\n";
     return ret;
 }
@@ -229,7 +229,7 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     // hook(mem::get_base() + 0x147c0, SusSceneHook, &SusSceneOrig);
     hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
-    hook(mem::get_base() + 0x47cb0, TriggerFrameTransitionHook, &TriggerFrameTransitionOrig);
+    // hook(mem::get_base() + 0x47cb0, TriggerFrameTransitionHook, &TriggerFrameTransitionOrig);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     // hook(mem::get_base() + 0x48110, TriggerEventHook, &TriggerEventOrig);
     DeleteFileA("onlineLicense.tmp.ini");
