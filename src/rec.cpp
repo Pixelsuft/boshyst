@@ -4,6 +4,7 @@
 #include "rec.hpp"
 #include "ass.hpp"
 #include "conf.hpp"
+#include "utils.hpp"
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
@@ -39,9 +40,6 @@ bool next_white = false;
 bool capturing = false;
 
 extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
-extern void get_win_size(int& w_buf, int& h_buf);
-extern bool starts_with(const std::string& mainStr, const std::string& prefix);
-extern wchar_t* utf8_to_unicode(const std::string& utf8);
 
 static void get_buf_size(LPDIRECT3DDEVICE9 pDevice, int& w_buf, int& h_buf) {
     if (pDevice == nullptr) {
@@ -55,10 +53,6 @@ static void get_buf_size(LPDIRECT3DDEVICE9 pDevice, int& w_buf, int& h_buf) {
     pBackBuffer->Release();
     w_buf = (int)desc.Width;
     h_buf = (int)desc.Height;
-}
-
-void rec::pre_hook() {
-
 }
 
 void rec::init(void* dev) {

@@ -12,32 +12,21 @@
 #include "init.hpp"
 #include "ui.hpp"
 #include "rec.hpp"
+#include "utils.hpp"
 #define SHOW_STAGES 0
 
 using std::cout;
 
 HWND hwnd = nullptr;
+HWND mhwnd = nullptr;
 bool inited = false;
 bool gr_hooked = false;
 bool is_hourglass = false;
 bool is_btas = true; // TODO: remove
 
-extern int get_scene_id();
-extern void init_game_loop();
-
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
-#if 0
-    AllocConsole();
-    freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-    conf::read();
-#endif
     ASS(MH_Initialize() == MH_OK);
-    // inp_pre_init();
-#ifndef _DEBUG
-    // Sleep(500);
-#endif
     init_game_loop();
-    // try_to_init();
     return 0;
 }
 
@@ -102,27 +91,25 @@ void try_to_hook_graphics() {
             return;
     }
     gr_hooked = true;
-    if (conf::menu || 1) {
 #if SHOW_STAGES
-        cout << "graphics hooking 3\n";
+    cout << "graphics hooking 3\n";
 #endif
-        ASS(kiero::init(kiero::RenderType::Auto) == kiero::Status::Success);
+    ASS(kiero::init(kiero::RenderType::Auto) == kiero::Status::Success);
 #if SHOW_STAGES
-        cout << "graphics hooking 4\n";
+    cout << "graphics hooking 4\n";
 #endif
-        ASS(kiero::bind(16, (void**)&oReset, hkReset) == kiero::Status::Success);
+    ASS(kiero::bind(16, (void**)&oReset, hkReset) == kiero::Status::Success);
 #if SHOW_STAGES
-        cout << "graphics hooking 5\n";
+    cout << "graphics hooking 5\n";
 #endif
-        ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
+    ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
 #if SHOW_STAGES
-        cout << "graphics hooking 6\n";
+    cout << "graphics hooking 6\n";
 #endif
-        ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
 #if SHOW_STAGES
-        cout << "hooks enabled\n";
+    cout << "hooks enabled\n";
 #endif
-    }
 }
 
 void try_to_init() {
@@ -130,6 +117,8 @@ void try_to_init() {
     cout << "before hooking 1\n";
 #endif
     hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
+    mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
+    ASS(mhwnd != nullptr);
 #if SHOW_STAGES
     cout << "game hooks start 2\n";
 #endif
@@ -158,9 +147,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
             AllocConsole();
             freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         }
-        if (conf::allow_render)
-            rec::pre_hook();
-        // CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)app_entry, nullptr, 0, nullptr);
         app_entry(nullptr);
         break;
     case DLL_THREAD_ATTACH:

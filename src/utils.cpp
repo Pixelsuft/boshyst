@@ -6,6 +6,7 @@
 #include "mem.hpp"
 #include "fs.hpp"
 #include "ui.hpp"
+#include "utils.hpp"
 #include <map>
 
 using std::cout;

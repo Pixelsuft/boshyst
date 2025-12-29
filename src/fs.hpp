@@ -34,3 +34,6 @@ namespace bfs {
 		File& operator=(File&& other) NOEXCEPT;
 	};
 }
+
+bool state_save(bfs::File* file);
+bool state_load(bfs::File* file);

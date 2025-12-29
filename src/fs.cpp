@@ -1,13 +1,12 @@
 #define WIN32_LEAN_AND_MEAN
 #include "fs.hpp"
 #include "ass.hpp"
+#include "utils.hpp"
 #include <cstdlib>
 #include <Windows.h>
 
 using std::string;
 using bfs::File;
-
-extern wchar_t* utf8_to_unicode(const std::string& utf8);
 
 File::File(const string& path, int mode) NOEXCEPT {
     wchar_t* w_path = utf8_to_unicode(path);

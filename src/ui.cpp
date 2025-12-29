@@ -6,6 +6,7 @@
 #include "mem.hpp"
 #include "fs.hpp"
 #include "input.hpp"
+#include "utils.hpp"
 #include "ghidra_headers.h"
 #include <imgui.h>
 #include <iostream>
@@ -21,15 +22,7 @@ namespace conf {
 	extern int cap_start;
 	extern int cap_cnt;
 }
-extern int get_scene_id();
-extern void* get_player_ptr(int s);
-extern int JustKeyState(int k);
-extern bool MyKeyState(int k);
-extern std::string get_config_path();
-extern bool state_save(bfs::File* file);
-extern bool state_load(bfs::File* file);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-extern void get_cursor_pos_orig(int& x_buf, int& y_buf);
 
 extern int last_new_rand_val;
 extern bool last_reset;
@@ -223,7 +216,7 @@ static void ui_menu_draw() {
 		if (ImGui::CollapsingHeader("Info")) {
 			ImGui::Text("Created by Pixelsuft");
 			ImGui::Text("Config path: %s", conf_path.c_str());
-			// FIXME: roken with savestates
+			// FIXME: broken with savestates
 			// if (ImGui::Button("Reload Config")) conf::read();
 		}
 	}

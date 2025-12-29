@@ -5,5 +5,4 @@ namespace rec {
 	void cap(void* dev);
 	void stop(void* dev);
 	void rec_tick(void* dev);
-	void pre_hook();
 }

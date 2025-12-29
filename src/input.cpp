@@ -6,6 +6,7 @@
 #include "hook.hpp"
 #include "conf.hpp"
 #include "mem.hpp"
+#include "ui.hpp"
 
 using std::cout;
 
@@ -14,11 +15,8 @@ namespace conf {
 }
 extern HWND hwnd;
 extern HWND mhwnd;
-extern void get_win_size(int& w_buf, int& h_buf);
 static LRESULT(__stdcall* SusProc)(HWND param_1, UINT param_2, WPARAM param_3, LPARAM param_4) = nullptr;
 
-extern bool show_menu;
-extern bool inited;
 static int cur_x = -100;
 static int cur_y = -100;
 
