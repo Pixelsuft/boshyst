@@ -26,6 +26,7 @@ extern bool show_menu;
 extern bool next_white;
 extern bool fix_rng;
 extern float fix_rng_val;
+extern bool is_btas;
 HWND mhwnd = nullptr;
 int last_new_rand_val = 0;
 bool last_reset = false;
@@ -149,8 +150,16 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
 
 extern int get_scene_id();
 extern void* get_player_ptr(int s);
-static int(__stdcall* UpdateGameFrameOrig)();
+extern void try_to_hook_graphics();
+extern void try_to_init();
+static int(__stdcall* UpdateGameFrameOrig)() = nullptr;
 static int __stdcall UpdateGameFrameHook() {
+    static bool hooks_inited = false;
+    if (!hooks_inited) {
+        hooks_inited = true;
+        try_to_init();
+    }
+    try_to_hook_graphics();
     input_tick();
     ui::pre_update();
 
@@ -212,6 +221,12 @@ static void __cdecl TriggerEventHook(ObjectHeader* obj, int p2) {
     TriggerEventOrig(obj, p2);
 }
 
+void init_game_loop() {
+    if (!UpdateGameFrameOrig)
+        hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
+    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+}
+
 void init_simple_hacks() {
     if (!mhwnd) {
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
@@ -228,10 +243,10 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     // hook(mem::get_base() + 0x147c0, SusSceneHook, &SusSceneOrig);
-    hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     // hook(mem::get_base() + 0x47cb0, TriggerFrameTransitionHook, &TriggerFrameTransitionOrig);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     // hook(mem::get_base() + 0x48110, TriggerEventHook, &TriggerEventOrig);
+    // init_game_loop();
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

@@ -20,8 +20,10 @@ HWND hwnd = nullptr;
 bool inited = false;
 bool gr_hooked = false;
 bool is_hourglass = false;
+bool is_btas = true; // TODO: remove
 
 extern int get_scene_id();
+extern void init_game_loop();
 
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
 #if 0
@@ -34,7 +36,8 @@ static DWORD WINAPI app_entry(LPVOID lpParameter) {
 #ifndef _DEBUG
     // Sleep(500);
 #endif
-    try_hook_gr();
+    init_game_loop();
+    // try_to_init();
     return 0;
 }
 
@@ -90,12 +93,15 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 
 extern void init_simple_hacks();
 
-void try_hook_gr2() {
-#if 0
+void try_to_hook_graphics() {
     if (gr_hooked)
         return;
+    if (is_hourglass) {
+        int cur_scene = get_scene_id();
+        if (cur_scene < 2 || cur_scene > 60)
+            return;
+    }
     gr_hooked = true;
-#endif
     if (conf::menu || 1) {
 #if SHOW_STAGES
         cout << "graphics hooking 3\n";
@@ -119,37 +125,16 @@ void try_hook_gr2() {
     }
 }
 
-void try_hook_gr() {
+void try_to_init() {
 #if SHOW_STAGES
     cout << "before hooking 1\n";
 #endif
-    hwnd = nullptr;
-    if (is_hourglass) {
-        // Fuck you!!!
-        do {
-            hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
-            // Sleep(1);
-        } while (hwnd == nullptr);
+    hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
 #if SHOW_STAGES
-        cout << "game hooks start 2\n";
+    cout << "game hooks start 2\n";
 #endif
-        init_simple_hacks();
-        ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
-        int cur_scene = -1;
-        do {
-            cur_scene = get_scene_id();
-            // Sleep(1);
-        } while (cur_scene < 2 || cur_scene > 60);
-    }
-    else {
-        hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
-#if SHOW_STAGES
-        cout << "game hooks start 2\n";
-#endif
-        init_simple_hacks();
-        ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
-    }
-    try_hook_gr2();
+    init_simple_hacks();
+    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
 }
 
 extern "C" __declspec(dllexport) void dummy_func() {}
@@ -175,8 +160,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         }
         if (conf::allow_render)
             rec::pre_hook();
-        CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)app_entry, nullptr, 0, nullptr);
-        // app_entry(nullptr);
+        // CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)app_entry, nullptr, 0, nullptr);
+        app_entry(nullptr);
         break;
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
