@@ -155,7 +155,7 @@ static void ui_menu_draw() {
 		else if (temp_state == -1)
 			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, k, 0);
 	}
-	ImGui::SetNextWindowSize(ImVec2(400.f, 400.f), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(420.f, 400.f), ImGuiCond_Once);
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu", nullptr, ImGuiWindowFlags_NoSavedSettings)) {
 		static std::string conf_path = get_config_path();

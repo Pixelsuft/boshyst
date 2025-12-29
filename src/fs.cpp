@@ -9,7 +9,7 @@ using bfs::File;
 
 extern wchar_t* utf8_to_unicode(const std::string& utf8);
 
-File::File(const string& path, int mode) noexcept {
+File::File(const string& path, int mode) NOEXCEPT {
     wchar_t* w_path = utf8_to_unicode(path);
     handle = (void*)CreateFileW(
         w_path,
@@ -23,11 +23,11 @@ File::File(const string& path, int mode) noexcept {
     std::free(w_path);
 }
 
-File::File(File&& other) noexcept : handle(other.handle) {
+File::File(File&& other) NOEXCEPT : handle(other.handle) {
     other.handle = INVALID_HANDLE_VALUE;
 }
 
-File& File::operator=(File&& other) noexcept {
+File& File::operator=(File&& other) NOEXCEPT {
     if (this != &other) {
         close();
         handle = other.handle;

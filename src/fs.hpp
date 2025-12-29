@@ -1,17 +1,23 @@
 #pragma once
 #include <string>
 
+#if _MSC_VER >= 1900
+#define NOEXCEPT noexcept
+#else
+#define NOEXCEPT
+#endif
+
 namespace bfs {
 	class File {
 	private:
 		void* handle;
 	public:
-		File(const std::string& path, int mode) noexcept;
+		File(const std::string& path, int mode) NOEXCEPT;
 		bool is_open();
 		bool read_line(std::string& line);
 		bool write(const void* buf, size_t size);
 		inline bool write_line(const std::string& line) {
-			return write((line + '\n').c_str(), line.size() + 1);
+			return write((line + "\r\n").c_str(), line.size() + 2);
 		}
 		inline void* get_handle() {
 			return handle;
@@ -20,9 +26,11 @@ namespace bfs {
 		inline ~File() {
 			close();
 		}
+#if _MSC_VER >= 1900
 		File(const File&) = delete;
 		File& operator=(const File&) = delete;
-		File(File&& other) noexcept;
-		File& operator=(File&& other) noexcept;
+#endif
+		File(File&& other) NOEXCEPT;
+		File& operator=(File&& other) NOEXCEPT;
 	};
 }
