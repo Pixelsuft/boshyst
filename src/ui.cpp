@@ -149,6 +149,8 @@ static void ui_menu_draw() {
 			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, k, 0);
 			if (k >= '0' && k <= '9')
 				ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, k, 0);
+			else if (k == VK_DECIMAL || k == VK_OEM_COMMA || k == VK_OEM_PERIOD)
+				ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, '.', 0);
 		}
 		else if (temp_state == -1)
 			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, k, 0);
