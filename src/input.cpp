@@ -7,6 +7,7 @@
 #include "conf.hpp"
 #include "mem.hpp"
 #include "ui.hpp"
+#include "btas.hpp"
 
 using std::cout;
 

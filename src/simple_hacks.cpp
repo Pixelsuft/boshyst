@@ -11,6 +11,7 @@
 #include "input.hpp"
 #include "init.hpp"
 #include "utils.hpp"
+#include "btas.hpp"
 #include "ghidra_headers.h"
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -22,7 +23,6 @@ extern bool show_menu;
 extern bool next_white;
 extern bool fix_rng;
 extern float fix_rng_val;
-DWORD tas_time = 0;
 int last_new_rand_val = 0;
 bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
@@ -123,8 +123,9 @@ static DWORD(__stdcall* timeGetTimeOrig)();
 static DWORD __stdcall timeGetTimeHook() {
     if (!is_btas)
         return timeGetTimeOrig();
-    cout << "time hook!\n";
-    return timeGetTimeOrig();
+    // cout << "time hook!\n";
+    // tas_time += 1;
+    return tas_time;
 }
 
 BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
@@ -145,12 +146,17 @@ static int __stdcall UpdateGameFrameHook() {
     if (!hooks_inited) {
         hooks_inited = true;
         try_to_init();
+        if (is_btas)
+            btas::init();
     }
     try_to_hook_graphics();
     input_tick();
     ui::pre_update();
 
+    if (is_btas)
+        btas::on_before_update();
     auto ret = UpdateGameFrameOrig();
+
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
@@ -193,6 +199,8 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
 }
 
 void init_game_loop() {
+    if (is_btas)
+        hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
@@ -203,8 +211,6 @@ void init_simple_hacks() {
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
-    if (is_btas)
-        hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
     hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
     hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);
     hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);

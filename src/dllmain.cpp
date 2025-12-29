@@ -13,6 +13,7 @@
 #include "ui.hpp"
 #include "rec.hpp"
 #include "utils.hpp"
+#include "btas.hpp"
 #define SHOW_STAGES 0
 
 using std::cout;
@@ -22,7 +23,6 @@ HWND mhwnd = nullptr;
 bool inited = false;
 bool gr_hooked = false;
 bool is_hourglass = false;
-bool is_btas = true; // TODO: remove
 
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
     ASS(MH_Initialize() == MH_OK);
@@ -138,6 +138,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
+        is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr; // Hacky
         conf::read();
 #if defined(_DEBUG)
         if (true) {
