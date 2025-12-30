@@ -76,6 +76,7 @@ static void to_file(const string& fn) {
 }
 
 static void from_file(const string& fn) {
+	// TODO: don't change st_time somehow?
 	bfs::File file(fn, 0);
 	ASS(file.read(&st, sizeof(int) * 3));
 	int temp = 0;

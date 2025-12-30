@@ -210,25 +210,27 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
 
 static LRESULT(__stdcall* MainWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    auto ret = MainWindowProcOrig(hWnd, uMsg, wParam, lParam);
-    if (!is_btas) {
+    if (1) {
         if (uMsg == WM_KEYDOWN) {
             // cout << "1\n";
         }
         ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
     }
+    auto ret = MainWindowProcOrig(hWnd, uMsg, wParam, lParam);
     return ret;
 }
 
 static LRESULT(__stdcall* EditWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    auto ret = EditWindowProcOrig(hWnd, uMsg, wParam, lParam);
-    if (!is_btas) {
+    if (1) {
         if (uMsg == WM_KEYDOWN) {
             // cout << "2\n";
         }
         ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }
+    if (is_btas && uMsg > WM_MOUSEFIRST && uMsg < WM_MOUSELAST)
+        return 0;
+    auto ret = EditWindowProcOrig(hWnd, uMsg, wParam, lParam);
     return ret;
 }
 
