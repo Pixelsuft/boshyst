@@ -107,7 +107,6 @@ static void read_bind(const string& line_orig, const string& line) {
         // Ugly.
         while (fn.size() > 0 && (isspace(fn[0]) || std::find(fn.begin(), fn.end(), ',') != fn.end()))
             fn = fn.substr(1);
-        cout << "bind: " << fn << std::endl;
         InputEvent ev(fn, starts_with(line, "bind=save,") ? InputEvent::SAVE : InputEvent::LOAD);
         auto it = conf::mb.find(num);
         if (it == conf::mb.end()) {
@@ -159,8 +158,8 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("bind = click, 75, 315.0, 406.0 // Click 'Select' button"));
     ASS(file.write_line("bind = click, 75, -100, -100 // Move mouse outside (so not clicking, just move) of the window"));
     ASS(file.write_line("# State saving/loading"));
-    ASS(file.write_line("bind = load, 70, test.bin // 'F' to load state"));
-    ASS(file.write_line("bind = save, 71, test.bin // 'G' to save state"));
+    ASS(file.write_line("bind = load, 70, example_state.mfs // 'F' to load state"));
+    ASS(file.write_line("bind = save, 71, example_state.mfs // 'G' to save state"));
 }
 
 void conf::read() {

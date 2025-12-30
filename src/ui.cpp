@@ -130,24 +130,6 @@ static void ui_menu_draw() {
 		post_draw();
 		return;
 	}
-	auto temp_state = JustKeyState(VK_LBUTTON);
-	if (temp_state == 1)
-		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONDOWN, 0, 0);
-	else if (temp_state == -1)
-		ImGui_ImplWin32_WndProcHandler(hwnd, WM_LBUTTONUP, 0, 0);
-	for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
-		int k = keys_to_check[i];
-		temp_state = JustKeyState(k);
-		if (temp_state == 1) {
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYDOWN, k, 0);
-			if (k >= '0' && k <= '9')
-				ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, k, 0);
-			else if (k == VK_DECIMAL || k == VK_OEM_COMMA || k == VK_OEM_PERIOD)
-				ImGui_ImplWin32_WndProcHandler(hwnd, WM_CHAR, '.', 0);
-		}
-		else if (temp_state == -1)
-			ImGui_ImplWin32_WndProcHandler(hwnd, WM_KEYUP, k, 0);
-	}
 	ImGui::SetNextWindowSize(ImVec2(420.f, 400.f), ImGuiCond_Once);
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu", nullptr, ImGuiWindowFlags_NoSavedSettings)) {

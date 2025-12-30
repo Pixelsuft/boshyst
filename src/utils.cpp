@@ -240,7 +240,7 @@ bool state_save(bfs::File* file) {
 	}
 	// TODO: write needed info
 	auto ret = SaveFunc(file->get_handle());
-	cout << "save ret: " << ret << "\n";
+	// cout << "save ret: " << ret << "\n";
 	return true;
 }
 
@@ -254,6 +254,6 @@ bool state_load(bfs::File* file) {
 	}
 	// TODO: read needed info
 	auto ret = LoadFunc(file->get_handle(), &outver);
-	cout << "load ret: " << ret << "\n";
+	// cout << "load ret: " << ret << "\n";
 	return true;
 }

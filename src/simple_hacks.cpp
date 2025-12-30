@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <shlwapi.h>
 #include <iostream>
+#include <imgui.h>
 #include "hook.hpp"
 #include "mem.hpp"
 #include "conf.hpp"
@@ -26,6 +27,7 @@ extern float fix_rng_val;
 int last_new_rand_val = 0;
 bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
@@ -206,6 +208,30 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
     return IDNO;
 }
 
+static LRESULT(__stdcall* MainWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    auto ret = MainWindowProcOrig(hWnd, uMsg, wParam, lParam);
+    if (!is_btas) {
+        if (uMsg == WM_KEYDOWN) {
+            // cout << "1\n";
+        }
+        ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
+    }
+    return ret;
+}
+
+static LRESULT(__stdcall* EditWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    auto ret = EditWindowProcOrig(hWnd, uMsg, wParam, lParam);
+    if (!is_btas) {
+        if (uMsg == WM_KEYDOWN) {
+            // cout << "2\n";
+        }
+        ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
+    }
+    return ret;
+}
+
 void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
@@ -216,6 +242,12 @@ void init_game_loop() {
 
 void init_simple_hacks() {
     input_init();
+    if (!is_hourglass && (is_btas || !conf::tas_mode)) {
+        // hook(mem::get_base() + 0x43e30, MainWindowProcHook, &MainWindowProcOrig);
+        // hook(mem::get_base() + 0x41ba0, EditWindowProcHook, &EditWindowProcOrig);
+        MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
+        EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
+    }
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
