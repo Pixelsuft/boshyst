@@ -101,7 +101,7 @@ static void draw_basic_text() {
 	}
 	ImGui::Text("Cur Frames: %i", cur_frames);
 	ImGui::Text("Cur Frames 2: %i", cur_frames2);
-	ImGui::Text("In-Game Frames: %i", inGameFrames);
+	// ImGui::Text("In-Game Frames: %i", inGameFrames);
 	ImGui::Text("Scene ID: %i", scene_id);
 	if (conf::draw_cursor) {
 		int x, y;

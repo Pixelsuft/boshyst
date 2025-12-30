@@ -131,16 +131,18 @@ bool btas::on_before_update() {
 	temp = JustKeyState('V');
 	if (temp == 1)
 		is_paused = false;
-	else if (MyKeyState('V'))
-		is_paused = true;
 
 	if (is_paused) {
 		pState->isPaused = true;
+		// pState->field_0x1a7 = 1;
 		real_last_time = timeGetTimeOrig();
 		return true;
 	}
 	pState->isPaused = false;
-	pState->subTickStep = 1;
+	pState->subTickStep = 1; 
+	
+	if (MyKeyState('V'))
+		is_paused = true;
 	// st.time = timeGetTimeOrig();
 
 	if (is_replay) {
@@ -162,7 +164,7 @@ bool btas::on_before_update() {
 		st.time += 20;
 	}
 	else {
-		const int keys[] = { VK_LEFT, VK_RIGHT, VK_RETURN, 'Z', 'X' };
+		const int keys[] = { VK_LEFT, VK_RIGHT, VK_RETURN, 'Z', 'X', 'R'};
 		for (int i = 0; i < sizeof(keys) / sizeof(int); i++) {
 			int k = keys[i];
 			temp = JustKeyState(k); // TODO: don't use in production, may break shit

@@ -7,6 +7,8 @@
 #include "conf.hpp"
 #include "mem.hpp"
 #include "ui.hpp"
+#include "fs.hpp"
+#include "utils.hpp"
 #include "btas.hpp"
 
 using std::cout;
@@ -65,17 +67,29 @@ static SHORT __stdcall GetAsyncKeyStateHook(int k) {
 void input_tick() {
     int w, h;
     get_win_size(w, h);
+    // TODO: better way to handle
     for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
-        bool pressed = (GetKeyStateOrig(it->first) & 128) != 0;
-        if (pressed) {
+        if (JustKeyState(it->first) == 1) {
             // cout << "sus_click\n";
             for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {
-                cur_x = (int)(eit->x * (float)w / 640.f);
-                cur_y = (int)(eit->y * (float)h / 480.f);
-                if (cur_x < 0 || cur_y < 0)
-                    continue;
-                SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
-                SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
+                if (eit->type == eit->CLICK) {
+                    cur_x = (int)(eit->click.x * (float)w / 640.f);
+                    cur_y = (int)(eit->click.y * (float)h / 480.f);
+                    if (cur_x < 0 || cur_y < 0)
+                        continue;
+                    SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
+                    SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
+                }
+                else if (eit->type == eit->SAVE) {
+                    bfs::File file(eit->state.fn, 1);
+                    if (file.is_open())
+                        state_save(&file);
+                }
+                else if (eit->type == eit->LOAD) {
+                    bfs::File file(eit->state.fn, 0);
+                    if (file.is_open())
+                        state_load(&file);
+                }
             }
         }
     }

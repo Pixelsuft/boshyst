@@ -138,8 +138,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
-        is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr; // Hacky
+        is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr; // TODO: better way to check
         conf::read();
+        if (is_btas || is_hourglass)
+            conf::tas_mode = true;
 #if defined(_DEBUG)
         if (true) {
 #else

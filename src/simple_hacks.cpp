@@ -37,6 +37,8 @@ static short __stdcall DisplayRunObjectVPHook(void* pthis) {
 
 static int(__cdecl* randOrig)() = nullptr;
 static int __cdecl randHook() {
+    if (is_btas)
+        return 0; // TODO
     int ret;
     if (fix_rng) {
         if (fix_rng_val == 100.f)
@@ -151,7 +153,11 @@ static int __stdcall UpdateGameFrameHook() {
     }
     try_to_hook_graphics();
     if (is_btas && btas::on_before_update()) {
-        return UpdateGameFrameOrig();
+        auto ret = UpdateGameFrameOrig();
+        void (*ProcessFrameRendering)(void);
+        ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
+        ProcessFrameRendering();
+        return ret;
     }
 
     input_tick();
@@ -196,6 +202,7 @@ static int(__stdcall* MessageBoxAOrig)(HWND hWnd, LPCSTR lpText, LPCSTR lpCaptio
 static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) {
     if (!conf::skip_msg)
         return MessageBoxAOrig(hWnd, lpText, lpCaption, uType);
+    // cout << lpText << std::endl;
     return IDNO;
 }
 

@@ -12,7 +12,9 @@
 using std::cout;
 
 void ass::show_err(const char* text) {
-	MessageBoxA(nullptr, text, "Boshyst error!", MB_ICONERROR);
+	wchar_t* buf = utf8_to_unicode(text);
+	MessageBoxW(nullptr, buf, L"Boshyst error!", MB_ICONERROR);
+	std::free(buf);
 }
 
 static HANDLE hproc = GetCurrentProcess();
@@ -70,7 +72,11 @@ std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
 }
 
 size_t mem::get_base(const char* obj_name) {
-	auto ret = (size_t)GetModuleHandleA(obj_name);
+	if (!obj_name) {
+		static auto def_ret = (size_t)GetModuleHandleW(nullptr);
+		return def_ret;
+	}
+	size_t ret = (size_t)GetModuleHandleA(obj_name);
 	ASS(ret != 0);
 	return (size_t)ret;
 }

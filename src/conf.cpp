@@ -83,21 +83,45 @@ static void read_vec2_int(const string& line, const char* patt, int* buf) {
     ASS(sscanf(line.c_str(), patt, &buf[0], &buf[1]) == 2);
 }
 
-static void read_mouse_bind(const string& line) {
+static void read_bind(const string& line_orig, const string& line) {
     int num;
-    float x, y;
-    ASS(sscanf(line.c_str(), "%i,%f,%f", &num, &x, &y) == 3);
-    InputEvent ev;
-    ev.x = x;
-    ev.y = y;
-    auto it = conf::mb.find(num);
-    if (it == conf::mb.end()) {
-        std::vector<InputEvent> temp_vec;
-        temp_vec.push_back(std::move(ev));
-        conf::mb[num] = std::move(temp_vec);
+    if (starts_with(line, "bind=click,")) {
+        float x, y;
+        ASS(sscanf(line.substr(11).c_str(), "%i,%f,%f", &num, &x, &y) == 3);
+        InputEvent ev;
+        ev.click.x = x;
+        ev.click.y = y;
+        auto it = conf::mb.find(num);
+        if (it == conf::mb.end()) {
+            std::vector<InputEvent> temp_vec;
+            temp_vec.push_back(std::move(ev));
+            conf::mb[num] = std::move(temp_vec);
+        }
+        else {
+            it->second.push_back(std::move(ev));
+        }
+    }
+    else if (starts_with(line, "bind=save,") || starts_with(line, "bind=load,")) {
+        std::string fn = line;
+        ASS(sscanf(line.substr(10).c_str(), "%i", &num) == 1);
+        // Ugly.
+        while (fn.size() > 0 && (isspace(fn[0]) || std::find(fn.begin(), fn.end(), ',') != fn.end()))
+            fn = fn.substr(1);
+        cout << "bind: " << fn << std::endl;
+        InputEvent ev(fn, starts_with(line, "bind=save,") ? InputEvent::SAVE : InputEvent::LOAD);
+        auto it = conf::mb.find(num);
+        if (it == conf::mb.end()) {
+            std::vector<InputEvent> temp_vec;
+            temp_vec.push_back(std::move(ev));
+            conf::mb[num] = std::move(temp_vec);
+        }
+        else {
+            it->second.push_back(std::move(ev));
+        }
     }
     else {
-        it->second.push_back(std::move(ev));
+        ass::show_err("Invalid bind");
+        ASS(false);
     }
 }
 
@@ -114,6 +138,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
     ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
+    ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(""));
     ASS(file.write_line("allow_render = 0 // Allow video capturing"));
@@ -130,9 +155,12 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
     ASS(file.write_line("# Multible mouse binds to one key are supported (order is important)"));
     ASS(file.write_line("# Boshy selection example (via 'K' key) from F3 menu"));
-    ASS(file.write_line("mouse_bind = 75, 84.0, 276.0 // Virtual Key (here is K), X pos in [0;640), Y pos in [0;480) (move cursor and click on Quadrick)"));
-    ASS(file.write_line("mouse_bind = 75, 315.0, 406.0 // Click 'Select' button"));
-    ASS(file.write_line("mouse_bind = 75, -100, -100 // Move mouse outside (so not clicking, just move) of the window"));
+    ASS(file.write_line("bind = click, 75, 84.0, 276.0 // Virtual Key (here is K), X pos in [0;640), Y pos in [0;480) (move cursor and click on Quadrick)"));
+    ASS(file.write_line("bind = click, 75, 315.0, 406.0 // Click 'Select' button"));
+    ASS(file.write_line("bind = click, 75, -100, -100 // Move mouse outside (so not clicking, just move) of the window"));
+    ASS(file.write_line("# State saving/loading"));
+    ASS(file.write_line("bind = load, 70, test.bin // 'F' to load state"));
+    ASS(file.write_line("bind = save, 71, test.bin // 'G' to save state"));
 }
 
 void conf::read() {
@@ -176,6 +204,8 @@ void conf::read() {
             conf::no_sh = read_int(line) != 0;
         else if (starts_with(line, "disable_transitions="))
             conf::no_trans = read_int(line) != 0;
+        else if (starts_with(line, "skip_messageboxes="))
+            conf::skip_msg = read_int(line) != 0;
         else if (starts_with(line, "menu_hotkey="))
             conf::menu_hotkey = read_int(line);
         else if (starts_with(line, "menu="))
@@ -206,8 +236,8 @@ void conf::read() {
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
             read_vec2_int(line, "win_size=%i,%i", size);
-        else if (starts_with(line, "mouse_bind="))
-            read_mouse_bind(line.substr(11));
+        else if (starts_with(line, "bind="))
+            read_bind(line_orig, line);
         else if (starts_with(line, "render_cmd=")) {
             conf::cap_cmd = line_orig.substr(10);
             while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
