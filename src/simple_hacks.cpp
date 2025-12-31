@@ -22,6 +22,7 @@ extern HWND mhwnd;
 extern bool capturing;
 extern bool show_menu;
 extern bool next_white;
+extern int lock_rng_range;
 extern bool fix_rng;
 extern float fix_rng_val;
 int last_new_rand_val = 0;
@@ -42,12 +43,8 @@ static int __cdecl randHook() {
     if (is_btas)
         return 0; // TODO
     int ret;
-    if (fix_rng) {
-        if (fix_rng_val == 100.f)
-            ret = RAND_MAX - 1;
-        else
-            ret = (unsigned int)((float)RAND_MAX * fix_rng_val / 100.f);
-    }
+    if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (RAND_MAX + 1)))
+        ret = (unsigned int)((float)RAND_MAX * fix_rng_val / 100.f);
     else
 	    ret = randOrig();
     last_new_rand_val = ret;
@@ -188,7 +185,7 @@ static int __stdcall UpdateGameFrameHook() {
 static unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static unsigned int __cdecl RandomHook(unsigned int maxv) {
     unsigned int ret;
-    if (fix_rng) {
+    if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (int)maxv)) {
         if (fix_rng_val == 100.f)
             ret = maxv - 1;
         else

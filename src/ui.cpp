@@ -29,6 +29,7 @@ extern bool last_reset;
 static int last_scene = 0;
 int cur_frames = 0;
 int cur_frames2 = 0;
+int lock_rng_range = 0;
 static int need_save_state = 0;
 static bool log_rng = false;
 bool fix_rng = false;
@@ -128,7 +129,7 @@ static void ui_menu_draw() {
 		post_draw();
 		return;
 	}
-	ImGui::SetNextWindowSize(ImVec2(420.f, 400.f), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(440.f, 400.f), ImGuiCond_Once);
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu", nullptr, ImGuiWindowFlags_NoSavedSettings)) {
 		static std::string conf_path = get_config_path();
@@ -150,11 +151,12 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("Teleport with mouse (BETA)", &conf::tp_on_click);
 		}
 		if (ImGui::CollapsingHeader("Random")) {
-			ImGui::Text("Last rand() value: %i", last_new_rand_val);
+			ImGui::Text("Last rand() value: %i / %i", last_new_rand_val, (int)RAND_MAX);
 			ImGui::Checkbox("Fixed MMF2_Random() value %", &fix_rng);
-			if (ImGui::SliderFloat("Value##MMF2_Random()", &fix_rng_val, 0.f, 100.f)) {
+			if (ImGui::SliderFloat("Value##MMF2_Random()", &fix_rng_val, 0.f, 100.f))
 				fix_rng_val = mclamp(fix_rng_val, 0.f, 100.f);
-			}
+			if (ImGui::InputInt("Only specific range", &lock_rng_range))
+				lock_rng_range = mclamp(lock_rng_range, 0, 65535);
 			if (ImGui::Checkbox("Log MMF2_Random() map", &log_rng)) {
 				if (!log_rng)
 					rng_map.clear();
