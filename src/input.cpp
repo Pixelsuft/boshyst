@@ -42,12 +42,8 @@ SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
     if (is_btas)
         return btas::TasGetKeyState(k);
-    if (show_menu && !conf::tas_mode && !conf::input_in_menu) {
-        for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
-            if (keys_to_check[i] == k)
-                return 0;
-        }
-    }
+    if (show_menu && !conf::tas_mode && !conf::input_in_menu)
+        return 0;
     return GetKeyStateOrig(k);
 }
 
@@ -55,19 +51,17 @@ SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 static SHORT __stdcall GetAsyncKeyStateHook(int k) {
     if (is_btas)
         return btas::TasGetKeyState(k);
-    if (show_menu && !conf::tas_mode && !conf::input_in_menu) {
-        for (int i = 0; i < sizeof(keys_to_check) / sizeof(int); i++) {
-            if (keys_to_check[i] == k)
-                return 0;
-        }
-    }
+    if (show_menu && !conf::tas_mode && !conf::input_in_menu)
+        return 0;
     return GetAsyncKeyStateOrig(k);
 }
 
 void input_tick() {
+    if (is_btas)
+        return;
     int w, h;
     get_win_size(w, h);
-    // TODO: better way to handle
+    // TODO: better way to handle???
     for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
         if (JustKeyState(it->first) == 1) {
             // cout << "sus_click\n";

@@ -212,7 +212,8 @@ static LRESULT(__stdcall* MainWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wPara
 static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (1) {
         if (uMsg == WM_KEYDOWN) {
-            // cout << "1\n";
+            if (wParam == (WPARAM)conf::menu_hotkey)
+                show_menu = !show_menu;
         }
         ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
     }
@@ -224,7 +225,8 @@ static LRESULT(__stdcall* EditWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wPara
 static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (1) {
         if (uMsg == WM_KEYDOWN) {
-            // cout << "2\n";
+            if (wParam == (WPARAM)conf::menu_hotkey)
+                show_menu = !show_menu;
         }
         ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }

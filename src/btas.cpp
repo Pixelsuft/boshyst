@@ -59,6 +59,8 @@ bool fast_forward = false;
 bool is_paused = true;
 bool is_replay = false; // TODO
 
+// TODO: special ui shit, show rng seed
+
 static void to_file(const string& fn) {
 	bfs::File out(fn, 1);
 	ASS(out.write(&st, sizeof(int) * 3));

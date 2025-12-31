@@ -113,8 +113,6 @@ static void draw_basic_text() {
 }
 
 void ui::pre_update() {;
-	if (!conf::tas_mode && JustKeyState(conf::menu_hotkey) == 1)
-		show_menu = !show_menu;
 	if (need_save_state == 1) {
 		need_save_state = 0;
 		state_save(nullptr);
