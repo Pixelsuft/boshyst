@@ -166,7 +166,7 @@
     <ClCompile Include="src\fs.cpp" />
     <ClCompile Include="src\input.cpp" />
     <ClCompile Include="src\rec.cpp" />
-    <ClCompile Include="src\simple_hacks.cpp" />
+    <ClCompile Include="src\hacks.cpp" />
     <ClCompile Include="src\ui.cpp" />
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>

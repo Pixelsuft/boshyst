@@ -7,4 +7,6 @@ namespace btas {
 	bool on_before_update();
 	unsigned long get_time();
 	void init();
+	void draw_info();
+	void draw_tab();
 }

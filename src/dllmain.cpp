@@ -57,7 +57,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
-        if (conf::tas_mode)
+        if (conf::tas_mode && !is_btas)
             io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
         io.IniFilename = nullptr;

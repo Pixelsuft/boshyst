@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include <iostream>
 #include <cstdio>
-#include <d3d9.h>
+#include <imgui.h>
 #include "conf.hpp"
 #include "ass.hpp"
 #include "init.hpp"
@@ -205,4 +205,14 @@ bool btas::on_before_update() {
 
 unsigned long btas::get_time() {
 	return st.time;
+}
+
+void btas::draw_info() {
+	ImGui::Text("TODO: BTAS info");
+}
+
+void btas::draw_tab() {
+	if (ImGui::CollapsingHeader("BTas")) {
+		ImGui::Text("TODO");
+	}
 }

@@ -25,6 +25,11 @@ static int cur_y = -100;
 
 BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
+    if (is_btas) {
+        p->x = cur_x;
+        p->y = cur_y;
+        return ClientToScreen(hwnd, p);
+    }
     if (!conf::emu_mouse && (!show_menu || conf::tas_mode))
         return GetCursorPosOrig(p);
     if (show_menu && !conf::emu_mouse) {

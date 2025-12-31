@@ -6,6 +6,7 @@
 #include "mem.hpp"
 #include "fs.hpp"
 #include "input.hpp"
+#include "btas.hpp"
 #include "utils.hpp"
 #include "ghidra_headers.h"
 #include <imgui.h>
@@ -100,10 +101,15 @@ static void draw_basic_text() {
 			}
 		}
 	}
-	ImGui::Text("Cur Frames: %i", cur_frames);
-	ImGui::Text("Cur Frames 2: %i", cur_frames2);
-	// ImGui::Text("In-Game Frames: %i", inGameFrames);
-	ImGui::Text("Scene ID: %i", scene_id);
+	if (is_btas) {
+		btas::draw_info();
+	}
+	else {
+		ImGui::Text("Cur Frames: %i", cur_frames);
+		ImGui::Text("Cur Frames 2: %i", cur_frames2);
+		// ImGui::Text("In-Game Frames: %i", inGameFrames);
+		ImGui::Text("Scene ID: %i", scene_id);
+	}
 	if (conf::draw_cursor) {
 		int x, y;
 		get_cursor_pos(x, y);
@@ -125,10 +131,8 @@ void ui::pre_update() {;
 }
 
 static void ui_menu_draw() {
-	if (!show_menu) {
-		post_draw();
+	if (!show_menu)
 		return;
-	}
 	ImGui::SetNextWindowSize(ImVec2(440.f, 400.f), ImGuiCond_Once);
 	ImGui::SetNextWindowFocus();
 	if (ImGui::Begin("Boshyst Menu", nullptr, ImGuiWindowFlags_NoSavedSettings)) {
@@ -138,6 +142,8 @@ static void ui_menu_draw() {
 			ImGui::Text("Use 'Insert' key to toggle this menu");
 			ImGui::Text("You can edit config at \"%s\"", conf_path.c_str());
 		}
+		if (is_btas)
+			btas::draw_info();
 		if (ImGui::CollapsingHeader("Game Info")) {
 			draw_basic_text();
 		}
@@ -203,7 +209,6 @@ static void ui_menu_draw() {
 		}
 	}
 	ImGui::End();
-	post_draw();
 }
 
 void ui::draw() {
@@ -211,27 +216,35 @@ void ui::draw() {
 		last_reset = false;
 		return;
 	}
-	int scene_id = get_scene_id();
-	if (scene_id != last_scene) {
-		last_scene = scene_id;
-		cur_frames2 = 0;
-		cout << "New scene (" << scene_id << ")" << std::endl;
-	}
-	if (last_reset) {
-		cur_frames = -1;
-		cout << "Scene reset (" << scene_id << ")" << std::endl;
-	}
-	cur_frames++;
-	cur_frames2++;
-	if (!conf::tas_mode) {
-		last_reset = false;
+	if (is_btas) {
 		ui_menu_draw();
-		return;
+	}
+	else {
+		int scene_id = get_scene_id();
+		if (scene_id != last_scene) {
+			last_scene = scene_id;
+			cur_frames2 = 0;
+			// cout << "New scene (" << scene_id << ")" << std::endl;
+		}
+		if (last_reset) {
+			cur_frames = -1;
+			// cout << "Scene reset (" << scene_id << ")" << std::endl;
+		}
+		cur_frames++;
+		cur_frames2++;
+		if (!conf::tas_mode) {
+			last_reset = false;
+			ui_menu_draw();
+			post_draw();
+			return;
+		}
 	}
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]));
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]));
-	if (ImGui::Begin("Boshyst Info", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
+	auto flags = ImGuiWindowFlags_NoTitleBar | (is_btas ? 0 : ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs) |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings;
+	if (ImGui::Begin("Boshyst Info", nullptr, flags)) {
 		draw_basic_text();
 		if (0) {
 			// Display all object IDs

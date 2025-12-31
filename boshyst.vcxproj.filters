@@ -72,7 +72,7 @@
     <ClCompile Include="src\ui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\simple_hacks.cpp">
+    <ClCompile Include="src\hacks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\rec.cpp">
