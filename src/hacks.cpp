@@ -212,6 +212,8 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
         }
+        if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP))
+            btas::on_key((int)wParam, uMsg == WM_KEYDOWN, (uMsg == WM_KEYDOWN) && (HIWORD(lParam) & KF_REPEAT));
         ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
     }
     auto ret = MainWindowProcOrig(hWnd, uMsg, wParam, lParam);
@@ -225,6 +227,8 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
         }
+        if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP))
+            btas::on_key((int)wParam, uMsg == WM_KEYDOWN, (uMsg == WM_KEYDOWN) && (HIWORD(lParam) & KF_REPEAT));
         ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }
     if (is_btas && uMsg > WM_MOUSEFIRST && uMsg < WM_MOUSELAST)

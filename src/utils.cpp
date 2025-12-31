@@ -7,7 +7,7 @@
 #include "fs.hpp"
 #include "ui.hpp"
 #include "utils.hpp"
-#include <map>
+#include <vector>
 
 using std::cout;
 
@@ -22,7 +22,7 @@ extern HWND hwnd;
 extern HWND mhwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
-static std::map<int, bool> key_states;
+static std::vector<int> key_states;
 
 bool MyKeyState(int k) {
 	HWND fg = GetForegroundWindow();
@@ -30,20 +30,17 @@ bool MyKeyState(int k) {
 }
 
 int JustKeyState(int k) {
-	auto it = key_states.find(k);
+	auto it = std::find(key_states.begin(), key_states.end(), k);
 	auto st = MyKeyState(k);
 	if (it == key_states.end()) {
-		key_states[k] = st;
-		return st ? 1 : 0;
-	}
-	if (st) {
-		if (!it->second) {
-			it->second = true;
+		if (st) {
+			key_states.push_back(k);
 			return 1;
 		}
+		return 0;
 	}
-	else if (it->second) {
-		it->second = false;
+	if (!st) {
+		key_states.erase(it);
 		return -1;
 	}
 	return 0;

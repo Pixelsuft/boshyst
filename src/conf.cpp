@@ -8,6 +8,7 @@
 #include "input.hpp"
 #include "conf.hpp"
 #include "ass.hpp"
+#include "btas.hpp"
 #include "fs.hpp"
 
 using std::string;
@@ -191,6 +192,8 @@ void conf::read() {
     while (ifile.read_line(line)) {
         string line_orig = line;
         line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+        if (line.size() < 3 || (line[0] == '/' && line[1] == '/') || line[0] == '#')
+            continue;
         // cout << "line: " << line << std::endl;
         // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god="))
@@ -237,10 +240,16 @@ void conf::read() {
             read_vec2_int(line, "win_size=%i,%i", size);
         else if (starts_with(line, "bind="))
             read_bind(line_orig, line);
+        else if (starts_with(line, "btas="))
+            btas::read_setting(line, line_orig);
         else if (starts_with(line, "render_cmd=")) {
             conf::cap_cmd = line_orig.substr(10);
             while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
                 conf::cap_cmd = conf::cap_cmd.substr(1);
+        }
+        else {
+            ass::show_err("Unknown setting");
+            ASS(false);
         }
     }
     if (cap_end > 0)
