@@ -143,7 +143,7 @@ static void ui_menu_draw() {
 			ImGui::Text("You can edit config at \"%s\"", conf_path.c_str());
 		}
 		if (is_btas)
-			btas::draw_info();
+			btas::draw_tab();
 		if (ImGui::CollapsingHeader("Game Info")) {
 			draw_basic_text();
 		}
@@ -240,9 +240,9 @@ void ui::draw() {
 		}
 	}
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]));
-	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]));
-	auto flags = ImGuiWindowFlags_NoTitleBar | (is_btas ? 0 : ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs) |
+	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]), ImGuiCond_Once);
+	auto flags = ImGuiWindowFlags_NoTitleBar | (is_btas ? 0 : (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs)) |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings;
 	if (ImGui::Begin("Boshyst Info", nullptr, flags)) {
 		draw_basic_text();
