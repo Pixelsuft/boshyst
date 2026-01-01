@@ -156,6 +156,7 @@ static int __stdcall UpdateGameFrameHook() {
         void (*ProcessFrameRendering)(void);
         ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
         ProcessFrameRendering();
+        btas::on_after_update();
         return ret;
     }
 
@@ -177,6 +178,8 @@ static int __stdcall UpdateGameFrameHook() {
             player->redrawFlag = 1;
         }
     }
+    if (is_btas)
+        btas::on_after_update();
 
     // cout << "Hook!\n";
     return ret;
@@ -212,8 +215,12 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
         }
-        if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP))
-            btas::on_key((int)wParam, uMsg == WM_KEYDOWN, (uMsg == WM_KEYDOWN) && (HIWORD(lParam) & KF_REPEAT));
+        if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP)) {
+            // cout << "1 " << (uMsg == WM_KEYDOWN) << std::endl;
+            btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
+            if (is_btas && wParam == VK_TAB)
+                return 0;
+        }
         ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
     }
     auto ret = MainWindowProcOrig(hWnd, uMsg, wParam, lParam);
@@ -227,8 +234,12 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
         }
-        if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP))
-            btas::on_key((int)wParam, uMsg == WM_KEYDOWN, (uMsg == WM_KEYDOWN) && (HIWORD(lParam) & KF_REPEAT));
+        if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP)) {
+            // cout << "2 " << (uMsg == WM_KEYDOWN) << std::endl;
+            btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
+            if (is_btas && wParam == VK_TAB)
+                return 0;
+        }
         ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }
     if (is_btas && uMsg > WM_MOUSEFIRST && uMsg < WM_MOUSELAST)
@@ -237,11 +248,18 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     return ret;
 }
 
+static void __stdcall FlushInputQueueHook(void) {
+    // cout << "queue\n";
+}
+
 void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
-    if (is_btas)
+    if (is_btas) {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
+        // hook(mem::addr("GetInputState", "user32.dll"), GetInputStateHook);
+        hook(mem::get_base() + 0x40720, FlushInputQueueHook);
+    }
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
 }
 
@@ -253,6 +271,7 @@ void init_simple_hacks() {
         MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
         EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
+    // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);

@@ -66,7 +66,7 @@ void input_tick() {
         return;
     int w, h;
     get_win_size(w, h);
-    // TODO: better way to handle???
+    // TODO: better way to handle??? (BTAS way?)
     for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
         if (JustKeyState(it->first) == 1) {
             // cout << "sus_click\n";

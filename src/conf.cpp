@@ -129,7 +129,7 @@ static void create_default_config(const string& path) {
     bfs::File file(path, 1);
     ASS(file.is_open());
     ASS(file.write_line("menu = 1 // Show menu window"));
-    ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing"));
+    ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing (automatically enabled when using Hourglass or BTAS)"));
     ASS(file.write_line("win_pos = 0, 0 // Info window position"));
     ASS(file.write_line("win_size = 200, 100 // Info window size"));
     ASS(file.write_line("menu_hotkey = 45 // Default menu toggle hotkey, VK_INSERT"));
@@ -248,7 +248,7 @@ void conf::read() {
                 conf::cap_cmd = conf::cap_cmd.substr(1);
         }
         else {
-            ass::show_err("Unknown setting");
+            ass::show_err((string("Unknown setting: ") + line_orig).c_str());
             ASS(false);
         }
     }

@@ -152,28 +152,28 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("No shaders", &conf::no_sh);
 			ImGui::Checkbox("No transitions", &conf::no_trans);
 		}
-		if (ImGui::CollapsingHeader("Gameplay")) {
+		if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);
 			ImGui::Checkbox("Teleport with mouse (BETA)", &conf::tp_on_click);
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i / %i", last_new_rand_val, (int)RAND_MAX);
-			ImGui::Checkbox("Fixed MMF2_Random() value %", &fix_rng);
-			if (ImGui::SliderFloat("Value##MMF2_Random()", &fix_rng_val, 0.f, 100.f))
-				fix_rng_val = mclamp(fix_rng_val, 0.f, 100.f);
-			if (ImGui::InputInt("Only specific range", &lock_rng_range))
-				lock_rng_range = mclamp(lock_rng_range, 0, 65535);
-			if (ImGui::Checkbox("Log MMF2_Random() map", &log_rng)) {
-				if (!log_rng)
-					rng_map.clear();
+			if (!is_btas) {
+				ImGui::Checkbox("Fixed MMF2_Random() value %", &fix_rng);
+				if (ImGui::SliderFloat("Value##MMF2_Random()", &fix_rng_val, 0.f, 100.f))
+					fix_rng_val = mclamp(fix_rng_val, 0.f, 100.f);
+				if (ImGui::InputInt("Only specific range", &lock_rng_range))
+					lock_rng_range = mclamp(lock_rng_range, 0, 65535);
 			}
+			if (ImGui::Checkbox("Log MMF2_Random() map", &log_rng) && !log_rng)
+				rng_map.clear();
 			if (log_rng) {
 				ImGui::Text("Max range: Value");
 				for (auto it = rng_map.begin(); it != rng_map.end(); it++)
 					ImGui::Text("%i: %i", it->first, it->second);
 			}
 		}
-		if (ImGui::CollapsingHeader("State")) {
+		if (!is_btas && ImGui::CollapsingHeader("State")) {
 			if (ImGui::Button("Save"))
 				need_save_state = 1;
 			ImGui::SameLine();
