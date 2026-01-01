@@ -16,6 +16,8 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#undef max
+#undef min
 
 using std::cout;
 using std::string;
@@ -76,11 +78,12 @@ struct BTasEvent {
 struct BTasState {
 	int scene;
 	int frame;
+	int sc_frame;
 	int total;
 	std::vector<BTasEvent> ev;
 
 	BTasState() {
-		frame = 0;
+		frame = sc_frame = 0;
 		scene = 0;
 		total = 0;
 	}
@@ -88,10 +91,13 @@ struct BTasState {
 
 static std::vector<BTasBind> binds;
 static std::vector<int> holding;
+static string last_msg;
 static BTasState st;
 static DWORD last_time = 0;
 static DWORD now = 0;
 static unsigned long cur_time = 0;
+static bool next_step = false;
+static bool slowmo = false;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -116,6 +122,14 @@ void btas::read_setting(const string& line, const string& line_orig) {
 		bind.idx = 3;
 		ASS(sscanf(line.substr(17).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
 	}
+	else if (starts_with(line, "btas=step,")) {
+		bind.idx = 4;
+		ASS(sscanf(line.substr(10).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
+	}
+	else if (starts_with(line, "btas=slowmotion,")) {
+		bind.idx = 5;
+		ASS(sscanf(line.substr(16).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
+	}
 	else {
 		ass::show_err((string("Unknown BTAS setting: ") + line_orig).c_str());
 		ASS(false);
@@ -129,11 +143,13 @@ void btas::init() {
 		return a.key > b.key;
 	});
 	cur_time = 0;
+	next_step = slowmo = false;
 	auto h = GetModuleHandleW(L"winmm.dll");
 	ASS(h != nullptr);
 	pTimeBeginPeriod = (decltype(pTimeBeginPeriod))GetProcAddress(h, "timeBeginPeriod");
 	pTimeEndPeriod = (decltype(pTimeEndPeriod))GetProcAddress(h, "timeEndPeriod");
 	ASS(pTimeBeginPeriod != nullptr && pTimeEndPeriod != nullptr);
+	last_msg = "None";
 	last_time = now = timeGetTimeOrig();
 }
 
@@ -146,14 +162,20 @@ bool btas::on_before_update() {
 	now = timeGetTimeOrig();
 
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-	st.scene = get_scene_id();
+	int cur_scene = get_scene_id();
+	if (cur_scene != st.scene)
+		st.sc_frame = 0;
+	st.scene = cur_scene;
 	pState->subTickStep = 1;
-	if (is_paused) {
+	if (is_paused && !next_step) {
 		pState->isPaused = true;
 		return true;
 	}
+	next_step = false;
 	pState->isPaused = false;
 	st.frame++;
+	st.sc_frame++;
+	st.total = std::max(st.total, st.frame);
 	cur_time += 20;
 	// cout << "before\n";
 	return false;
@@ -164,8 +186,9 @@ void btas::on_after_update() {
 		Sleep(20);
 		return;
 	}
+	DWORD advance = slowmo ? 100 : 20;
 	// TODO: less performance eating way
-	while (!fast_forward && now < (last_time + 20))
+	while (!fast_forward && now < (last_time + advance))
 		now = timeGetTimeOrig();
 	if (IsIconic(hwnd))
 		Sleep(100);
@@ -243,6 +266,18 @@ void btas::on_key(int k, bool pressed) {
 				fast_forward = pressed;
 			break;
 		}
+		case 4: {
+			if (!show_menu && pressed) {
+				next_step = true;
+				is_paused = true;
+			}
+			break;
+		}
+		case 5: {
+			is_paused = !pressed;
+			slowmo = pressed;
+			break;
+		}
 		}
 		bind.down = pressed;
 		it++;
@@ -250,7 +285,8 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-	ImGui::Text("TODO: BTAS info");
+	ImGui::Text("Frames: %i / %i", st.frame, st.total);
+	ImGui::Text("Message: %s", last_msg.c_str());
 }
 
 void btas::draw_tab() {
