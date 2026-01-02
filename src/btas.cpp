@@ -272,6 +272,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy2);
 		if (reset_on_replay)
 			st.frame = st.sc_frame = 0;
+		cur_time = 0;
 	}
 	else {
 		st.scene = scene_id;
@@ -378,7 +379,7 @@ bool btas::on_before_update() {
 				st.ev.push_back(ev);
 			}
 		}
-		if (st.frame % 50 == 0) {
+		if (st.frame % 20 == 0) {
 			BTasEvent ev;
 			ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1] ^ (int)pState->SystemTimeInMSFromSaveOrSeed;
 			ev.frame = st.frame;

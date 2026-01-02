@@ -215,6 +215,17 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
 
 static LRESULT(__stdcall* MainWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (is_btas) {
+        switch (uMsg) {
+        case WM_ENTERSIZEMOVE:
+            return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+
+        case WM_SYSCOMMAND:
+            if ((wParam & 0xFFF0) == SC_MOVE || (wParam & 0xFFF0) == SC_SIZE)
+                return 0;
+            break;
+        }
+    }
     if (1) {
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
@@ -234,6 +245,17 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
 
 static LRESULT(__stdcall* EditWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (is_btas) {
+        switch (uMsg) {
+        case WM_ENTERSIZEMOVE:
+            return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+
+        case WM_SYSCOMMAND:
+            if ((wParam & 0xFFF0) == SC_MOVE || (wParam & 0xFFF0) == SC_SIZE)
+                return 0;
+            break;
+        }
+    }
     if (1) {
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
