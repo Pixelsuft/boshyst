@@ -1,6 +1,14 @@
 #pragma once
 #include <string>
 
+inline std::string to_str(int x) {
+#if _MSC_VER >= 1900
+	return std::to_string((long long)x);
+#else
+	return std::to_string(x);
+#endif
+}
+
 bool MyKeyState(int k);
 int JustKeyState(int k);
 wchar_t* utf8_to_unicode(const std::string& utf8);

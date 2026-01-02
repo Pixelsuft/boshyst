@@ -155,6 +155,31 @@ static void ui_menu_draw() {
 		if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);
 			ImGui::Checkbox("Teleport with mouse (BETA)", &conf::tp_on_click);
+			/*
+			pState->rhNextFrame
+			1 - next
+			2 - prev
+			3 - set (pState->rhNextFrameData = (need_frame - 1) | 0x8000
+			4 - reset game
+			5 - reset audio
+			7/9 - load state sus
+			*/
+			RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+			if (ImGui::Button("Previous scene"))
+				pState->rhNextFrame = 2;
+			if (ImGui::Button("Next scene"))
+				pState->rhNextFrame = 1;
+			static int next_scene_id = 0;
+			ImGui::InputInt("Next scene ID", &next_scene_id);
+			next_scene_id = mclamp(next_scene_id, 1, 61);
+			if (ImGui::Button("Set scene")) {
+				pState->rhNextFrame = 3;
+				pState->rhNextFrameData = (next_scene_id - 1) | 0x8000;
+			}
+			if (ImGui::Button("Reset game"))
+				pState->rhNextFrame = 4;
+			if (ImGui::Button("Reset audio"))
+				pState->rhNextFrame = 5;
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i / %i", last_new_rand_val, (int)RAND_MAX);

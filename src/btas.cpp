@@ -29,6 +29,7 @@ extern bool state_save(bfs::File* file);
 extern bool state_load(bfs::File* file);
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
 static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
+void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
 
 struct BTasBind {
 	union {
@@ -159,6 +160,7 @@ void btas::init() {
 	pTimeEndPeriod = (decltype(pTimeEndPeriod))GetProcAddress(h, "timeEndPeriod");
 	ASS(pTimeBeginPeriod != nullptr && pTimeEndPeriod != nullptr);
 	last_msg = "None";
+	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	last_time = now = timeGetTimeOrig();
 }
 
@@ -201,14 +203,14 @@ static void b_state_save(int slot) {
 	write_bin(f, st.total);
 	write_bin(f, st.ev);
 	state_save(&f);
-	last_msg = string("State ") + std::to_string((long long)slot) + " saved";
+	last_msg = string("State ") + to_str(slot) + " saved";
 }
 
 static void b_state_load(int slot) {
-	string path = string("state") + std::to_string((long long)slot) + ".bstate";
+	string path = string("state") + to_str(slot) + ".bstate";
 	bfs::File f(path, 0);
 	if (!f.is_open()) {
-		last_msg = "Failed to open file for reading to load state " + std::to_string((long long)slot);
+		last_msg = "Failed to open file for reading to load state " + to_str(slot);
 		return;
 	}
 	char buf[4];
@@ -217,7 +219,14 @@ static void b_state_load(int slot) {
 	int scene_id;
 	load_bin(f, scene_id);
 	if (scene_id != get_scene_id()) {
-		last_msg = string("Scene ID mismatch for state ") + std::to_string((long long)slot);
+		last_msg = string("Scene ID mismatch for state ") + to_str(slot) + " (" + to_str(scene_id) +
+			" instead of " + to_str(get_scene_id()) + ")";
+		if (0) {
+			RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+			pState->rhNextFrame = 3;
+			pState->rhNextFrameData = (scene_id - 1) | 0x8000;
+			ExecuteTriggeredEvent(0xfffefffd);
+		}
 		return;
 	}
 	st.scene = scene_id;
@@ -226,7 +235,7 @@ static void b_state_load(int slot) {
 	load_bin(f, st.total);
 	load_bin(f, st.ev);
 	state_load(&f);
-	last_msg = string("State ") + std::to_string((long long)slot) + " loaded";
+	last_msg = string("State ") + to_str(slot) + " loaded";
 }
 
 short btas::TasGetKeyState(int k) {
@@ -243,6 +252,12 @@ bool btas::on_before_update() {
 		st.sc_frame = 0;
 	st.scene = cur_scene;
 	pState->subTickStep = 1;
+	if (JustKeyState('S') == 1) {
+		pState->rhNextFrame = 3;
+		pState->rhNextFrameData = (52 - 1) | 0x8000;
+		ExecuteTriggeredEvent(0xfffefffd);
+	}
+	// cout << pState->frameStatus << std::endl;
 	if (is_paused && !next_step) {
 		pState->isPaused = true;
 		return true;
@@ -374,7 +389,8 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-	ImGui::Text("Frames: %i / %i", st.frame, st.total);
+	ImGui::Text("Frames: %i / %i, %i", st.frame, st.total, st.sc_frame);
+	ImGui::Text("Scene ID: %i", get_scene_id());
 	ImGui::Text("Message: %s", last_msg.c_str());
 }
 

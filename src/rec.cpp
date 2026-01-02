@@ -80,7 +80,7 @@ void rec::init(void* dev) {
     // Yea it's ugly
     while (conf::cap_cmd.size() > 0) {
         if (starts_with(conf::cap_cmd, "$SIZE")) {
-            command += std::to_string((long long)ws.first) + "x" + std::to_string((long long)ws.second);
+            command += to_str(ws.first) + "x" + to_str(ws.second);
             conf::cap_cmd = conf::cap_cmd.substr(5);
             continue;
         }
