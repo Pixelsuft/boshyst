@@ -92,6 +92,7 @@ struct BTasState {
 
 static std::vector<BTasBind> binds;
 static std::vector<int> holding;
+static std::vector<int> repl_holding;
 static string last_msg;
 static BTasState st;
 static DWORD last_time = 0;
@@ -100,6 +101,7 @@ static unsigned long cur_time = 0;
 static int need_scene_state_slot = -1;
 static bool next_step = false;
 static bool slowmo = false;
+static int repl_index = 0;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -225,7 +227,7 @@ static void b_state_load(int slot) {
 	ASS(memcmp(buf, "btas", 4) == 0);
 	int scene_id;
 	load_bin(f, scene_id);
-	if (scene_id != get_scene_id()) {
+	if (!is_replay && scene_id != get_scene_id()) {
 		need_scene_state_slot = slot;
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
 		last_msg = string("Loading scene ") + to_str(scene_id);
@@ -235,17 +237,32 @@ static void b_state_load(int slot) {
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
-	st.scene = scene_id;
-	load_bin(f, st.frame);
-	load_bin(f, st.sc_frame);
-	load_bin(f, st.total);
-	load_bin(f, st.prev);
+	if (is_replay) {
+		int dummy;
+		load_bin(f, dummy);
+		load_bin(f, dummy);
+		load_bin(f, st.total);
+		std::vector<int> dummy2;
+		load_bin(f, dummy2);
+	}
+	else {
+		st.scene = scene_id;
+		load_bin(f, st.frame);
+		load_bin(f, st.sc_frame);
+		load_bin(f, st.total);
+		load_bin(f, st.prev);
+	}
 	load_bin(f, st.ev);
-	state_load(&f);
+	if (!is_replay)
+		state_load(&f);
 	last_msg = string("State ") + to_str(slot) + " loaded";
 }
 
 short btas::TasGetKeyState(int k) {
+	if (is_replay) {
+		auto eit = std::find(repl_holding.begin(), repl_holding.end(), k);
+		return (eit == repl_holding.end()) ? 0 : -32767;
+	}
 	auto eit = std::find(holding.begin(), holding.end(), k);
 	return (eit == holding.end()) ? 0 : -32767;
 }
@@ -268,7 +285,34 @@ bool btas::on_before_update() {
 		pState->isPaused = true;
 		return true;
 	}
-	if (!is_replay) {
+	if (is_replay) {
+		for (; repl_index < (int)st.ev.size(); repl_index++) {
+			BTasEvent& ev = st.ev[repl_index];
+			if (ev.frame > st.frame)
+				break;
+			if (ev.frame < st.frame)
+				continue;
+			switch (ev.idx) {
+			case 1: {
+				repl_holding.push_back(ev.key.k);
+				break;
+			}
+			case 2: {
+				auto it = std::find(repl_holding.begin(), repl_holding.end(), ev.key.k);
+				ASS(it != repl_holding.end());
+				repl_holding.erase(it);
+				break;
+			}
+			}
+		}
+		if (st.frame == st.total) {
+			is_replay = false;
+			is_paused = true;
+			st.prev = repl_holding;
+			last_msg = "Switched to recording";
+		}
+	}
+	else if (!is_replay) {
 		for (auto it = holding.begin(); it != holding.end(); it++) {
 			auto pit = std::find(st.prev.begin(), st.prev.end(), *it);
 			if (pit == st.prev.end()) {
@@ -395,6 +439,20 @@ void btas::on_key(int k, bool pressed) {
 
 void btas::draw_info() {
 	ImGui::Text("Frames: %i / %i, %i", st.frame, st.total, st.sc_frame);
+
+	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
+	if (pp != nullptr) {
+		static int last_x = 0;
+		static int last_y = 0;
+		ImGui::Text("Pos: (%i, %i)", pp->xPos, pp->yPos);
+		ImGui::Text("Delta: (%i, %i)", pp->xPos - last_x, pp->yPos - last_y);
+		ImGui::Text("Align: %i", pp->xPos % 3);
+		if (!is_paused) {
+			last_x = pp->xPos;
+			last_y = pp->yPos;
+		}
+	}
+
 	ImGui::Text("Scene ID: %i", get_scene_id());
 	ImGui::Text("Message: %s", last_msg.c_str());
 }
@@ -403,5 +461,14 @@ void btas::draw_tab() {
 	if (ImGui::CollapsingHeader("BTas")) {
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 		ImGui::Text("Random seed: %i", (unsigned int)(unsigned short)(pState->SystemTimeInMSFromSaveOrSeed));
+		if (ImGui::Checkbox("Replay mode", &is_replay)) {
+			if (is_replay && st.frame != 0)
+				last_msg = "Running replay not from start, may desync!";
+			if (is_replay)
+				repl_holding.clear();
+			else
+				st.prev = repl_holding;
+			repl_index = 0;
+		}
 	}
 }

@@ -70,7 +70,7 @@ static void draw_basic_text() {
 	int scene_id = get_scene_id();
 	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(scene_id);
 	int inGameFrames = *(int*)(*(size_t*)(mem::get_base() + 0x59a9c) + 0xd0);
-	if (pp != nullptr) {
+	if (pp != nullptr && !is_btas) {
 		static int last_x = 0;
 		static int last_y = 0;
 		ImGui::Text("Pos: (%i, %i)", pp->xPos, pp->yPos);
