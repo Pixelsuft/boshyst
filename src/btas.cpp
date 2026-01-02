@@ -27,6 +27,7 @@ extern SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 extern DWORD(__stdcall* timeGetTimeOrig)();
 extern bool state_save(bfs::File* file);
 extern bool state_load(bfs::File* file);
+extern int(__stdcall* UpdateGameFrameOrig)();
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
 static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
 void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
@@ -219,14 +220,12 @@ static void b_state_load(int slot) {
 	int scene_id;
 	load_bin(f, scene_id);
 	if (scene_id != get_scene_id()) {
-		last_msg = string("Scene ID mismatch for state ") + to_str(slot) + " (" + to_str(scene_id) +
-			" instead of " + to_str(get_scene_id()) + ")";
-		if (0) {
-			RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-			pState->rhNextFrame = 3;
-			pState->rhNextFrameData = (scene_id - 1) | 0x8000;
-			ExecuteTriggeredEvent(0xfffefffd);
-		}
+		last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
+		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+		bool prev_p = pState->isPaused;
+		pState->rhNextFrame = 3;
+		pState->rhNextFrameData = scene_id | 0x8000;
+		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
 	st.scene = scene_id;
@@ -252,11 +251,6 @@ bool btas::on_before_update() {
 		st.sc_frame = 0;
 	st.scene = cur_scene;
 	pState->subTickStep = 1;
-	if (JustKeyState('S') == 1) {
-		pState->rhNextFrame = 3;
-		pState->rhNextFrameData = (52 - 1) | 0x8000;
-		ExecuteTriggeredEvent(0xfffefffd);
-	}
 	// cout << pState->frameStatus << std::endl;
 	if (is_paused && !next_step) {
 		pState->isPaused = true;

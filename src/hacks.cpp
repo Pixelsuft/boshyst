@@ -141,7 +141,7 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     return SetWindowTextAOrig(hwnd, cap);
 }
 
-static int(__stdcall* UpdateGameFrameOrig)() = nullptr;
+int(__stdcall* UpdateGameFrameOrig)() = nullptr;
 static int __stdcall UpdateGameFrameHook() {
     static bool hooks_inited = false;
     if (!hooks_inited) {

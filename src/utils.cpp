@@ -130,8 +130,9 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 }
 
 int get_scene_id() {
-	const size_t offsets[] = { 0x59A94 + 0x400000, 0x268, 0xA8 };
-	return *(int*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+	size_t gState = *(size_t*)0x0459a94;
+	int sc_id = *(int*)(gState + 0x1ec);
+	return sc_id;
 }
 
 static void* get_player_by_id(int idx) {
@@ -143,84 +144,84 @@ void* get_player_ptr(int s) {
 	// FIXME: W4, W5, B8
 	switch (s) {
 	// Tutorial
-	case 36:
+	case 35:
 		return get_player_by_id(0x80);
 	// W1, W3, METAL GEAR
-	case 3:
-	case 8:
-	case 23:
+	case 2:
+	case 7:
+	case 22:
 		return get_player_by_id(0xE0);
 	// MARIO SECRET
-	case 33:
+	case 32:
 		return get_player_by_id(0x68);
 	// B1, B5, B7, W8, POKEWORLD, CHEETAHMEN
-	case 4:
-	case 14:
+	case 3:
+	case 13:
+	case 23:
 	case 24:
-	case 25:
-	case 50:
-	case 54:
+	case 49:
+	case 53:
 		return get_player_by_id(0x70);
 	// W2
-	case 5:
+	case 4:
 		return get_player_by_id(0xA58);
 	// MB1
-	case 6:
+	case 5:
 		return get_player_by_id(0x148);
 	// B2, GASTLY
-	case 7:
-	case 9:
+	case 6:
+	case 8:
 		return get_player_by_id(0x130);
 	// B3, B4, W11, B9
-	case 10:
-	case 12:
-	case 35:
-	case 59:
+	case 9:
+	case 11:
+	case 34:
+	case 58:
 		return get_player_by_id(0x90);
 	// W4
-	case 11:
+	case 10:
 		return get_player_by_id(0x100);
 	// W5
-	case 13:
+	case 12:
 		return get_player_by_id(0x38);
 	// W6
-	case 15:
+	case 14:
 		return get_player_by_id(0x110);
 	// B6
-	case 17:
+	case 16:
 		return get_player_by_id(0xA0);
 	// W7, Gardius
-	case 22:
-	case 39:
+	case 21:
+	case 38:
 		return get_player_by_id(0x150);
 	// B10, TELEPROOM
-	case 32:
-	case 29:
+	case 31:
+	case 28:
 		return get_player_by_id(0x88);
 	// B8
-	case 26:
+	case 25:
 		return get_player_by_id(0x48);
 	// W9, W10
-	case 27:
-	case 31:
+	case 26:
+	case 30:
 		return get_player_by_id(0xB8);
 	// KAPPA
-	case 37:
+	case 36:
 		return get_player_by_id(0xB0);
 	// FB
-	case 46:
+	case 45:
 		return get_player_by_id(0xA8);
 	// PRIZE ROOM
-	case 49:
+	case 48:
 		return get_player_by_id(0x140);
 	// BLIZZARD
-	case 53:
+	case 52:
 		return get_player_by_id(0x78);
 	// ELEVATOR
-	case 51:
+	case 50:
 		return get_player_by_id(0x138);
 	// FINAL PATH
-	case 38:
+	case 37:
 		return get_player_by_id(0x58);
 	default:
 		return nullptr;

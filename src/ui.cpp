@@ -159,7 +159,7 @@ static void ui_menu_draw() {
 			pState->rhNextFrame
 			1 - next
 			2 - prev
-			3 - set (pState->rhNextFrameData = (need_frame - 1) | 0x8000
+			3 - set (pState->rhNextFrameData = need_frame | 0x8000
 			4 - reset game
 			5 - reset audio
 			7/9 - load state sus
@@ -174,7 +174,7 @@ static void ui_menu_draw() {
 			next_scene_id = mclamp(next_scene_id, 1, 61);
 			if (ImGui::Button("Set scene")) {
 				pState->rhNextFrame = 3;
-				pState->rhNextFrameData = (next_scene_id - 1) | 0x8000;
+				pState->rhNextFrameData = next_scene_id | 0x8000;
 			}
 			if (ImGui::Button("Reset game"))
 				pState->rhNextFrame = 4;
