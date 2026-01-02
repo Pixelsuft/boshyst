@@ -17,7 +17,7 @@ void ass::show_err(const char* text) {
 	std::free(buf);
 }
 
-static HANDLE hproc = GetCurrentProcess();
+HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
 extern HWND mhwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);

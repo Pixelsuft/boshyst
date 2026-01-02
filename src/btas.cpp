@@ -22,6 +22,7 @@
 using std::cout;
 using std::string;
 
+extern HANDLE hproc;
 extern HWND hwnd;
 extern SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 extern DWORD(__stdcall* timeGetTimeOrig)();
@@ -172,6 +173,11 @@ void btas::init() {
 	last_msg = "None";
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	last_time = now = timeGetTimeOrig();
+	const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
+	DWORD bW;
+	// Disable timers when moving window to prevent desync
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b74), buf, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b6d), buf, 5, &bW) != 0 && bW == 5);
 }
 
 template<typename T>
