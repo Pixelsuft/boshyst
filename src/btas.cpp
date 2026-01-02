@@ -88,16 +88,20 @@ struct BTasState {
 	int frame;
 	int sc_frame;
 	int total;
+	int time;
+	short seed;
 	int cur_pos[2];
 	int last_pos[2];
 	std::vector<BTasEvent> ev;
 	std::vector<int> prev;
 
 	BTasState() {
+		time = 0;
 		frame = sc_frame = 0;
 		scene = 0;
 		total = 0;
 		cur_pos[0] = cur_pos[1] = last_pos[0] = last_pos[1] = 0;
+		seed = 0;
 	}
 };
 
@@ -108,7 +112,6 @@ static string last_msg;
 static BTasState st;
 static DWORD last_time = 0;
 static DWORD now = 0;
-static unsigned long cur_time = 0;
 static int need_scene_state_slot = -1;
 static bool next_step = false;
 static bool slowmo = false;
@@ -167,7 +170,7 @@ void btas::init() {
 	std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) {
 		return a.key > b.key;
 	});
-	cur_time = 0;
+	st.time = 0;
 	next_step = slowmo = false;
 	auto h = GetModuleHandleW(L"winmm.dll");
 	ASS(h != nullptr);
@@ -216,12 +219,14 @@ static void load_bin(bfs::File& f, T& data) {
 }
 
 static void b_state_save(int slot) {
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	string path = string("state") + std::to_string((long long)slot) + ".bstate";
 	bfs::File f(path, 1);
 	if (!f.is_open()) {
 		last_msg = "Failed to open file for writing to save state " + std::to_string((long long)slot);
 		return;
 	}
+	st.seed = pState->SystemTimeInMSFromSaveOrSeed;
 	ASS(f.write("btas", 4));
 	write_bin(f, st.scene);
 	write_bin(f, st.frame);
@@ -231,6 +236,8 @@ static void b_state_save(int slot) {
 	write_bin(f, st.cur_pos[1]);
 	write_bin(f, st.last_pos[0]);
 	write_bin(f, st.last_pos[1]);
+	write_bin(f, st.time);
+	write_bin(f, st.seed);
 	write_bin(f, st.prev);
 	write_bin(f, st.ev);
 	state_save(&f);
@@ -238,6 +245,7 @@ static void b_state_save(int slot) {
 }
 
 static void b_state_load(int slot, bool from_loop) {
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	string path = string("state") + to_str(slot) + ".bstate";
 	bfs::File f(path, 0);
 	if (!f.is_open()) {
@@ -249,13 +257,15 @@ static void b_state_load(int slot, bool from_loop) {
 	ASS(memcmp(buf, "btas", 4) == 0);
 	int scene_id;
 	load_bin(f, scene_id);
-	if (is_replay && reset_on_replay && !from_loop) {
+	if (is_replay && reset_on_replay && st.frame != 0) {
+		cout << "game reset\n";
 		need_scene_state_slot = slot;
 		last_msg = "Restarting game";
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 		pState->rhNextFrame = 4;
-		pState->rhNextFrameData = scene_id | 0x8000;
+		pState->rhNextFrameData = 0;
 		st.frame = st.sc_frame = 0;
+		st.time = 0;
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
@@ -278,11 +288,14 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy);
 		load_bin(f, dummy); // last_pos
 		load_bin(f, dummy);
+		load_bin(f, dummy); // time
+		short dummy3;
+		load_bin(f, dummy3); // seed
 		std::vector<int> dummy2; // prev
 		load_bin(f, dummy2);
 		if (reset_on_replay) {
 			st.frame = st.sc_frame = 0;
-			cur_time = 0;
+			st.time = 0;
 		}
 	}
 	else {
@@ -294,8 +307,11 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.cur_pos[1]);
 		load_bin(f, st.last_pos[0]);
 		load_bin(f, st.last_pos[1]);
+		load_bin(f, st.time);
+		load_bin(f, st.seed);
 		load_bin(f, st.prev);
 	}
+	pState->SystemTimeInMSFromSaveOrSeed = st.seed;
 	load_bin(f, st.ev);
 	if (!is_replay)
 		state_load(&f);
@@ -304,7 +320,7 @@ static void b_state_load(int slot, bool from_loop) {
 
 unsigned int btas::get_rng(unsigned int maxv) {
 	// TODO
-	return maxv;
+	return 0;
 }
 
 short btas::TasGetKeyState(int k) {
@@ -321,6 +337,7 @@ bool btas::on_before_update() {
 
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	if (need_scene_state_slot != -1) {
+		cout << "load state\n";
 		b_state_load(need_scene_state_slot, true);
 		repl_index = 0;
 		need_scene_state_slot = -1;
@@ -354,19 +371,25 @@ bool btas::on_before_update() {
 				break;
 			}
 			case 3: {
-				// cout << "hash check " << ev.frame << std::endl;
-				int comp_val = st.cur_pos[0] ^ st.cur_pos[1] ^ (int)pState->SystemTimeInMSFromSaveOrSeed;
+				int comp_val = st.cur_pos[0] ^ st.cur_pos[1];
 				if (comp_val != ev.hash.val)
-					last_msg = string("Hash check failed on frame ") + to_str(st.frame);
+					last_msg = string("Hash check 1 failed on frame ") + to_str(st.frame);
+				break;
+			}
+			case 4: {
+				int comp_val = (int)pState->SystemTimeInMSFromSaveOrSeed;
+				if (comp_val != ev.hash.val)
+					last_msg = string("Hash check 2 failed on frame ") + to_str(st.frame);
 				break;
 			}
 			}
 		}
-		if (st.frame == st.total) {
-			//is_replay = false;
+		if (st.frame == st.total && st.frame != 0) {
+			is_replay = false;
 			is_paused = true;
-			//st.prev = repl_holding;
-			//last_msg = "Switched to recording";
+			st.prev = repl_holding;
+			repl_holding.clear();
+			last_msg = "Switched to recording";
 		}
 	}
 	else {
@@ -392,9 +415,15 @@ bool btas::on_before_update() {
 		}
 		if (st.frame % 20 == 0) {
 			BTasEvent ev;
-			ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1] ^ (int)pState->SystemTimeInMSFromSaveOrSeed;
+			if (st.frame % 40 == 0) {
+				ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1];
+				ev.idx = 3;
+			}
+			else {
+				ev.hash.val = (int)pState->SystemTimeInMSFromSaveOrSeed;
+				ev.idx = 4;
+			}
 			ev.frame = st.frame;
-			ev.idx = 3;
 			st.ev.push_back(ev);
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
@@ -413,7 +442,7 @@ void btas::on_after_update() {
 		st.frame++;
 		st.sc_frame++;
 		st.total = std::max(st.total, st.frame);
-		cur_time += 20;
+		st.time += 20;
 
 		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
 		if (pp != nullptr) {
@@ -438,7 +467,7 @@ void btas::on_after_update() {
 }
 
 unsigned long btas::get_time() {
-	return cur_time;
+	return st.time;
 }
 
 void btas::on_key(int k, bool pressed) {
@@ -538,6 +567,7 @@ void btas::draw_tab() {
 				repl_holding.clear();
 			else {
 				st.prev = repl_holding;
+				repl_holding.clear();
 				st.total = st.frame;
 				st.ev.resize(repl_index);
 			}
