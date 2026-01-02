@@ -13,4 +13,5 @@ namespace btas {
 	void draw_info();
 	void draw_tab();
 	void on_key(int k, bool pressed);
+	unsigned int get_rng(unsigned int maxv);
 }

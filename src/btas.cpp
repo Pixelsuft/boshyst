@@ -80,6 +80,8 @@ struct BTasState {
 	int frame;
 	int sc_frame;
 	int total;
+	int cur_pos[2];
+	int last_pos[2];
 	std::vector<BTasEvent> ev;
 	std::vector<int> prev;
 
@@ -103,10 +105,6 @@ static bool next_step = false;
 static bool slowmo = false;
 static bool last_upd = false;
 static int repl_index = 0;
-static int last_x = 0;
-static int last_y = 0;
-static int cur_x = 0;
-static int cur_y = 0;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -214,6 +212,10 @@ static void b_state_save(int slot) {
 	write_bin(f, st.frame);
 	write_bin(f, st.sc_frame);
 	write_bin(f, st.total);
+	write_bin(f, st.cur_pos[0]);
+	write_bin(f, st.cur_pos[1]);
+	write_bin(f, st.last_pos[0]);
+	write_bin(f, st.last_pos[1]);
 	write_bin(f, st.prev);
 	write_bin(f, st.ev);
 	state_save(&f);
@@ -247,6 +249,10 @@ static void b_state_load(int slot) {
 		load_bin(f, dummy);
 		load_bin(f, dummy);
 		load_bin(f, st.total);
+		load_bin(f, dummy);
+		load_bin(f, dummy);
+		load_bin(f, dummy);
+		load_bin(f, dummy);
 		std::vector<int> dummy2;
 		load_bin(f, dummy2);
 	}
@@ -255,12 +261,22 @@ static void b_state_load(int slot) {
 		load_bin(f, st.frame);
 		load_bin(f, st.sc_frame);
 		load_bin(f, st.total);
+		load_bin(f, st.cur_pos[0]);
+		load_bin(f, st.cur_pos[1]);
+		load_bin(f, st.last_pos[0]);
+		load_bin(f, st.last_pos[1]);
 		load_bin(f, st.prev);
 	}
 	load_bin(f, st.ev);
 	if (!is_replay)
 		state_load(&f);
 	last_msg = string("State ") + to_str(slot) + " loaded";
+}
+
+unsigned int btas::get_rng(unsigned int maxv) {
+	// TODO
+	return 0;
+	return maxv;
 }
 
 short btas::TasGetKeyState(int k) {
@@ -357,10 +373,10 @@ void btas::on_after_update() {
 
 		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
 		if (pp != nullptr) {
-			last_x = cur_x;
-			last_y = cur_y;
-			cur_x = pp->xPos;
-			cur_y = pp->yPos;
+			st.last_pos[0] = st.cur_pos[0];
+			st.last_pos[1] = st.cur_pos[1];
+			st.cur_pos[0] = pp->xPos;
+			st.cur_pos[1] = pp->yPos;
 		}
 	}
 	if (is_hourglass) {
@@ -453,11 +469,12 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-	ImGui::Text("Frames: %i / %i, %i", st.frame, st.total, st.sc_frame);
+	int inGameFrames = *(int*)(*(size_t*)(mem::get_base() + 0x59a9c) + 0xd0);
+	ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, st.sc_frame, inGameFrames);
 
-	ImGui::Text("Pos: (%i, %i)", cur_x, cur_y);
-	ImGui::Text("Delta: (%i, %i)", cur_x - last_x, cur_y - last_y);
-	ImGui::Text("Align: %i", cur_x % 3);
+	ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
+	ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);
+	ImGui::Text("Align: %i", st.cur_pos[0] % 3);
 
 	ImGui::Text("Scene ID: %i", get_scene_id());
 	// ImGui::Text("Time: %u", cur_time);
