@@ -148,17 +148,18 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("render_start = 0 // Start frame (not recommended to use, see readme)"));
     ASS(file.write_line("render_count = 0 // Frame count (not recommended to use, see readme)"));
     ASS(file.write_line("# render_end = 0 // End frame"));
-    ASS(file.write_line("render_cmd = ffmpeg -y -f:v rawvideo -s $SIZE -pix_fmt rgb32 -r 50 -i - -an -v:c libx264 -b:v 10000k output.mp4"));
+    ASS(file.write_line("render_cmd = ffmpeg -y -f:v rawvideo -s $SIZE -pix_fmt rgb32 -r 50 -i - -an -vcodec libx264 -b:v 10000k output.mp4"));
     ASS(file.write_line(""));
     ASS(file.write_line("no_mouse_move = 1 // Prevent mouse cursor from moving to kill the player"));
     ASS(file.write_line("draw_cursor = 1 // Draw virtual cursor pos on screen (kinda pointless)"));
     ASS(file.write_line("simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
+    ASS(file.write_line("# Mouse on keyboard bindings (useful for hourglass)"));
     ASS(file.write_line("# Multible mouse binds to one key are supported (order is important)"));
     ASS(file.write_line("# Boshy selection example (via 'K' key) from F3 menu"));
     ASS(file.write_line("bind = click, 75, 84.0, 276.0 // Virtual Key (here is K), X pos in [0;640), Y pos in [0;480) (move cursor and click on Quadrick)"));
     ASS(file.write_line("bind = click, 75, 315.0, 406.0 // Click 'Select' button"));
     ASS(file.write_line("bind = click, 75, -100, -100 // Move mouse outside (so not clicking, just move) of the window"));
-    ASS(file.write_line("# State saving/loading"));
+    ASS(file.write_line("# State saving/loading (useful for training)"));
     ASS(file.write_line("bind = load, 70, example_state.mfs // 'F' to load state"));
     ASS(file.write_line("bind = save, 71, example_state.mfs // 'G' to save state"));
     ASS(file.write_line(""));
@@ -200,9 +201,9 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("btas = load_state, 48, 0, 10"));
     ASS(file.write_line("# BTAS binds: function, keyboard_key, mod"));
     ASS(file.write_line("btas = toggle_pause, 19, 0 // PAUSE to pause/resume"));
-    ASS(file.write_line("btas = fastforward, 9, 0 // Hold TAB for fastforward, use can use toggle_fastforward as well!"));
+    ASS(file.write_line("btas = fastforward, 9, 0 // Hold TAB for fastforward, you can use toggle_fastforward as well!"));
     ASS(file.write_line("btas = step, 86, 0 // Play single frame on 'V'"));
-    ASS(file.write_line("btas = slowmotion, 32, 0 // Like step but slow (Space)"));
+    ASS(file.write_line("btas = slowmotion, 32, 0 // Slow-mo on Space"));
 }
 
 void conf::read() {

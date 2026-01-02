@@ -41,6 +41,10 @@ struct BTasBind {
 		struct {
 			int slot;
 		} state;
+		struct {
+			int x;
+			int y;
+		} dummy;
 	};
 	int key;
 	int mod;

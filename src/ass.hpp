@@ -7,7 +7,7 @@
 #include <cstdio>
 
 #define TO_STRING(x) #x
-#define ASS(expr) if (!(expr)) { ass::show_err("ASSERTION FAILED"); printf("ASSERTION FAILED AT %s:%i (%s)\n", __FILE__, (int)__LINE__, TO_STRING(expr)); }
+#define ASS(expr) if (!(expr)) { printf("ASSERTION FAILED AT %s:%i (%s)\n", __FILE__, (int)__LINE__, TO_STRING(expr)); ass::show_err("ASSERTION FAILED"); }
 #endif
 
 namespace ass {
