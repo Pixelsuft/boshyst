@@ -98,6 +98,7 @@ static BTasState st;
 static DWORD last_time = 0;
 static DWORD now = 0;
 static unsigned long cur_time = 0;
+static int need_scene_state_slot = -1;
 static bool next_step = false;
 static bool slowmo = false;
 
@@ -220,7 +221,9 @@ static void b_state_load(int slot) {
 	int scene_id;
 	load_bin(f, scene_id);
 	if (scene_id != get_scene_id()) {
-		last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
+		need_scene_state_slot = slot;
+		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
+		last_msg = string("Loading scene ") + to_str(scene_id);
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 		bool prev_p = pState->isPaused;
 		pState->rhNextFrame = 3;
@@ -246,6 +249,10 @@ bool btas::on_before_update() {
 	now = timeGetTimeOrig();
 
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	if (need_scene_state_slot != -1) {
+		b_state_load(need_scene_state_slot);
+		need_scene_state_slot = -1;
+	}
 	int cur_scene = get_scene_id();
 	if (cur_scene != st.scene)
 		st.sc_frame = 0;
