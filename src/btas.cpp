@@ -89,6 +89,7 @@ struct BTasState {
 		frame = sc_frame = 0;
 		scene = 0;
 		total = 0;
+		cur_pos[0] = cur_pos[1] = last_pos[0] = last_pos[1] = 0;
 	}
 };
 
@@ -104,6 +105,7 @@ static int need_scene_state_slot = -1;
 static bool next_step = false;
 static bool slowmo = false;
 static bool last_upd = false;
+static bool reset_on_replay = false;
 static int repl_index = 0;
 
 bool is_btas = false;
@@ -222,7 +224,7 @@ static void b_state_save(int slot) {
 	last_msg = string("State ") + to_str(slot) + " saved";
 }
 
-static void b_state_load(int slot) {
+static void b_state_load(int slot, bool from_loop) {
 	string path = string("state") + to_str(slot) + ".bstate";
 	bfs::File f(path, 0);
 	if (!f.is_open()) {
@@ -234,6 +236,16 @@ static void b_state_load(int slot) {
 	ASS(memcmp(buf, "btas", 4) == 0);
 	int scene_id;
 	load_bin(f, scene_id);
+	if (is_replay && reset_on_replay && !from_loop) {
+		need_scene_state_slot = slot;
+		last_msg = "Restarting game";
+		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+		pState->rhNextFrame = 4;
+		pState->rhNextFrameData = scene_id | 0x8000;
+		st.frame = st.sc_frame = 0;
+		ExecuteTriggeredEvent(0xfffefffd);
+		return;
+	}
 	if (!is_replay && scene_id != get_scene_id()) {
 		need_scene_state_slot = slot;
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
@@ -255,6 +267,8 @@ static void b_state_load(int slot) {
 		load_bin(f, dummy);
 		std::vector<int> dummy2;
 		load_bin(f, dummy2);
+		if (reset_on_replay)
+			st.frame = st.sc_frame = 0;
 	}
 	else {
 		st.scene = scene_id;
@@ -292,7 +306,8 @@ bool btas::on_before_update() {
 
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	if (need_scene_state_slot != -1) {
-		b_state_load(need_scene_state_slot);
+		b_state_load(need_scene_state_slot, true);
+		repl_index = 0;
 		need_scene_state_slot = -1;
 	}
 	int cur_scene = get_scene_id();
@@ -326,10 +341,10 @@ bool btas::on_before_update() {
 			}
 		}
 		if (st.frame == st.total) {
-			is_replay = false;
+			//is_replay = false;
 			is_paused = true;
-			st.prev = repl_holding;
-			last_msg = "Switched to recording";
+			//st.prev = repl_holding;
+			//last_msg = "Switched to recording";
 		}
 	}
 	else if (!is_replay) {
@@ -458,7 +473,7 @@ void btas::on_key(int k, bool pressed) {
 		}
 		case 7: {
 			if (!show_menu && pressed && !bind.down)
-				b_state_load(bind.state.slot);
+				b_state_load(bind.state.slot, false);
 			break;
 		}
 		}
@@ -485,7 +500,7 @@ void btas::draw_tab() {
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 		ImGui::Text("Random seed: %i", (unsigned int)(unsigned short)(pState->SystemTimeInMSFromSaveOrSeed));
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
-			if (is_replay && st.frame != 0)
+			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
 			if (is_replay)
 				repl_holding.clear();
@@ -496,5 +511,6 @@ void btas::draw_tab() {
 			}
 			repl_index = 0;
 		}
+		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
 	}
 }
