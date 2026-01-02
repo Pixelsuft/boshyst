@@ -102,6 +102,7 @@ static bool slowmo = false;
 bool is_btas = false;
 bool fast_forward = false;
 bool is_paused = true;
+// TODO: check it everywhere
 bool is_replay = false;
 
 void btas::read_setting(const string& line, const string& line_orig) {
@@ -130,6 +131,14 @@ void btas::read_setting(const string& line, const string& line_orig) {
 		bind.idx = 5;
 		ASS(sscanf(line.substr(16).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
 	}
+	else if (starts_with(line, "btas=save_state,")) {
+		bind.idx = 6;
+		ASS(sscanf(line.substr(16).c_str(), "%i,%i,%i", &bind.key, &bind.mod, &bind.state.slot) == 3);
+	}
+	else if (starts_with(line, "btas=load_state,")) {
+		bind.idx = 7;
+		ASS(sscanf(line.substr(16).c_str(), "%i,%i,%i", &bind.key, &bind.mod, &bind.state.slot) == 3);
+	}
 	else {
 		ass::show_err((string("Unknown BTAS setting: ") + line_orig).c_str());
 		ASS(false);
@@ -153,6 +162,73 @@ void btas::init() {
 	last_time = now = timeGetTimeOrig();
 }
 
+template<typename T>
+static void write_bin(bfs::File& f, const std::vector<T>& data) {
+	size_t size = data.size();
+	ASS(f.write(&size, sizeof(size_t)));
+	ASS(f.write(data.data(), size * sizeof(T)));
+}
+
+template<typename T>
+static void write_bin(bfs::File& f, T data) {
+	ASS(f.write(&data, sizeof(T)));
+}
+
+template<typename T>
+static void load_bin(bfs::File& f, std::vector<T>& data) {
+	size_t size;
+	ASS(f.read(&size, sizeof(size_t)));
+	data.resize(size);
+	ASS(f.read(&data[0], size * sizeof(T)));
+}
+
+template<typename T>
+static void load_bin(bfs::File& f, T& data) {
+	ASS(f.read(&data, sizeof(T)));
+}
+
+static void b_state_save(int slot) {
+	string path = string("state") + std::to_string((long long)slot) + ".bstate";
+	bfs::File f(path, 1);
+	if (!f.is_open()) {
+		last_msg = "Failed to open file for writing to save state " + std::to_string((long long)slot);
+		return;
+	}
+	ASS(f.write("btas", 4));
+	write_bin(f, st.scene);
+	write_bin(f, st.frame);
+	write_bin(f, st.sc_frame);
+	write_bin(f, st.total);
+	write_bin(f, st.ev);
+	state_save(&f);
+	last_msg = string("State ") + std::to_string((long long)slot) + " saved";
+}
+
+static void b_state_load(int slot) {
+	string path = string("state") + std::to_string((long long)slot) + ".bstate";
+	bfs::File f(path, 0);
+	if (!f.is_open()) {
+		last_msg = "Failed to open file for reading to load state " + std::to_string((long long)slot);
+		return;
+	}
+	char buf[4];
+	ASS(f.read(buf, 4));
+	ASS(memcmp(buf, "btas", 4) == 0);
+	int scene_id;
+	load_bin(f, scene_id);
+	if (scene_id != get_scene_id()) {
+		last_msg = string("Scene ID mismatch for state ") + std::to_string((long long)slot);
+		return;
+	}
+	st.scene = scene_id;
+	load_bin(f, st.frame);
+	load_bin(f, st.sc_frame);
+	load_bin(f, st.total);
+	load_bin(f, st.ev);
+	state_load(&f);
+	last_msg = string("State ") + std::to_string((long long)slot) + " loaded";
+}
+
 short btas::TasGetKeyState(int k) {
 	auto eit = std::find(holding.begin(), holding.end(), k);
 	return (eit == holding.end()) ? 0 : -32767;
@@ -173,15 +249,18 @@ bool btas::on_before_update() {
 	}
 	next_step = false;
 	pState->isPaused = false;
-	st.frame++;
-	st.sc_frame++;
-	st.total = std::max(st.total, st.frame);
-	cur_time += 20;
 	// cout << "before\n";
 	return false;
 }
 
 void btas::on_after_update() {
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	if (!pState->isPaused) {
+		st.frame++;
+		st.sc_frame++;
+		st.total = std::max(st.total, st.frame);
+		cur_time += 20;
+	}
 	if (is_hourglass) {
 		Sleep(20);
 		return;
@@ -278,6 +357,16 @@ void btas::on_key(int k, bool pressed) {
 			slowmo = pressed;
 			break;
 		}
+		case 6: {
+			if (!show_menu && pressed && !bind.down)
+				b_state_save(bind.state.slot);
+			break;
+		}
+		case 7: {
+			if (!show_menu && pressed && !bind.down)
+				b_state_load(bind.state.slot);
+			break;
+		}
 		}
 		bind.down = pressed;
 		it++;
@@ -291,6 +380,7 @@ void btas::draw_info() {
 
 void btas::draw_tab() {
 	if (ImGui::CollapsingHeader("BTas")) {
-		ImGui::Text("TODO");
+		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+		ImGui::Text("Random seed: %i", (unsigned int)(unsigned short)(pState->SystemTimeInMSFromSaveOrSeed));
 	}
 }
