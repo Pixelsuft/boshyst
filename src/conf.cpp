@@ -161,6 +161,48 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("# State saving/loading"));
     ASS(file.write_line("bind = load, 70, example_state.mfs // 'F' to load state"));
     ASS(file.write_line("bind = save, 71, example_state.mfs // 'G' to save state"));
+    ASS(file.write_line(""));
+    ASS(file.write_line("# Map BTAS keys: map, keyboard_key, mod (0 - None, 1 - Ctrl, 2 - Shift), ingame_key"));
+    ASS(file.write_line("btas = map, 82, 0, 82 // 'R'"));
+    ASS(file.write_line("btas = map, 90, 0, 90 // 'Z'"));
+    ASS(file.write_line("btas = map, 88, 0, 88 // 'X'"));
+    ASS(file.write_line("btas = map, 67, 0, 67 // 'C'"));
+    ASS(file.write_line("btas = map, 83, 0, 83 // 'S'"));
+    ASS(file.write_line("btas = map, 37, 0, 37 // Left"));
+    ASS(file.write_line("btas = map, 39, 0, 39 // Right"));
+    ASS(file.write_line("btas = map, 40, 0, 40 // Down"));
+    ASS(file.write_line("btas = map, 73, 0, 113 // F2 on 'I'"));
+    ASS(file.write_line("btas = map, 79, 0, 114 // F3 on 'O'"));
+    ASS(file.write_line("btas = map, 13, 0, 13 // Enter"));
+    ASS(file.write_line("btas = map, 27, 0, 27 // Escape"));
+    ASS(file.write_line("# BTAS states: function, keyboard_key, mod, state index"));
+    ASS(file.write_line("# F1 - F10 to save"));
+    ASS(file.write_line("btas = save_state, 112, 0, 1"));
+    ASS(file.write_line("btas = save_state, 113, 0, 2"));
+    ASS(file.write_line("btas = save_state, 114, 0, 3"));
+    ASS(file.write_line("btas = save_state, 115, 0, 4"));
+    ASS(file.write_line("btas = save_state, 116, 0, 5"));
+    ASS(file.write_line("btas = save_state, 117, 0, 6"));
+    ASS(file.write_line("btas = save_state, 118, 0, 7"));
+    ASS(file.write_line("btas = save_state, 119, 0, 8"));
+    ASS(file.write_line("btas = save_state, 120, 0, 9"));
+    ASS(file.write_line("btas = save_state, 121, 0, 10"));
+    ASS(file.write_line("# '1' - '9', '0' to load"));
+    ASS(file.write_line("btas = load_state, 49, 0, 1"));
+    ASS(file.write_line("btas = load_state, 50, 0, 2"));
+    ASS(file.write_line("btas = load_state, 51, 0, 3"));
+    ASS(file.write_line("btas = load_state, 52, 0, 4"));
+    ASS(file.write_line("btas = load_state, 53, 0, 5"));
+    ASS(file.write_line("btas = load_state, 54, 0, 6"));
+    ASS(file.write_line("btas = load_state, 55, 0, 7"));
+    ASS(file.write_line("btas = load_state, 56, 0, 8"));
+    ASS(file.write_line("btas = load_state, 57, 0, 9"));
+    ASS(file.write_line("btas = load_state, 48, 0, 10"));
+    ASS(file.write_line("# BTAS binds: function, keyboard_key, mod"));
+    ASS(file.write_line("btas = toggle_pause, 19, 0 // PAUSE to pause/resume"));
+    ASS(file.write_line("btas = fastforward, 9, 0 // Hold TAB for fastforward, use can use toggle_fastforward as well!"));
+    ASS(file.write_line("btas = step, 86, 0 // Play single frame on 'V'"));
+    ASS(file.write_line("btas = slowmotion, 32, 0 // Like step but slow (Space)"));
 }
 
 void conf::read() {

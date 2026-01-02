@@ -275,7 +275,6 @@ static void b_state_load(int slot) {
 
 unsigned int btas::get_rng(unsigned int maxv) {
 	// TODO
-	return 0;
 	return maxv;
 }
 
@@ -410,7 +409,7 @@ void btas::on_key(int k, bool pressed) {
 			continue;
 		switch (bind.idx) {
 		case 0: {
-			if ((bind.down && pressed) || is_replay)
+			if (bind.down && pressed)
 				break;
 			auto eit = std::find(holding.begin(), holding.end(), bind.mapper.k);
 			if (pressed) {
@@ -490,8 +489,11 @@ void btas::draw_tab() {
 				last_msg = "Running replay not from start, may desync!";
 			if (is_replay)
 				repl_holding.clear();
-			else
+			else {
 				st.prev = repl_holding;
+				st.total = st.frame;
+				st.ev.resize(repl_index);
+			}
 			repl_index = 0;
 		}
 	}
