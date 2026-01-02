@@ -36,7 +36,6 @@ struct BTasBind {
 	union {
 		struct {
 			int k;
-			int down_event;
 		} mapper;
 		struct {
 			int slot;
@@ -49,7 +48,6 @@ struct BTasBind {
 
 	BTasBind() {
 		mapper.k = 0;
-		mapper.down_event = -1;
 		key = 0;
 		mod = 0;
 		idx = 0;
@@ -83,6 +81,7 @@ struct BTasState {
 	int sc_frame;
 	int total;
 	std::vector<BTasEvent> ev;
+	std::vector<int> prev;
 
 	BTasState() {
 		frame = sc_frame = 0;
@@ -105,7 +104,6 @@ static bool slowmo = false;
 bool is_btas = false;
 bool fast_forward = false;
 bool is_paused = true;
-// TODO: check it everywhere
 bool is_replay = false;
 
 void btas::read_setting(const string& line, const string& line_orig) {
@@ -170,6 +168,8 @@ template<typename T>
 static void write_bin(bfs::File& f, const std::vector<T>& data) {
 	size_t size = data.size();
 	ASS(f.write(&size, sizeof(size_t)));
+	if (size == 0)
+		return;
 	ASS(f.write(data.data(), size * sizeof(T)));
 }
 
@@ -182,6 +182,10 @@ template<typename T>
 static void load_bin(bfs::File& f, std::vector<T>& data) {
 	size_t size;
 	ASS(f.read(&size, sizeof(size_t)));
+	if (size == 0) {
+		data.clear();
+		return;
+	}
 	data.resize(size);
 	ASS(f.read(&data[0], size * sizeof(T)));
 }
@@ -203,6 +207,7 @@ static void b_state_save(int slot) {
 	write_bin(f, st.frame);
 	write_bin(f, st.sc_frame);
 	write_bin(f, st.total);
+	write_bin(f, st.prev);
 	write_bin(f, st.ev);
 	state_save(&f);
 	last_msg = string("State ") + to_str(slot) + " saved";
@@ -225,7 +230,6 @@ static void b_state_load(int slot) {
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
 		last_msg = string("Loading scene ") + to_str(scene_id);
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-		bool prev_p = pState->isPaused;
 		pState->rhNextFrame = 3;
 		pState->rhNextFrameData = scene_id | 0x8000;
 		ExecuteTriggeredEvent(0xfffefffd);
@@ -235,6 +239,7 @@ static void b_state_load(int slot) {
 	load_bin(f, st.frame);
 	load_bin(f, st.sc_frame);
 	load_bin(f, st.total);
+	load_bin(f, st.prev);
 	load_bin(f, st.ev);
 	state_load(&f);
 	last_msg = string("State ") + to_str(slot) + " loaded";
@@ -263,9 +268,31 @@ bool btas::on_before_update() {
 		pState->isPaused = true;
 		return true;
 	}
+	if (!is_replay) {
+		for (auto it = holding.begin(); it != holding.end(); it++) {
+			auto pit = std::find(st.prev.begin(), st.prev.end(), *it);
+			if (pit == st.prev.end()) {
+				BTasEvent ev;
+				ev.key.k = *it;
+				ev.frame = st.frame;
+				ev.idx = 1;
+				st.ev.push_back(ev);
+			}
+		}
+		for (auto pit = st.prev.begin(); pit != st.prev.end(); pit++) {
+			auto it = std::find(holding.begin(), holding.end(), *pit);
+			if (it == holding.end()) {
+				BTasEvent ev;
+				ev.key.k = *pit;
+				ev.frame = st.frame;
+				ev.idx = 2;
+				st.ev.push_back(ev);
+			}
+		}
+	}
+	st.prev = holding;
 	next_step = false;
 	pState->isPaused = false;
-	// cout << "before\n";
 	return false;
 }
 
@@ -314,33 +341,10 @@ void btas::on_key(int k, bool pressed) {
 			if (pressed) {
 				if (show_menu)
 					break;
-				// cout << "down " << GetCurrentThreadId() << std::endl;
-				ASS(eit == holding.end());
-				// if (eit == holding.end())
-				bind.mapper.down_event = (int)st.ev.size();
-				BTasEvent ev;
-				ev.idx = 1;
-				ev.frame = st.frame;
-				ev.key.k = bind.mapper.k;
-				st.ev.push_back(ev);
+				ASS(eit == holding.end()); // Single binds are allowed only
 				holding.push_back(bind.mapper.k);
 			}
-			else if (eit != holding.end()) {
-				// cout << "up\n";
-				ASS(bind.mapper.down_event != -1);
-				ASS(bind.mapper.down_event < (int)st.ev.size());
-				if (st.ev[bind.mapper.down_event].frame == st.frame) {
-					// TODO: remove from state
-					st.ev.erase(st.ev.begin() + bind.mapper.down_event);
-				}
-				else {
-					BTasEvent ev;
-					ev.idx = 2;
-					ev.frame = st.frame;
-					ev.key.k = bind.mapper.k;
-					st.ev.push_back(ev);
-				}
-				bind.mapper.down_event = -1;
+			else if (eit != holding.end()) {				
 				// if (eit != holding.end())
 				holding.erase(eit);
 			}
