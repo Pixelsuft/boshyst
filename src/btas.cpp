@@ -267,18 +267,19 @@ static void b_state_load(int slot, bool from_loop) {
 	}
 	if (is_replay) {
 		int dummy;
-		load_bin(f, dummy);
-		load_bin(f, dummy);
+		load_bin(f, dummy); // frame
+		load_bin(f, dummy); // sc frame
 		load_bin(f, st.total);
+		load_bin(f, dummy); // cur pos
 		load_bin(f, dummy);
+		load_bin(f, dummy); // last_pos
 		load_bin(f, dummy);
-		load_bin(f, dummy);
-		load_bin(f, dummy);
-		std::vector<int> dummy2;
+		std::vector<int> dummy2; // prev
 		load_bin(f, dummy2);
-		if (reset_on_replay)
+		if (reset_on_replay) {
 			st.frame = st.sc_frame = 0;
-		cur_time = 0;
+			cur_time = 0;
+		}
 	}
 	else {
 		st.scene = scene_id;
