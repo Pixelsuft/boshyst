@@ -64,6 +64,9 @@ struct BTasEvent {
 		struct {
 			int k;
 		} key;
+		struct {
+			int val;
+		} hash;
 	};
 	int frame;
 	uint8_t idx;
@@ -338,6 +341,13 @@ bool btas::on_before_update() {
 				repl_holding.erase(it);
 				break;
 			}
+			case 3: {
+				// cout << "hash check " << ev.frame << std::endl;
+				int comp_val = st.cur_pos[0] ^ st.cur_pos[1] ^ (int)pState->SystemTimeInMSFromSaveOrSeed;
+				if (comp_val != ev.hash.val)
+					last_msg = string("Hash check failed on frame ") + to_str(st.frame);
+				break;
+			}
 			}
 		}
 		if (st.frame == st.total) {
@@ -347,7 +357,7 @@ bool btas::on_before_update() {
 			//last_msg = "Switched to recording";
 		}
 	}
-	else if (!is_replay) {
+	else {
 		for (auto it = holding.begin(); it != holding.end(); it++) {
 			auto pit = std::find(st.prev.begin(), st.prev.end(), *it);
 			if (pit == st.prev.end()) {
@@ -367,6 +377,14 @@ bool btas::on_before_update() {
 				ev.idx = 2;
 				st.ev.push_back(ev);
 			}
+		}
+		if (st.frame % 50 == 0) {
+			BTasEvent ev;
+			ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1] ^ (int)pState->SystemTimeInMSFromSaveOrSeed;
+			ev.frame = st.frame;
+			ev.idx = 3;
+			st.ev.push_back(ev);
+			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
 	last_upd  = true;
