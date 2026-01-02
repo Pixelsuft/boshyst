@@ -446,8 +446,10 @@ void btas::on_key(int k, bool pressed) {
 		BTasBind& bind = *it;
 		if (bind.key != k)
 			break;
-		if ((pressed && (bind.mod != current_mod)) || (!pressed && !bind.down))
+		if ((pressed && (bind.mod != current_mod)) || (!pressed && !bind.down)) {
+			it++;
 			continue;
+		}
 		switch (bind.idx) {
 		case 0: {
 			if (bind.down && pressed)
