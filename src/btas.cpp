@@ -101,7 +101,12 @@ static unsigned long cur_time = 0;
 static int need_scene_state_slot = -1;
 static bool next_step = false;
 static bool slowmo = false;
+static bool last_upd = false;
 static int repl_index = 0;
+static int last_x = 0;
+static int last_y = 0;
+static int cur_x = 0;
+static int cur_y = 0;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -334,6 +339,7 @@ bool btas::on_before_update() {
 			}
 		}
 	}
+	last_upd  = true;
 	st.prev = holding;
 	next_step = false;
 	pState->isPaused = false;
@@ -342,11 +348,20 @@ bool btas::on_before_update() {
 
 void btas::on_after_update() {
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-	if (!pState->isPaused) {
+	if (last_upd) {
+		last_upd = false;
 		st.frame++;
 		st.sc_frame++;
 		st.total = std::max(st.total, st.frame);
 		cur_time += 20;
+
+		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
+		if (pp != nullptr) {
+			last_x = cur_x;
+			last_y = cur_y;
+			cur_x = pp->xPos;
+			cur_y = pp->yPos;
+		}
 	}
 	if (is_hourglass) {
 		Sleep(20);
@@ -440,25 +455,17 @@ void btas::on_key(int k, bool pressed) {
 void btas::draw_info() {
 	ImGui::Text("Frames: %i / %i, %i", st.frame, st.total, st.sc_frame);
 
-	ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
-	if (pp != nullptr) {
-		static int last_x = 0;
-		static int last_y = 0;
-		ImGui::Text("Pos: (%i, %i)", pp->xPos, pp->yPos);
-		ImGui::Text("Delta: (%i, %i)", pp->xPos - last_x, pp->yPos - last_y);
-		ImGui::Text("Align: %i", pp->xPos % 3);
-		if (!is_paused) {
-			last_x = pp->xPos;
-			last_y = pp->yPos;
-		}
-	}
+	ImGui::Text("Pos: (%i, %i)", cur_x, cur_y);
+	ImGui::Text("Delta: (%i, %i)", cur_x - last_x, cur_y - last_y);
+	ImGui::Text("Align: %i", cur_x % 3);
 
 	ImGui::Text("Scene ID: %i", get_scene_id());
+	// ImGui::Text("Time: %u", cur_time);
 	ImGui::Text("Message: %s", last_msg.c_str());
 }
 
 void btas::draw_tab() {
-	if (ImGui::CollapsingHeader("BTas")) {
+	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 		ImGui::Text("Random seed: %i", (unsigned int)(unsigned short)(pState->SystemTimeInMSFromSaveOrSeed));
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
