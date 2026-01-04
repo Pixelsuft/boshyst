@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <Psapi.h>
 #include <cstdint>
 #include <iostream>
 #include "ass.hpp"
@@ -68,6 +69,24 @@ std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
 	return ret;
 }
 
+HMODULE GetSxSModuleHandle(const char* targetPart) {
+	HMODULE hMods[1024];
+	HANDLE hProcess = GetCurrentProcess();
+	DWORD cbNeeded;
+
+	if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
+		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
+			char szModName[MAX_PATH];
+			if (GetModuleFileNameExA(hProcess, hMods[i], szModName, MAX_PATH)) {
+				if (c_ends_with(szModName, targetPart)) {
+					return hMods[i];
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
 size_t mem::get_base(const char* obj_name) {
 	if (!obj_name) {
 		static auto def_ret = (size_t)GetModuleHandleW(nullptr);
@@ -79,7 +98,7 @@ size_t mem::get_base(const char* obj_name) {
 }
 
 void* mem::addr(const char* func_name, const char* obj_name) {
-	auto obj = GetModuleHandleA(obj_name);
+	auto obj = (strcmp(obj_name, "MSVCR90.dll") == 0) ? GetSxSModuleHandle(obj_name) : GetModuleHandleA(obj_name);
 	ASS(obj != nullptr);
 	auto ptr = GetProcAddress(obj, func_name);
 	ASS(ptr != nullptr);

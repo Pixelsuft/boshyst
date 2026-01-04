@@ -165,6 +165,33 @@ void btas::read_setting(const string& line, const string& line_orig) {
 	binds.push_back(bind);
 }
 
+void btas::pre_init() {
+	cout << "btas pre-init\n";
+	uint8_t temp = 0xeb;
+	const uint8_t buf2[] = { 0x90, 0x90 };
+	const uint8_t buf5[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
+	const uint8_t buf6[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+	const uint8_t joy_patch[] = {
+		0x31, 0xC0, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+		0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x85, 0xC0, 0xEB, 0x00
+	};
+	DWORD bW;
+	// Disable timers when moving window to prevent desync
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b74), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b6d), buf5, 5, &bW) != 0 && bW == 5);
+	// Disable CRun_SyncFrameRate and MsgWaitForMultipleObjects when paused
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x36630), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a49), &temp, 1, &bW) != 0 && bW == 1);
+	// Disable controller options menu
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x43036), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4304e), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x43056), buf5, 5, &bW) != 0 && bW == 5);
+	// Joystick stuff
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x44e3), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xb245), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2013b), joy_patch, 17, &bW) != 0 && bW == 17);
+}
+
 void btas::init() {
 	cout << "btas init\n";
 	std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) {
@@ -180,11 +207,6 @@ void btas::init() {
 	last_msg = "None";
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	last_time = now = timeGetTimeOrig();
-	const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
-	DWORD bW;
-	// Disable timers when moving window to prevent desync
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b74), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b6d), buf, 5, &bW) != 0 && bW == 5);
 }
 
 template<typename T>
@@ -286,8 +308,10 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.total);
 		load_bin(f, dummy); // cur pos
 		load_bin(f, dummy);
+		st.cur_pos[0] = st.cur_pos[1] = 0;
 		load_bin(f, dummy); // last_pos
 		load_bin(f, dummy);
+		st.last_pos[0] = st.last_pos[1] = 0;
 		load_bin(f, dummy); // time
 		short dummy3;
 		load_bin(f, dummy3); // seed
@@ -296,6 +320,7 @@ static void b_state_load(int slot, bool from_loop) {
 		if (reset_on_replay) {
 			st.frame = st.sc_frame = 0;
 			st.time = 0;
+			st.ev.clear();
 		}
 	}
 	else {
@@ -311,10 +336,10 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.seed);
 		load_bin(f, st.prev);
 	}
-	pState->SystemTimeInMSFromSaveOrSeed = st.seed;
 	load_bin(f, st.ev);
 	if (!is_replay)
 		state_load(&f);
+	pState->SystemTimeInMSFromSaveOrSeed = st.seed;
 	last_msg = string("State ") + to_str(slot) + " loaded";
 }
 
@@ -324,6 +349,8 @@ unsigned int btas::get_rng(unsigned int maxv) {
 }
 
 short btas::TasGetKeyState(int k) {
+	if (!last_upd)
+		return 0;
 	if (is_replay) {
 		auto eit = std::find(repl_holding.begin(), repl_holding.end(), k);
 		return (eit == repl_holding.end()) ? 0 : -32767;
@@ -346,6 +373,7 @@ bool btas::on_before_update() {
 	if (cur_scene != st.scene)
 		st.sc_frame = 0;
 	st.scene = cur_scene;
+	pState->frameSkipAccumulator = 0;
 	pState->subTickStep = 1;
 	// cout << pState->frameStatus << std::endl;
 	if (is_paused && !next_step) {

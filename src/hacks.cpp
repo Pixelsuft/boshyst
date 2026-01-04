@@ -61,23 +61,15 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
         // TODO: check FUN_00426f90
         return -1;
     }
-    else if (conf::god && (strcmp(s2, "Die") == 0 || strcmp(s2, "die") == 0)) {
+    else if (conf::god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
         return -1;
     }
-    else if (conf::no_trans && strcmp(s2, "teleporting") == 0) {
+    else if (conf::no_trans && strcmp(s1, "teleporting") == 0) {
         return -1;
     }
-    // menuChosen, NameTags, jump, doublejump, teleporting, save, shoot, restart, KillAll
+    // menuChosen, NameTags, jump, doublejump, teleporting, save, Save, shoot, shooot, restart, KillAll, killboss
     auto ret = _stricmpOrig(s1, s2);
     return ret;
-}
-
-static bool c_ends_with(const char* str, const char* end) {
-    size_t sl = strlen(str);
-    size_t el = strlen(end);
-    if (el > sl)
-        return false;
-    return memcmp(str + sl - el, end, el) == 0;
 }
 
 static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_) {
@@ -283,15 +275,41 @@ static void __stdcall FlushInputQueueHook(void) {
     // cout << "queue\n";
 }
 
+static HMODULE (__stdcall *LoadLibraryAOrig)(LPCSTR lpLibFileName);
+static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
+    if (c_ends_with(lpLibFileName, "ForEach.mfx"))
+        lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";
+    cout << "load hook: " << lpLibFileName << std::endl;
+    return LoadLibraryAOrig(lpLibFileName);
+}
+
+static HINSTANCE ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd) {
+    return nullptr;
+}
+
 void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
+        hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         // hook(mem::addr("GetInputState", "user32.dll"), GetInputStateHook);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
+        // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
+        btas::pre_init();
     }
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+}
+
+static int(__cdecl* strcmpOrig)(const char* s1, const char* s2) = nullptr;
+static int __cdecl strcmpHook(const char* s1, const char* s2) {
+    // CostumBullets, Peers, stuff, trail
+    if (s1) {
+        cout << "hook: " << s1 << " vs " << s2 << std::endl;
+    }
+    return -1;
+    auto ret = strcmpOrig(s1, s2);
+    return ret;
 }
 
 void init_simple_hacks() {
@@ -302,9 +320,11 @@ void init_simple_hacks() {
         MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
         EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
+    // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
+    // hook(mem::addr("strcmp", "MSVCR90.dll"), strcmpHook, &strcmpOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
     hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
     hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);

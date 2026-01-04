@@ -9,6 +9,7 @@ namespace btas {
 	void on_after_update();
 	unsigned long get_time();
 	void read_setting(const std::string& line, const std::string& line_orig);
+	void pre_init();
 	void init();
 	void draw_info();
 	void draw_tab();

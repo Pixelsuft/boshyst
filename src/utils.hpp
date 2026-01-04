@@ -9,6 +9,14 @@ inline std::string to_str(int x) {
 #endif
 }
 
+static bool c_ends_with(const char* str, const char* end) {
+    size_t sl = strlen(str);
+    size_t el = strlen(end);
+    if (el > sl)
+        return false;
+    return memcmp(str + sl - el, end, el) == 0;
+}
+
 bool MyKeyState(int k);
 int JustKeyState(int k);
 wchar_t* utf8_to_unicode(const std::string& utf8);
