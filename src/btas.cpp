@@ -190,6 +190,10 @@ void btas::pre_init() {
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x44e3), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xb245), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2013b), joy_patch, 17, &bW) != 0 && bW == 17);
+	// Keyboard stuff (Disable TAB logic)
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x332df), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x3eaab), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x3ea96), buf5, 5, &bW) != 0 && bW == 5);
 }
 
 void btas::init() {
@@ -337,6 +341,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.prev);
 	}
 	load_bin(f, st.ev);
+	pState->SystemTimeInMSFromSaveOrSeed = st.seed;
 	if (!is_replay)
 		state_load(&f);
 	pState->SystemTimeInMSFromSaveOrSeed = st.seed;

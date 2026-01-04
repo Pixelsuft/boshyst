@@ -207,20 +207,9 @@ static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
 
 static LRESULT(__stdcall* MainWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if (is_btas && 0) {
-        switch (uMsg) {
-        case WM_SIZING:
-        case WM_MOVING:
-        case WM_ENTERSIZEMOVE:
-            return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-
-        case WM_SYSCOMMAND:
-            if ((wParam & 0xFFF0) == SC_MOVE || (wParam & 0xFFF0) == SC_SIZE)
-                return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-            break;
-        }
-    }
     if (1) {
+        if (is_btas && uMsg == WM_DROPFILES)
+            return 0;
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
@@ -228,8 +217,6 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
         if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP)) {
             // cout << "1 " << (uMsg == WM_KEYDOWN) << std::endl;
             btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
-            if (is_btas && wParam == VK_TAB)
-                return 0;
         }
         ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
     }
@@ -239,20 +226,9 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
 
 static LRESULT(__stdcall* EditWindowProcOrig)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if (is_btas && 0) {
-        switch (uMsg) {
-        case WM_SIZING:
-        case WM_MOVING:
-        case WM_ENTERSIZEMOVE:
-            return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-
-        case WM_SYSCOMMAND:
-            if ((wParam & 0xFFF0) == SC_MOVE || (wParam & 0xFFF0) == SC_SIZE)
-                return DefWindowProcA(hWnd, uMsg, wParam, lParam);
-            break;
-        }
-    }
     if (1) {
+        if (is_btas && uMsg == WM_DROPFILES)
+            return 0;
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
@@ -260,8 +236,6 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
         if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP)) {
             // cout << "2 " << (uMsg == WM_KEYDOWN) << std::endl;
             btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
-            if (is_btas && wParam == VK_TAB)
-                return 0;
         }
         ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }
@@ -283,8 +257,12 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     return LoadLibraryAOrig(lpLibFileName);
 }
 
-static HINSTANCE ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd) {
+static HINSTANCE __stdcall ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd) {
     return nullptr;
+}
+
+static HWND __stdcall GetActiveWindowHook() {
+    return ::hwnd;
 }
 
 void init_game_loop() {
@@ -293,6 +271,7 @@ void init_game_loop() {
     if (is_btas) {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
+        hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
         // hook(mem::addr("GetInputState", "user32.dll"), GetInputStateHook);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
