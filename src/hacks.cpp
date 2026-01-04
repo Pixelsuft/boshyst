@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <shlwapi.h>
 #include <iostream>
+#include <ctime>
 #include <imgui.h>
 #include "hook.hpp"
 #include "mem.hpp"
@@ -30,9 +31,24 @@ bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+struct my_timeb {
+    time_t time;
+    unsigned short millitm;
+    short timezone;
+    short dstflag;
+};
+
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
     if (conf::no_vp)
+        return 0;
+    auto ret = DisplayRunObjectVPOrig(pthis);
+    return ret;
+}
+
+static short(__stdcall* DisplayRunObjectPOrig)(void* pthis) = nullptr;
+static short __stdcall DisplayRunObjectPHook(void* pthis) {
+    if (conf::no_ps)
         return 0;
     auto ret = DisplayRunObjectVPOrig(pthis);
     return ret;
@@ -133,9 +149,9 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     return SetWindowTextAOrig(hwnd, cap);
 }
 
+static bool hooks_inited = false;
 int(__stdcall* UpdateGameFrameOrig)() = nullptr;
 static int __stdcall UpdateGameFrameHook() {
-    static bool hooks_inited = false;
     if (!hooks_inited) {
         hooks_inited = true;
         try_to_init();
@@ -265,14 +281,52 @@ static HWND __stdcall GetActiveWindowHook() {
     return ::hwnd;
 }
 
+static DWORD __stdcall GetTickCountHook() {
+    return (DWORD)btas::get_time();
+}
+
+static time_t __cdecl timeHook(time_t* tloc) {
+    if (tloc)
+        *tloc = (time_t)btas::get_time();
+    return (time_t)btas::get_time();
+}
+
+static void __cdecl _ftimeHook(struct my_timeb* timeptr) {
+    if (timeptr) {
+        timeptr->time = (time_t)btas::get_time() / 1000;
+        timeptr->millitm = (unsigned short)(btas::get_time() % 1000);
+        timeptr->timezone = 0;
+        timeptr->dstflag = 0;
+    }
+}
+
+BOOL (__stdcall *QueryPerformanceFrequencyOrig)(LARGE_INTEGER* ret);
+static BOOL __stdcall QueryPerformanceFrequencyHook(LARGE_INTEGER* ret) {
+    ret->QuadPart = 1000;
+    return TRUE;
+}
+
+BOOL (__stdcall *QueryPerformanceCounterOrig)(LARGE_INTEGER* ret);
+static BOOL __stdcall QueryPerformanceCounterHook(LARGE_INTEGER* ret) {
+    if (!hooks_inited)
+        return QueryPerformanceCounterOrig(ret);
+    ret->QuadPart = (LONGLONG)btas::get_time();
+    return TRUE;
+}
+
 void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
+        hook(mem::addr("time", "msvcrt.dll"), timeHook);
+        hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
-        // hook(mem::addr("GetInputState", "user32.dll"), GetInputStateHook);
+        hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
+        // TODO: fix imgui with that one
+        // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, QueryPerformanceFrequencyOrig);
+        // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
         btas::pre_init();
@@ -302,6 +356,7 @@ void init_simple_hacks() {
     // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
+    hook(mem::addr("DisplayRunObject", "Perspective.mfx"), DisplayRunObjectPHook, &DisplayRunObjectPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     // hook(mem::addr("strcmp", "MSVCR90.dll"), strcmpHook, &strcmpOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);

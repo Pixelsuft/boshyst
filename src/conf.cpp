@@ -24,6 +24,7 @@ namespace conf {
     int menu_hotkey;
     bool old_rec;
     bool no_vp;
+    bool no_ps;
     bool no_sh;
     bool god;
     bool menu;
@@ -138,6 +139,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
     ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
+    ASS(file.write_line("disable_perspective = 0 // Disable background distortion"));
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(""));
@@ -212,7 +214,7 @@ void conf::read() {
     conf::cap_cnt = 0;
     conf::first_run = false;
     conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
-        conf::no_sh = conf::keep_save = conf::no_trans =
+        conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps =
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
@@ -249,6 +251,8 @@ void conf::read() {
             conf::no_sh = read_int(line) != 0;
         else if (starts_with(line, "disable_transitions="))
             conf::no_trans = read_int(line) != 0;
+        else if (starts_with(line, "disable_perspective="))
+            conf::no_ps = read_int(line) != 0;
         else if (starts_with(line, "skip_messageboxes="))
             conf::skip_msg = read_int(line) != 0;
         else if (starts_with(line, "menu_hotkey="))

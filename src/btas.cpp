@@ -204,6 +204,22 @@ void btas::pre_init() {
 
 void btas::init() {
 	cout << "btas init\n";
+
+	const uint8_t buf2[] = { 0x90, 0x90 };
+	const uint8_t buf5[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
+	uint8_t temp = 0xeb;
+	DWORD bW;
+	// No Sleep
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0xc3f3), buf2, 2, &bW) != 0 && bW == 2);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0xc3a5), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x2dd58), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmf2d3d9.dll") + 0x270c), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("ctrlx.mfx") + 0x4378), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("kcfloop.mfx") + 0x10f3), &temp, 1, &bW) != 0 && bW == 1); // Right??
+	// No multimedia timers (I hope it doesn't crash)
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x4459f), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x41af4), &temp, 1, &bW) != 0 && bW == 1);
+	
 	std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) {
 		return a.key > b.key;
 	});
