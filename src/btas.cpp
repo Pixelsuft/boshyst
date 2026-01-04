@@ -194,6 +194,12 @@ void btas::pre_init() {
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x332df), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x3eaab), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x3ea96), buf5, 5, &bW) != 0 && bW == 5);
+	// Disable replay mode (WTF?)
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x1d93e), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x1d931), buf5, 5, &bW) != 0 && bW == 5);
+	// Clipboard
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe1fa), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe2cd), &temp, 1, &bW) != 0 && bW == 1);
 }
 
 void btas::init() {
