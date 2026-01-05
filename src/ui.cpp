@@ -27,6 +27,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 extern int last_new_rand_val;
 extern bool last_reset;
+extern int bullet_id;
+extern int bullet_speed;
 static int last_scene = 0;
 int cur_frames = 0;
 int cur_frames2 = 0;
@@ -186,6 +188,15 @@ static void ui_menu_draw() {
 				pState->rhNextFrame = 4;
 			if (ImGui::Button("Reset audio"))
 				pState->rhNextFrame = 5;
+			ImGui::Text("Be careful here!");
+			if (ImGui::InputInt("Bullet object ID", &bullet_id))
+				bullet_id = std::max(bullet_id, 0);
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				bullet_id = 106;
+			if (ImGui::InputInt("Bullet speed", &bullet_speed))
+				bullet_speed = std::max(bullet_speed, 0);
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				bullet_speed = 70;
 		}
 		if (ImGui::CollapsingHeader("Random")) {
 			ImGui::Text("Last rand() value: %i / %i", last_new_rand_val, (int)RAND_MAX);

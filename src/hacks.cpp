@@ -30,6 +30,8 @@ static bool next_our_bullet = false;
 static int next_bullet_x = 0;
 static int next_bullet_y = 0;
 static uint next_bullet_dir = 0;
+int bullet_id = 106;
+int bullet_speed = 70;
 int last_new_rand_val = 0;
 bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
@@ -112,8 +114,6 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
 
 static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* sourceObj, int x, int y, uint direction);
 static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction) {
-    // Player ID - 28, Bullet ID - 106
-    // action->launchSpeed = 70 * 4;
     if (next_our_bullet) {
         next_our_bullet = false;
         action->objectToLaunchID = 106;
@@ -122,7 +122,11 @@ static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* o
         y = next_bullet_y;
         direction = next_bullet_dir;
     }
-    cout << obj->type << " " << obj->typeID << std::endl;
+    if (action->objectToLaunchID == 106) {
+        action->objectToLaunchID = bullet_id;
+        if (bullet_speed != 70)
+            action->launchSpeed = bullet_speed;
+    }
     LaunchObjectActionOrig(action, obj, x, y, direction);
 }
 
@@ -213,13 +217,11 @@ static int __stdcall UpdateGameFrameHook() {
         return ret;
     }
 
-    auto pp = (ObjectHeader*)get_player_ptr(get_scene_id());
-    if (MyKeyState('B') && pp)
-        launch_bullet(-1, -1, (uint)-1);
-
     input_tick();
     ui::pre_update();
 
+    if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
+        launch_bullet(-1, -1, (uint)-1);
     auto ret = UpdateGameFrameOrig();
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();

@@ -21,6 +21,7 @@ namespace conf {
     int size[2];
     int cap_start;
     int cap_cnt;
+    int rapid_bind;
     int menu_hotkey;
     bool old_rec;
     bool no_vp;
@@ -120,6 +121,10 @@ static void read_bind(const string& line_orig, const string& line) {
             it->second.push_back(std::move(ev));
         }
     }
+    else if (starts_with(line, "bind=rapid,")) {
+        ASS(sscanf(line.substr(11).c_str(), "%i", &num) == 1);
+        conf::rapid_bind = num;
+    }
     else {
         ass::show_err("Invalid bind");
         ASS(false);
@@ -164,6 +169,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("# State saving/loading (useful for training)"));
     ASS(file.write_line("bind = load, 70, example_state.mfs // 'F' to load state"));
     ASS(file.write_line("bind = save, 71, example_state.mfs // 'G' to save state"));
+    ASS(file.write_line("bind = rapid, 66 // 'B' for rapid fire hack"));
     ASS(file.write_line(""));
     ASS(file.write_line("# Map BTAS keys: map, keyboard_key, mod (0 - None, 1 - Ctrl, 2 - Shift), ingame_key"));
     ASS(file.write_line("btas = map, 82, 0, 82 // 'R'"));
@@ -212,6 +218,7 @@ void conf::read() {
     conf::cap_cmd = "";
     conf::cap_start = 0;
     conf::cap_cnt = 0;
+    conf::rapid_bind = -1;
     conf::first_run = false;
     conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
         conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps =
