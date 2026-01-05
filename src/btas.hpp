@@ -2,6 +2,8 @@
 #include <string>
 
 extern bool is_btas;
+extern bool b_loading_state;
+void launch_bullet(int x, int y, int dir);
 
 namespace btas {
 	short TasGetKeyState(int k);
@@ -14,5 +16,8 @@ namespace btas {
 	void draw_info();
 	void draw_tab();
 	void on_key(int k, bool pressed);
+	void reg_obj(int handle);
+	void unreg_obj(int handle);
+	void fix_bullets();
 	unsigned int get_rng(unsigned int maxv);
 }

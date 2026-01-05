@@ -29,6 +29,7 @@ extern DWORD(__stdcall* timeGetTimeOrig)();
 extern bool state_save(bfs::File* file);
 extern bool state_load(bfs::File* file);
 extern int(__stdcall* UpdateGameFrameOrig)();
+extern void(__cdecl* DestroyObjectOrig)(int handleIndex, int destroyMode);
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
 static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
 void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
@@ -94,6 +95,7 @@ struct BTasState {
 	int last_pos[2];
 	std::vector<BTasEvent> ev;
 	std::vector<int> prev;
+	std::vector<int> bullets; // UNUSED
 
 	BTasState() {
 		time = 0;
@@ -108,6 +110,7 @@ struct BTasState {
 static std::vector<BTasBind> binds;
 static std::vector<int> holding;
 static std::vector<int> repl_holding;
+static std::vector<int> temp_bullets;
 static string last_msg;
 static BTasState st;
 static DWORD last_time = 0;
@@ -123,6 +126,7 @@ bool is_btas = false;
 bool fast_forward = false;
 bool is_paused = true;
 bool is_replay = false;
+bool b_loading_state = false;
 
 void btas::read_setting(const string& line, const string& line_orig) {
 	BTasBind bind;
@@ -236,6 +240,20 @@ void btas::init() {
 	last_msg = "None";
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	last_time = now = timeGetTimeOrig();
+}
+
+void btas::fix_bullets() {
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	for (auto it = temp_bullets.begin(); it != temp_bullets.end(); it++) {
+		int old_h = *it;
+		int x = pState->objectList[old_h * 2]->xPos;
+		int y = pState->objectList[old_h * 2]->yPos;
+		auto dir = pState->objectList[old_h * 2]->hoCurrentDirection;
+		DestroyObjectOrig(dir, 1);
+		cout << "bullet fixed\n";
+		launch_bullet(x, y, (int)dir);
+	}
+	temp_bullets.clear();
 }
 
 template<typename T>
@@ -369,12 +387,36 @@ static void b_state_load(int slot, bool from_loop) {
 	}
 	load_bin(f, st.ev);
 	// pState->RandomSeed = st.seed;
-	if (!is_replay)
+	if (!is_replay) {
+		b_loading_state = true;
+		temp_bullets.clear();
 		state_load(&f);
+		b_loading_state = false;
+	}
 	pState->RandomSeed = st.seed;
 	pState->rhNextFrame = 0;
 	cout << "state loaded\n";
 	last_msg = string("State ") + to_str(slot) + " loaded";
+}
+
+void btas::reg_obj(int handle) {
+	if (b_loading_state)
+		temp_bullets.push_back(handle);
+	return;
+	st.bullets.push_back(handle);
+	std::sort(st.bullets.begin(), st.bullets.end());
+	cout << "add\n";
+}
+
+void btas::unreg_obj(int handle) {
+	return;
+	// UNUSED
+
+	auto it = std::lower_bound(st.bullets.begin(), st.bullets.end(), handle);
+	if (it == st.bullets.end() || *it != handle)
+		return;
+	// cout << "remove\n";
+	st.bullets.erase(it);
 }
 
 unsigned int btas::get_rng(unsigned int maxv) {

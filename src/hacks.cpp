@@ -112,15 +112,33 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
     return ret;
 }
 
+static int(__cdecl* CreateObjectOrig)(ushort parentHandle, ushort objectInfoID, int posX, int posY, void* creationParam,
+    ushort creationFlags, uint initialDir, int layerIndex);
+static int __cdecl
+CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, void* creationParam,
+    ushort creationFlags, uint initialDir, int layerIndex) {
+    auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
+    if (objectInfoID == 106 && ret != -1) {
+        btas::reg_obj(ret);
+    }
+    return ret;
+}
+
+void(__cdecl* DestroyObjectOrig)(int handleIndex, int destroyMode);
+static void __cdecl DestroyObjectHook(int handleIndex, int destroyMode) {
+    btas::unreg_obj(handleIndex);
+    DestroyObjectOrig(handleIndex, destroyMode);
+}
+
 static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* sourceObj, int x, int y, uint direction);
 static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction) {
     if (next_our_bullet) {
-        next_our_bullet = false;
         action->objectToLaunchID = 106;
         obj = (ObjectHeader*)get_player_ptr(get_scene_id());
         x = next_bullet_x;
         y = next_bullet_y;
         direction = next_bullet_dir;
+        cout << "bullet launched\n";
     }
     if (action->objectToLaunchID == 106) {
         action->objectToLaunchID = bullet_id;
@@ -128,9 +146,10 @@ static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* o
             action->launchSpeed = bullet_speed;
     }
     LaunchObjectActionOrig(action, obj, x, y, direction);
+    next_our_bullet = false;
 }
 
-void launch_bullet(int x, int y, uint dir) {
+void launch_bullet(int x, int y, int dir) {
     auto obj = (ObjectHeader*)get_player_ptr(get_scene_id());
     if (!obj)
         return;
@@ -141,7 +160,7 @@ void launch_bullet(int x, int y, uint dir) {
     action.creatorID = 28;
     action.size = 0;
     action.eventCode = 1;
-    if (dir == (uint)-1) {
+    if (dir == -1) {
         next_bullet_x = obj->xPos + (obj->hoCurrentDirection == 0 ? 8 : -8);
         next_bullet_y = obj->yPos - 10;
         next_bullet_dir = obj->hoCurrentDirection;
@@ -149,9 +168,10 @@ void launch_bullet(int x, int y, uint dir) {
     else {
         next_bullet_x = x;
         next_bullet_y = y;
-        next_bullet_dir = dir;
+        next_bullet_dir = (uint)dir;
     }
-    void(__cdecl * ExecuteObjectAction)(ActionHeader * action);
+    cout << "launching\n";
+    void(__cdecl * ExecuteObjectAction)(ActionHeader* action);
     ExecuteObjectAction = (decltype(ExecuteObjectAction))(mem::get_base() + 0x15180);
     next_our_bullet = true;
     ExecuteObjectAction(&action);
@@ -208,6 +228,8 @@ static int __stdcall UpdateGameFrameHook() {
             btas::init();
     }
     try_to_hook_graphics();
+    if (is_btas)
+        btas::fix_bullets();
     if (is_btas && btas::on_before_update()) {
         auto ret = UpdateGameFrameOrig();
         void (*ProcessFrameRendering)(void);
@@ -221,7 +243,7 @@ static int __stdcall UpdateGameFrameHook() {
     ui::pre_update();
 
     if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
-        launch_bullet(-1, -1, (uint)-1);
+        launch_bullet(-1, -1, -1);
     auto ret = UpdateGameFrameOrig();
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
@@ -420,6 +442,10 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
+    if (is_btas) {
+        hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
+        hook(mem::get_base() + 0x1e710, DestroyObjectHook, &DestroyObjectOrig);
+    }
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");
