@@ -26,6 +26,10 @@ extern bool next_white;
 extern int lock_rng_range;
 extern bool fix_rng;
 extern float fix_rng_val;
+static bool next_our_bullet = false;
+static int next_bullet_x = 0;
+static int next_bullet_y = 0;
+static uint next_bullet_dir = 0;
 int last_new_rand_val = 0;
 bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
@@ -106,8 +110,50 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
     return ret;
 }
 
-static unsigned int __stdcall SetCursorYHook(void* param_1, int param_2, void* pshit)
-{
+static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* sourceObj, int x, int y, uint direction);
+static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction) {
+    // Player ID - 28, Bullet ID - 106
+    // action->launchSpeed = 70 * 4;
+    if (next_our_bullet) {
+        next_our_bullet = false;
+        action->objectToLaunchID = 106;
+        obj = (ObjectHeader*)get_player_ptr(get_scene_id());
+        x = next_bullet_x;
+        y = next_bullet_y;
+        direction = next_bullet_dir;
+    }
+    cout << obj->type << " " << obj->typeID << std::endl;
+    LaunchObjectActionOrig(action, obj, x, y, direction);
+}
+
+void launch_bullet(int x, int y, uint dir) {
+    auto obj = (ObjectHeader*)get_player_ptr(get_scene_id());
+    if (!obj)
+        return;
+    ActionHeader action = { 0 };
+    action.actionID = 0x1D;
+    action.launchSpeed = 70;
+    action.objectToLaunchID = 106;
+    action.creatorID = 28;
+    action.size = 0;
+    action.eventCode = 1;
+    if (dir == (uint)-1) {
+        next_bullet_x = obj->xPos + (obj->hoCurrentDirection == 0 ? 8 : -8);
+        next_bullet_y = obj->yPos - 10;
+        next_bullet_dir = obj->hoCurrentDirection;
+    }
+    else {
+        next_bullet_x = x;
+        next_bullet_y = y;
+        next_bullet_dir = dir;
+    }
+    void(__cdecl * ExecuteObjectAction)(ActionHeader * action);
+    ExecuteObjectAction = (decltype(ExecuteObjectAction))(mem::get_base() + 0x15180);
+    next_our_bullet = true;
+    ExecuteObjectAction(&action);
+}
+
+static unsigned int __stdcall SetCursorYHook(void* param_1, int param_2, void* pshit) {
     if (conf::no_cmove)
         return 0;
     BOOL uVar1;
@@ -117,8 +163,7 @@ static unsigned int __stdcall SetCursorYHook(void* param_1, int param_2, void* p
     return uVar1 & 0xffff0000;
 }
 
-static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* pshit)
-{
+static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* pshit) {
     if (conf::no_cmove)
         return 0;
     BOOL uVar1;
@@ -167,6 +212,10 @@ static int __stdcall UpdateGameFrameHook() {
         btas::on_after_update();
         return ret;
     }
+
+    auto pp = (ObjectHeader*)get_player_ptr(get_scene_id());
+    if (MyKeyState('B') && pp)
+        launch_bullet(-1, -1, (uint)-1);
 
     input_tick();
     ui::pre_update();
@@ -267,7 +316,9 @@ static void __stdcall FlushInputQueueHook(void) {
 
 static HMODULE (__stdcall *LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
-    if (c_ends_with(lpLibFileName, "ForEach.mfx"))
+    if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
+        || c_ends_with(lpLibFileName, "Select.mfx") || c_ends_with(lpLibFileName, "Layer.mfx")
+        || c_ends_with(lpLibFileName, "clickteam-movement-controller.mfx"))
         lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";
     cout << "load hook: " << lpLibFileName << std::endl;
     return LoadLibraryAOrig(lpLibFileName);
@@ -366,6 +417,7 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
+    hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

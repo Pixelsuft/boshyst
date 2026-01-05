@@ -179,9 +179,12 @@ void btas::pre_init() {
 	// Disable timers when moving window to prevent desync
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b74), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b6d), buf5, 5, &bW) != 0 && bW == 5);
-	// Disable CRun_SyncFrameRate and MsgWaitForMultipleObjects when paused
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x36630), buf5, 5, &bW) != 0 && bW == 5);
+	// Disable CRun_SyncFrameRate and MsgWaitForMultipleObjects when needed
+	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x365db), buf5, 5, &bW) != 0 && bW == 5);
+	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x36630), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4659f), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a49), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a53), &temp, 1, &bW) != 0 && bW == 1); // No throttling
 	// Disable controller options menu
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x43036), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4304e), buf5, 5, &bW) != 0 && bW == 5);
@@ -214,8 +217,8 @@ void btas::init() {
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0xc3a5), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x2dd58), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmf2d3d9.dll") + 0x270c), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("ctrlx.mfx") + 0x4378), buf5, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("kcfloop.mfx") + 0x10f3), &temp, 1, &bW) != 0 && bW == 1); // Right??
+	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("ctrlx.mfx") + 0x4378), buf5, 5, &bW) != 0 && bW == 5);
+	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("kcfloop.mfx") + 0x10f3), &temp, 1, &bW) != 0 && bW == 1); // Right??
 	// No multimedia timers (I hope it doesn't crash)
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x4459f), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x41af4), &temp, 1, &bW) != 0 && bW == 1);
@@ -274,7 +277,7 @@ static void b_state_save(int slot) {
 		last_msg = "Failed to open file for writing to save state " + std::to_string((long long)slot);
 		return;
 	}
-	st.seed = pState->SystemTimeInMSFromSaveOrSeed;
+	st.seed = pState->RandomSeed;
 	ASS(f.write("btas", 4));
 	write_bin(f, st.scene);
 	write_bin(f, st.frame);
@@ -317,7 +320,9 @@ static void b_state_load(int slot, bool from_loop) {
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
+	cout << "try " << scene_id << " " << get_scene_id() << std::endl;
 	if (!is_replay && scene_id != get_scene_id()) {
+		cout << "preparing change\n";
 		need_scene_state_slot = slot;
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
 		last_msg = string("Loading scene ") + to_str(scene_id);
@@ -363,10 +368,12 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.prev);
 	}
 	load_bin(f, st.ev);
-	pState->SystemTimeInMSFromSaveOrSeed = st.seed;
+	// pState->RandomSeed = st.seed;
 	if (!is_replay)
 		state_load(&f);
-	pState->SystemTimeInMSFromSaveOrSeed = st.seed;
+	pState->RandomSeed = st.seed;
+	pState->rhNextFrame = 0;
+	cout << "state loaded\n";
 	last_msg = string("State ") + to_str(slot) + " loaded";
 }
 
@@ -432,7 +439,7 @@ bool btas::on_before_update() {
 				break;
 			}
 			case 4: {
-				int comp_val = (int)pState->SystemTimeInMSFromSaveOrSeed;
+				int comp_val = (int)pState->RandomSeed;
 				if (comp_val != ev.hash.val)
 					last_msg = string("Hash check 2 failed on frame ") + to_str(st.frame);
 				break;
@@ -475,7 +482,7 @@ bool btas::on_before_update() {
 				ev.idx = 3;
 			}
 			else {
-				ev.hash.val = (int)pState->SystemTimeInMSFromSaveOrSeed;
+				ev.hash.val = (int)pState->RandomSeed;
 				ev.idx = 4;
 			}
 			ev.frame = st.frame;
@@ -614,7 +621,7 @@ void btas::draw_info() {
 void btas::draw_tab() {
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-		ImGui::Text("Random seed: %i", (unsigned int)(unsigned short)(pState->SystemTimeInMSFromSaveOrSeed));
+		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState->RandomSeed));
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
 			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
