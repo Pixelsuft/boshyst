@@ -124,12 +124,6 @@ CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, v
     return ret;
 }
 
-void(__cdecl* DestroyObjectOrig)(int handleIndex, int destroyMode);
-static void __cdecl DestroyObjectHook(int handleIndex, int destroyMode) {
-    btas::unreg_obj(handleIndex);
-    DestroyObjectOrig(handleIndex, destroyMode);
-}
-
 static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* sourceObj, int x, int y, uint direction);
 static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction) {
     if (next_our_bullet) {
@@ -138,7 +132,7 @@ static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* o
         x = next_bullet_x;
         y = next_bullet_y;
         direction = next_bullet_dir;
-        cout << "bullet launched\n";
+        cout << "BULLET EVENT\n";
     }
     if (action->objectToLaunchID == 106) {
         action->objectToLaunchID = bullet_id;
@@ -158,9 +152,9 @@ void launch_bullet(int x, int y, int dir) {
     action.launchSpeed = 70;
     action.objectToLaunchID = 106;
     action.creatorID = 28;
-    action.size = 0;
-    action.eventCode = 1;
-    if (dir == -1) {
+    //action.size = 0;
+    //action.eventCode = 1;
+    if (dir == -1 || 1) {
         next_bullet_x = obj->xPos + (obj->hoCurrentDirection == 0 ? 8 : -8);
         next_bullet_y = obj->yPos - 10;
         next_bullet_dir = obj->hoCurrentDirection;
@@ -230,6 +224,8 @@ static int __stdcall UpdateGameFrameHook() {
     try_to_hook_graphics();
     if (is_btas)
         btas::fix_bullets();
+    if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
+        launch_bullet(-1, -1, -1);
     if (is_btas && btas::on_before_update()) {
         auto ret = UpdateGameFrameOrig();
         void (*ProcessFrameRendering)(void);
@@ -242,8 +238,6 @@ static int __stdcall UpdateGameFrameHook() {
     input_tick();
     ui::pre_update();
 
-    if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
-        launch_bullet(-1, -1, -1);
     auto ret = UpdateGameFrameOrig();
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
@@ -442,10 +436,8 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
-    if (is_btas) {
+    if (is_btas)
         hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
-        hook(mem::get_base() + 0x1e710, DestroyObjectHook, &DestroyObjectOrig);
-    }
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

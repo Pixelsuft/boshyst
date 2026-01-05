@@ -29,9 +29,9 @@ extern DWORD(__stdcall* timeGetTimeOrig)();
 extern bool state_save(bfs::File* file);
 extern bool state_load(bfs::File* file);
 extern int(__stdcall* UpdateGameFrameOrig)();
-extern void(__cdecl* DestroyObjectOrig)(int handleIndex, int destroyMode);
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
 static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
+static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
 void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
 
 struct BTasBind {
@@ -95,7 +95,6 @@ struct BTasState {
 	int last_pos[2];
 	std::vector<BTasEvent> ev;
 	std::vector<int> prev;
-	std::vector<int> bullets; // UNUSED
 
 	BTasState() {
 		time = 0;
@@ -238,6 +237,7 @@ void btas::init() {
 	pTimeEndPeriod = (decltype(pTimeEndPeriod))GetProcAddress(h, "timeEndPeriod");
 	ASS(pTimeBeginPeriod != nullptr && pTimeEndPeriod != nullptr);
 	last_msg = "None";
+	DestroyObject = (decltype(DestroyObject))(mem::get_base() + 0x1e710);
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	last_time = now = timeGetTimeOrig();
 }
@@ -249,9 +249,9 @@ void btas::fix_bullets() {
 		int x = pState->objectList[old_h * 2]->xPos;
 		int y = pState->objectList[old_h * 2]->yPos;
 		auto dir = pState->objectList[old_h * 2]->hoCurrentDirection;
-		DestroyObjectOrig(dir, 1);
-		cout << "bullet fixed\n";
+		DestroyObject(old_h, 1);
 		launch_bullet(x, y, (int)dir);
+		cout << "bullet fixed " << x << " " << y << " " << dir << std::endl;
 	}
 	temp_bullets.clear();
 }
@@ -400,23 +400,10 @@ static void b_state_load(int slot, bool from_loop) {
 }
 
 void btas::reg_obj(int handle) {
-	if (b_loading_state)
+	if (b_loading_state) {
+		cout << "bullet reg\n";
 		temp_bullets.push_back(handle);
-	return;
-	st.bullets.push_back(handle);
-	std::sort(st.bullets.begin(), st.bullets.end());
-	cout << "add\n";
-}
-
-void btas::unreg_obj(int handle) {
-	return;
-	// UNUSED
-
-	auto it = std::lower_bound(st.bullets.begin(), st.bullets.end(), handle);
-	if (it == st.bullets.end() || *it != handle)
-		return;
-	// cout << "remove\n";
-	st.bullets.erase(it);
+	}
 }
 
 unsigned int btas::get_rng(unsigned int maxv) {

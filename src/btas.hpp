@@ -17,7 +17,6 @@ namespace btas {
 	void draw_tab();
 	void on_key(int k, bool pressed);
 	void reg_obj(int handle);
-	void unreg_obj(int handle);
 	void fix_bullets();
 	unsigned int get_rng(unsigned int maxv);
 }
