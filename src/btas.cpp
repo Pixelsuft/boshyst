@@ -88,6 +88,7 @@ struct BTasEvent {
 
 struct BTasState {
 	std::vector<BTasEvent> ev;
+	std::vector<BTasEvent> temp_ev;
 	std::vector<int> prev;
 	int cur_pos[2];
 	int last_pos[2];
@@ -112,7 +113,6 @@ struct BTasState {
 	}
 };
 
-static std::vector<BTasEvent> temp_ev;
 static std::vector<BTasBind> binds;
 static std::vector<int> holding;
 static std::vector<int> repl_holding;
@@ -127,6 +127,8 @@ static bool slowmo = false;
 static bool last_upd = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
+static int bullet_cur_delay = -1;
+static int bullet_fix_delay = 0;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -264,8 +266,10 @@ void btas::fix_bullets() {
 		int x = old_b->xPos;
 		int y = old_b->yPos;
 		auto dir = old_b->hoCurrentDirection;
+		// bullet_speed = 9
 		old_b->xPos = old_b->yPos = -13337;
 		DestroyObject(old_h, 1);
+		// x += (dir == 0 ? 9 : -9);
 		cout << "fixing bullet " << x << " " << y << " " << dir << std::endl;
 		launch_bullet(x, y, (int)dir);
 	}
@@ -331,6 +335,7 @@ static void b_state_save(int slot) {
 	write_bin(f, st.c1);
 	write_bin(f, st.seed);
 	write_bin(f, st.prev);
+	write_bin(f, st.temp_ev);
 	write_bin(f, st.ev);
 	state_save(&f);
 	last_msg = string("State ") + to_str(slot) + " saved";
@@ -344,7 +349,6 @@ static void b_state_load(int slot, bool from_loop) {
 		last_msg = "Failed to open file for reading to load state " + to_str(slot);
 		return;
 	}
-	temp_ev.clear();
 	char buf[4];
 	ASS(f.read(buf, 4));
 	ASS(memcmp(buf, "btas", 4) == 0);
@@ -388,8 +392,9 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy); // c1
 		short dummy3;
 		load_bin(f, dummy3); // seed
-		std::vector<int> dummy2; // prev
-		load_bin(f, dummy2);
+		std::vector<int> dummy2;
+		load_bin(f, dummy2); // prev
+		load_bin(f, dummy2); // temp_ev
 		load_bin(f, st.ev);
 		if (reset_on_replay) {
 			st.cur_pos[0] = st.cur_pos[1] = 0;
@@ -400,8 +405,10 @@ static void b_state_load(int slot, bool from_loop) {
 			st.seed = 0;
 			// FIXME (?)
 			// st.c1 = 0;
-			st.ev.clear();
+			st.temp_ev.clear();
+			st.prev.clear();
 		}
+		bullet_cur_delay = -1;
 	}
 	else {
 		st.scene = scene_id;
@@ -418,6 +425,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.c1);
 		load_bin(f, st.seed);
 		load_bin(f, st.prev);
+		load_bin(f, st.temp_ev);
 		load_bin(f, st.ev);
 	}
 	// pState->RandomSeed = st.seed;
@@ -426,7 +434,7 @@ static void b_state_load(int slot, bool from_loop) {
 		temp_bullets.clear();
 		state_load(&f);
 		b_loading_state = false;
-		btas::fix_bullets();
+		bullet_cur_delay = conf::fix_bul ? bullet_fix_delay : -1;
 	}
 	pState->lastFrameScore = st.c1;
 	pState->RandomSeed = st.seed;
@@ -449,7 +457,7 @@ void btas::reg_obj(int handle) {
 
 unsigned int btas::get_rng(unsigned int maxv) {
 	// TODO
-	return 0;
+	return maxv;
 }
 
 short btas::TasGetKeyState(int k) {
@@ -560,11 +568,11 @@ bool btas::on_before_update() {
 				st.ev.push_back(ev);
 			}
 		}
-		for (auto it = temp_ev.begin(); it != temp_ev.end(); it++) {
+		for (auto it = st.temp_ev.begin(); it != st.temp_ev.end(); it++) {
 			exec_event(*it);
 			st.ev.push_back(*it);
 		}
-		temp_ev.clear();
+		st.temp_ev.clear();
 		if (st.frame % 20 == 0) {
 			BTasEvent ev;
 			if (st.frame % 40 == 0) {
@@ -578,6 +586,13 @@ bool btas::on_before_update() {
 			ev.frame = st.frame;
 			st.ev.push_back(ev);
 			// cout << "Hashing frame " << st.frame << std::endl;
+		}
+	}
+	if (bullet_cur_delay >= 0) {
+		bullet_cur_delay--;
+		if (bullet_cur_delay == 0) {
+			bullet_cur_delay = -1;
+			fix_bullets();
 		}
 	}
 	last_upd  = true;
@@ -723,7 +738,8 @@ void btas::draw_tab() {
 				last_msg = "Running replay not from start, may desync!";
 			if (is_replay) {
 				repl_holding.clear();
-				temp_ev.clear();
+				st.temp_ev.clear();
+				bullet_cur_delay = -1;
 			}
 			else {
 				st.prev = repl_holding;
@@ -733,9 +749,10 @@ void btas::draw_tab() {
 			}
 			repl_index = 0;
 		}
-		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
+		ImGui::Checkbox("Reset game on replay (BETA)", &reset_on_replay);
 		ImGui::Checkbox("Fix bullets", &conf::fix_bul);
-		ImGui::Text("Temp event queue size: %i", (int)temp_ev.size());
+		ImGui::InputInt("Bullet fix delay (frames)", &bullet_fix_delay);
+		ImGui::Text("Temp event queue size: %i", (int)st.temp_ev.size());
 		static int mpos[2] = { 0, 0 };
 		ImGui::InputInt2("Mouse pos for click", mpos);
 		if (ImGui::Button("Push mouse click")) {
@@ -745,8 +762,10 @@ void btas::draw_tab() {
 			ev.click.y = mpos[1];
 			ev.frame = st.frame;
 			ev.idx = 5;
-			temp_ev.push_back(ev);
+			st.temp_ev.push_back(ev);
 		}
+		if (ImGui::Button("Clear temp events"))
+			st.temp_ev.clear();
 	}
 }
 
