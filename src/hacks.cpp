@@ -416,6 +416,16 @@ static int __cdecl strcmpHook(const char* s1, const char* s2) {
     return ret;
 }
 
+void init_temp_saves() {
+    DeleteFileA("onlineLicense.tmp.ini");
+    DeleteFileA("animation.tmp.ini");
+    DeleteFileA("options.tmp.ini");
+    DeleteFileA("saveFile.tmp.ini");
+    DeleteFileA("SaveFile1.tmp.ini");
+    DeleteFileA("SaveFile2.tmp.ini");
+    DeleteFileA("SaveFile3.tmp.ini");
+}
+
 void init_simple_hacks() {
     input_init();
     if (!is_hourglass && (is_btas || !conf::tas_mode)) {
@@ -439,11 +449,5 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
-    DeleteFileA("onlineLicense.tmp.ini");
-    DeleteFileA("animation.tmp.ini");
-    DeleteFileA("options.tmp.ini");
-    DeleteFileA("saveFile.tmp.ini");
-    DeleteFileA("SaveFile1.tmp.ini");
-    DeleteFileA("SaveFile2.tmp.ini");
-    DeleteFileA("SaveFile3.tmp.ini");
+    init_temp_saves();
 }

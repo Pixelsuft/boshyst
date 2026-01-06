@@ -196,10 +196,11 @@ void btas::pre_init() {
 	// Disable timers when moving window to prevent desync
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b74), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b6d), buf5, 5, &bW) != 0 && bW == 5);
-	// Disable CRun_SyncFrameRate and MsgWaitForMultipleObjects when needed
+	// Disable CRun_SyncFrameRate, MsgWaitForMultipleObjects and some other sync stuff when needed
 	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x365db), buf5, 5, &bW) != 0 && bW == 5);
 	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x36630), buf5, 5, &bW) != 0 && bW == 5);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4659f), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a74), buf2, 2, &bW) != 0 && bW == 2);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a49), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a53), &temp, 1, &bW) != 0 && bW == 1); // No throttling
 	// Disable controller options menu
@@ -416,6 +417,7 @@ static void b_state_load(int slot, bool from_loop) {
 			st.temp_ev.clear();
 			st.rng_buf.clear();
 			st.prev.clear();
+			init_temp_saves();
 		}
 		bullet_cur_delay = -1;
 	}
@@ -574,13 +576,6 @@ bool btas::on_before_update() {
 				continue;
 			exec_event(ev);
 		}
-		if (st.frame == st.total && st.frame != 0) {
-			is_replay = false;
-			is_paused = true;
-			st.prev = repl_holding;
-			repl_holding.clear();
-			last_msg = "Switched to recording";
-		}
 	}
 	else {
 		for (auto it = holding.begin(); it != holding.end(); it++) {
@@ -630,8 +625,8 @@ bool btas::on_before_update() {
 			fix_bullets();
 		}
 	}
-	last_upd  = true;
-	st.prev = holding;
+	last_upd = true;
+	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
 	return false;
 }
@@ -656,6 +651,13 @@ void btas::on_after_update() {
 		}
 		else {
 			st.cur_pos[0] = st.cur_pos[1] = st.last_pos[0] = st.last_pos[1] = 0;
+		}
+
+		if (is_replay && st.frame == st.total && st.frame > 0) {
+			is_replay = false;
+			is_paused = true;
+			repl_holding.clear();
+			last_msg = "Switched to recording";
 		}
 	}
 	if (is_hourglass) {
@@ -777,7 +779,6 @@ void btas::draw_tab() {
 				bullet_cur_delay = -1;
 			}
 			else {
-				st.prev = repl_holding;
 				repl_holding.clear();
 				st.total = st.frame;
 				st.ev.resize(repl_index);
