@@ -95,9 +95,6 @@ struct BTasState {
 	int total;
 	int time;
 	int c1;
-	uint c2;
-	int c3;
-	short c4;
 	short seed;
 
 	BTasState() {
@@ -108,9 +105,6 @@ struct BTasState {
 		cur_pos[0] = cur_pos[1] = last_pos[0] = last_pos[1] = 0;
 		seed = 0;
 		c1 = 0;
-		c2 = 0;
-		c3 = 0;
-		c4 = 0;
 	}
 };
 
@@ -328,9 +322,6 @@ static void b_state_save(int slot) {
 	write_bin(f, st.last_pos[1]);
 	write_bin(f, st.time);
 	write_bin(f, st.c1);
-	write_bin(f, st.c2);
-	write_bin(f, st.c3);
-	write_bin(f, st.c4);
 	write_bin(f, st.seed);
 	write_bin(f, st.prev);
 	write_bin(f, st.ev);
@@ -385,10 +376,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy);
 		load_bin(f, dummy); // time
 		load_bin(f, dummy); // c1
-		load_bin(f, dummy); // c2
-		load_bin(f, dummy); // c3
 		short dummy3;
-		load_bin(f, dummy3); // c4
 		load_bin(f, dummy3); // seed
 		std::vector<int> dummy2; // prev
 		load_bin(f, dummy2);
@@ -399,10 +387,8 @@ static void b_state_load(int slot, bool from_loop) {
 			st.frame = st.sc_frame = 0;
 			st.time = 0;
 			st.seed = 0;
-			st.c1 = 0;
-			st.c2 = 0;
-			st.c3 = 0;
-			st.c4 = 0;
+			// FIXME (?)
+			// st.c1 = 0;
 			st.ev.clear();
 		}
 	}
@@ -417,9 +403,6 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.last_pos[1]);
 		load_bin(f, st.time);
 		load_bin(f, st.c1);
-		load_bin(f, st.c2);
-		load_bin(f, st.c3);
-		load_bin(f, st.c4);
 		load_bin(f, st.seed);
 		load_bin(f, st.prev);
 		load_bin(f, st.ev);
@@ -433,9 +416,6 @@ static void b_state_load(int slot, bool from_loop) {
 		btas::fix_bullets();
 	}
 	pState->lastFrameScore = st.c1;
-	//pState->frameDeltaTime = st.c2;
-	//pState->field63_0x78 = st.c3;
-	//pState->frameCounterSus = st.c4;
 	pState->RandomSeed = st.seed;
 	//pState->rhNextFrame = 0;
 	cout << "state loaded\n";
@@ -577,9 +557,6 @@ bool btas::on_before_update() {
 void btas::on_after_update() {
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	st.c1 = pState->lastFrameScore;
-	st.c2 = pState->frameDeltaTime;
-	st.c3 = pState->field63_0x78;
-	st.c4 = pState->frameCounterSus;
 	st.seed = pState->RandomSeed;
 	if (last_upd) {
 		last_upd = false;
