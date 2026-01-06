@@ -75,6 +75,10 @@ struct BTasEvent {
 		struct {
 			int val;
 		} hash;
+		struct {
+			int val;
+			int range;
+		} rng;
 	};
 	int frame;
 	uint8_t idx;
@@ -89,6 +93,7 @@ struct BTasEvent {
 struct BTasState {
 	std::vector<BTasEvent> ev;
 	std::vector<BTasEvent> temp_ev;
+	std::vector<IntPair> rng_buf;
 	std::vector<int> prev;
 	int cur_pos[2];
 	int last_pos[2];
@@ -334,6 +339,7 @@ static void b_state_save(int slot) {
 	write_bin(f, st.time);
 	write_bin(f, st.c1);
 	write_bin(f, st.seed);
+	write_bin(f, st.rng_buf);
 	write_bin(f, st.prev);
 	write_bin(f, st.temp_ev);
 	write_bin(f, st.ev);
@@ -393,6 +399,8 @@ static void b_state_load(int slot, bool from_loop) {
 		short dummy3;
 		load_bin(f, dummy3); // seed
 		std::vector<int> dummy2;
+		std::vector<IntPair> dummy4;
+		load_bin(f, dummy4); // rng_buf
 		load_bin(f, dummy2); // prev
 		load_bin(f, dummy2); // temp_ev
 		load_bin(f, st.ev);
@@ -406,6 +414,7 @@ static void b_state_load(int slot, bool from_loop) {
 			// FIXME (?)
 			// st.c1 = 0;
 			st.temp_ev.clear();
+			st.rng_buf.clear();
 			st.prev.clear();
 		}
 		bullet_cur_delay = -1;
@@ -424,6 +433,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.time);
 		load_bin(f, st.c1);
 		load_bin(f, st.seed);
+		load_bin(f, st.rng_buf);
 		load_bin(f, st.prev);
 		load_bin(f, st.temp_ev);
 		load_bin(f, st.ev);
@@ -456,8 +466,14 @@ void btas::reg_obj(int handle) {
 }
 
 unsigned int btas::get_rng(unsigned int maxv) {
-	// TODO
-	return maxv;
+	auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), (int)maxv, [](const IntPair& a, int range) {
+		return a.a > range;
+	});
+	if (it == st.rng_buf.end() || it->a != (int)maxv)
+		return maxv;
+	auto ret = it->b;
+	st.rng_buf.erase(it);
+	return ret;
 }
 
 short btas::TasGetKeyState(int k) {
@@ -503,6 +519,25 @@ static void exec_event(BTasEvent& ev) {
 			break;
 		SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
 		SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
+		break;
+	}
+	case 6: {
+		st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
+		std::sort(st.rng_buf.begin(), st.rng_buf.end(), [](const IntPair& a, const IntPair& b) {
+			return a.a > b.a;
+		});
+		break;
+	}
+	case 7: {
+		// TODO: optimize
+		while (1) {
+			auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range, [](const IntPair& a, int range) {
+				return a.a > range;
+			});
+			if (it == st.rng_buf.end() || it->a != ev.rng.range)
+				break;
+			st.rng_buf.erase(it);
+		}
 		break;
 	}
 	}
@@ -752,11 +787,9 @@ void btas::draw_tab() {
 		ImGui::Checkbox("Reset game on replay (BETA)", &reset_on_replay);
 		ImGui::Checkbox("Fix bullets", &conf::fix_bul);
 		ImGui::InputInt("Bullet fix delay (frames)", &bullet_fix_delay);
-		ImGui::Text("Temp event queue size: %i", (int)st.temp_ev.size());
 		static int mpos[2] = { 0, 0 };
 		ImGui::InputInt2("Mouse pos for click", mpos);
 		if (ImGui::Button("Push mouse click")) {
-			// TODO: split into 2 events to reduce size
 			BTasEvent ev;
 			ev.click.x = mpos[0];
 			ev.click.y = mpos[1];
@@ -764,8 +797,40 @@ void btas::draw_tab() {
 			ev.idx = 5;
 			st.temp_ev.push_back(ev);
 		}
+		static int rval[3] = { 0, 0, 0 };
+		ImGui::InputInt("RNG value", &rval[0]);
+		if (ImGui::InputInt("RNG range", &rval[1]))
+			rval[1] = std::max(rval[1], 1);
+		if (ImGui::InputInt("RNG repeat (0 - clear range)", &rval[2]))
+			rval[2] = std::max(rval[2], 0);
+		if (ImGui::Button("Push RNG")) {
+			BTasEvent ev;
+			ev.rng.val = rval[0];
+			ev.rng.range = rval[1];
+			ev.frame = st.frame;
+			ev.idx = rval[2] == 0 ? 7 : 6;
+			for (int i = 0; i < rval[2]; i++)
+				st.temp_ev.push_back(ev);
+		}
+		ImGui::Text("Temp event queue size: %i", (int)st.temp_ev.size());
 		if (ImGui::Button("Clear temp events"))
 			st.temp_ev.clear();
+		static bool show_rng = false;
+		ImGui::Checkbox("Show RNG state (range: values)", &show_rng);
+		if (show_rng && !st.rng_buf.empty()) {
+			int cur_range = -1;
+			string cur_str;
+			for (auto it = st.rng_buf.begin(); it != st.rng_buf.end(); it++) {
+				if (it->a != cur_range) {
+					if (cur_range != -1)
+						ImGui::TextUnformatted(cur_str.substr(0, cur_str.size() - 2).c_str());
+					cur_range = it->a;
+					cur_str = to_str(cur_range) + ": ";
+				}
+				cur_str += to_str(it->b) + ", ";
+			}
+			ImGui::TextUnformatted(cur_str.substr(0, cur_str.size() - 2).c_str());
+		}
 	}
 }
 

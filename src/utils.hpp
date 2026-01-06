@@ -1,6 +1,20 @@
 #pragma once
 #include <string>
 
+struct IntPair {
+    int a;
+    int b;
+
+    IntPair() {
+        a = b = 0;
+    }
+
+    IntPair(int a, int b) {
+        this->a = a;
+        this->b = b;
+    }
+};
+
 inline std::string to_str(int x) {
 #if _MSC_VER >= 1900
 	return std::to_string((long long)x);
