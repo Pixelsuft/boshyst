@@ -85,16 +85,20 @@ struct BTasEvent {
 };
 
 struct BTasState {
+	std::vector<BTasEvent> ev;
+	std::vector<int> prev;
+	int cur_pos[2];
+	int last_pos[2];
 	int scene;
 	int frame;
 	int sc_frame;
 	int total;
 	int time;
+	int c1;
+	uint c2;
+	int c3;
+	short c4;
 	short seed;
-	int cur_pos[2];
-	int last_pos[2];
-	std::vector<BTasEvent> ev;
-	std::vector<int> prev;
 
 	BTasState() {
 		time = 0;
@@ -103,6 +107,10 @@ struct BTasState {
 		total = 0;
 		cur_pos[0] = cur_pos[1] = last_pos[0] = last_pos[1] = 0;
 		seed = 0;
+		c1 = 0;
+		c2 = 0;
+		c3 = 0;
+		c4 = 0;
 	}
 };
 
@@ -206,9 +214,6 @@ void btas::pre_init() {
 	// Clipboard
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe1fa), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe2cd), &temp, 1, &bW) != 0 && bW == 1);
-	// ExecuteObjectAction ignore if statements (part of bullet fix)
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
 }
 
 void btas::init() {
@@ -246,6 +251,13 @@ void btas::init() {
 }
 
 void btas::fix_bullets() {
+	if (temp_bullets.empty())
+		return;
+	DWORD bW;
+	uint8_t buf2[] = { 0x90, 0x90 };
+	// ExecuteObjectAction ignore if statements (part of bullet fix)
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	for (auto it = temp_bullets.begin(); it != temp_bullets.end(); it++) {
 		int old_h = *it;
@@ -259,6 +271,11 @@ void btas::fix_bullets() {
 		launch_bullet(x, y, (int)dir);
 	}
 	temp_bullets.clear();
+	buf2[0] = 0x74;
+	buf2[1] = 0x41;
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
+	buf2[1] = 0x19;
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
 }
 
 template<typename T>
@@ -293,14 +310,13 @@ static void load_bin(bfs::File& f, T& data) {
 }
 
 static void b_state_save(int slot) {
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	string path = string("state") + std::to_string((long long)slot) + ".bstate";
 	bfs::File f(path, 1);
 	if (!f.is_open()) {
 		last_msg = "Failed to open file for writing to save state " + std::to_string((long long)slot);
 		return;
 	}
-	st.seed = pState->RandomSeed;
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	ASS(f.write("btas", 4));
 	write_bin(f, st.scene);
 	write_bin(f, st.frame);
@@ -311,6 +327,10 @@ static void b_state_save(int slot) {
 	write_bin(f, st.last_pos[0]);
 	write_bin(f, st.last_pos[1]);
 	write_bin(f, st.time);
+	write_bin(f, st.c1);
+	write_bin(f, st.c2);
+	write_bin(f, st.c3);
+	write_bin(f, st.c4);
 	write_bin(f, st.seed);
 	write_bin(f, st.prev);
 	write_bin(f, st.ev);
@@ -343,7 +363,6 @@ static void b_state_load(int slot, bool from_loop) {
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
-	cout << "try " << scene_id << " " << get_scene_id() << std::endl;
 	if (!is_replay && scene_id != get_scene_id()) {
 		cout << "preparing change\n";
 		need_scene_state_slot = slot;
@@ -365,7 +384,11 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy); // last_pos
 		load_bin(f, dummy);
 		load_bin(f, dummy); // time
+		load_bin(f, dummy); // c1
+		load_bin(f, dummy); // c2
+		load_bin(f, dummy); // c3
 		short dummy3;
+		load_bin(f, dummy3); // c4
 		load_bin(f, dummy3); // seed
 		std::vector<int> dummy2; // prev
 		load_bin(f, dummy2);
@@ -375,6 +398,11 @@ static void b_state_load(int slot, bool from_loop) {
 			st.last_pos[0] = st.last_pos[1] = 0;
 			st.frame = st.sc_frame = 0;
 			st.time = 0;
+			st.seed = 0;
+			st.c1 = 0;
+			st.c2 = 0;
+			st.c3 = 0;
+			st.c4 = 0;
 			st.ev.clear();
 		}
 	}
@@ -388,6 +416,10 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.last_pos[0]);
 		load_bin(f, st.last_pos[1]);
 		load_bin(f, st.time);
+		load_bin(f, st.c1);
+		load_bin(f, st.c2);
+		load_bin(f, st.c3);
+		load_bin(f, st.c4);
 		load_bin(f, st.seed);
 		load_bin(f, st.prev);
 		load_bin(f, st.ev);
@@ -400,8 +432,12 @@ static void b_state_load(int slot, bool from_loop) {
 		b_loading_state = false;
 		btas::fix_bullets();
 	}
+	pState->lastFrameScore = st.c1;
+	//pState->frameDeltaTime = st.c2;
+	//pState->field63_0x78 = st.c3;
+	//pState->frameCounterSus = st.c4;
 	pState->RandomSeed = st.seed;
-	pState->rhNextFrame = 0;
+	//pState->rhNextFrame = 0;
 	cout << "state loaded\n";
 	last_msg = string("State ") + to_str(slot) + " loaded";
 }
@@ -540,6 +576,11 @@ bool btas::on_before_update() {
 
 void btas::on_after_update() {
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	st.c1 = pState->lastFrameScore;
+	st.c2 = pState->frameDeltaTime;
+	st.c3 = pState->field63_0x78;
+	st.c4 = pState->frameCounterSus;
+	st.seed = pState->RandomSeed;
 	if (last_upd) {
 		last_upd = false;
 		st.frame++;
