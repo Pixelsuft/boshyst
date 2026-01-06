@@ -25,6 +25,7 @@ namespace conf {
 	extern bool skip_msg;
 	extern bool input_in_menu;
 	extern bool no_trans;
+	extern bool fix_bul;
 
 	void read();
 }

@@ -17,6 +17,8 @@ static bool c_ends_with(const char* str, const char* end) {
     return memcmp(str + sl - el, end, el) == 0;
 }
 
+extern int player_oi_handle;
+
 bool MyKeyState(int k);
 int JustKeyState(int k);
 wchar_t* utf8_to_unicode(const std::string& utf8);

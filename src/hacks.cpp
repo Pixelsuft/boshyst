@@ -30,6 +30,7 @@ static bool next_our_bullet = false;
 static int next_bullet_x = 0;
 static int next_bullet_y = 0;
 static uint next_bullet_dir = 0;
+int player_oi_handle = -1;
 int bullet_id = 106;
 int bullet_speed = 70;
 int last_new_rand_val = 0;
@@ -118,9 +119,10 @@ static int __cdecl
 CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, void* creationParam,
     ushort creationFlags, uint initialDir, int layerIndex) {
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
-    if (objectInfoID == 106 && ret != -1) {
+    if (is_btas && objectInfoID == 106 && ret != -1)
         btas::reg_obj(ret);
-    }
+    if (objectInfoID == 28 && ret != -1)
+        player_oi_handle = ret;
     return ret;
 }
 
@@ -132,7 +134,7 @@ static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* o
         x = next_bullet_x;
         y = next_bullet_y;
         direction = next_bullet_dir;
-        cout << "BULLET EVENT\n";
+        cout << "BULLET EVENT " << x << " " << y << " " << direction << std::endl;
     }
     if (action->objectToLaunchID == 106) {
         action->objectToLaunchID = bullet_id;
@@ -154,7 +156,7 @@ void launch_bullet(int x, int y, int dir) {
     action.creatorID = 28;
     //action.size = 0;
     //action.eventCode = 1;
-    if (dir == -1 || 1) {
+    if (dir == -1) {
         next_bullet_x = obj->xPos + (obj->hoCurrentDirection == 0 ? 8 : -8);
         next_bullet_y = obj->yPos - 10;
         next_bullet_dir = obj->hoCurrentDirection;
@@ -222,10 +224,7 @@ static int __stdcall UpdateGameFrameHook() {
             btas::init();
     }
     try_to_hook_graphics();
-    if (is_btas)
-        btas::fix_bullets();
-    if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
-        launch_bullet(-1, -1, -1);
+
     if (is_btas && btas::on_before_update()) {
         auto ret = UpdateGameFrameOrig();
         void (*ProcessFrameRendering)(void);
@@ -237,6 +236,9 @@ static int __stdcall UpdateGameFrameHook() {
 
     input_tick();
     ui::pre_update();
+
+    if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
+        launch_bullet(-1, -1, -1);
 
     auto ret = UpdateGameFrameOrig();
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
@@ -436,8 +438,7 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
-    if (is_btas)
-        hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
+    hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");

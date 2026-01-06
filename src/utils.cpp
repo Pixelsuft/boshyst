@@ -8,6 +8,7 @@
 #include "fs.hpp"
 #include "ui.hpp"
 #include "utils.hpp"
+#include "ghidra_headers.h"
 #include <vector>
 
 using std::cout;
@@ -242,9 +243,13 @@ void* get_player_ptr(int s) {
 	// FINAL PATH
 	case 37:
 		return get_player_by_id(0x58);
-	default:
-		return nullptr;
 	}
+	if (s == 0 || s == 1)
+		return nullptr;
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	if (player_oi_handle != -1 && player_oi_handle < pState->objectCount)
+		return pState->objectList[player_oi_handle * 2];
+	return nullptr;
 }
 
 bool state_save(bfs::File* file) {

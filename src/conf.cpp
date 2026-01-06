@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include "input.hpp"
+#include "init.hpp"
 #include "conf.hpp"
 #include "ass.hpp"
 #include "btas.hpp"
@@ -43,6 +44,7 @@ namespace conf {
     bool skip_msg;
     bool input_in_menu;
     bool no_trans;
+    bool fix_bul;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -105,6 +107,8 @@ static void read_bind(const string& line_orig, const string& line) {
         }
     }
     else if (starts_with(line, "bind=save,") || starts_with(line, "bind=load,")) {
+        if (is_hourglass || is_btas)
+            return;
         std::string fn = line;
         ASS(sscanf(line.substr(10).c_str(), "%i", &num) == 1);
         // Ugly.
@@ -122,6 +126,8 @@ static void read_bind(const string& line_orig, const string& line) {
         }
     }
     else if (starts_with(line, "bind=rapid,")) {
+        if (is_hourglass || is_btas)
+            return;
         ASS(sscanf(line.substr(11).c_str(), "%i", &num) == 1);
         conf::rapid_bind = num;
     }
@@ -220,6 +226,7 @@ void conf::read() {
     conf::cap_cnt = 0;
     conf::rapid_bind = -1;
     conf::first_run = false;
+    conf::fix_bul = true;
     conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
         conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps =
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;

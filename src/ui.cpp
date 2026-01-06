@@ -308,6 +308,24 @@ void ui::draw() {
 				draw_list->AddText(font, ImGui::GetFontSize(), ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), IM_COL32(255, 0, 0, 255), buf);
 			}
 		}
+		if (0) {
+			RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+			const ImFont* font = ImGui::GetFont();
+			for (int i = 0; i < pState->objectCount; i++) {
+				ObjectHeader* pp = pState->objectList[i * 2];
+				if (!pp)
+					continue;
+				int cur_x = pp->xPos;
+				int cur_y = pp->yPos;
+				if (cur_x <= 0 || cur_x >= 4257664 || cur_y <= 0 || cur_y >= 4257664)
+					continue;
+				char buf[16];
+				_itoa((int)i, buf, 10);
+				draw_list->AddRectFilled(ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), ImVec2((float)(cur_x % 640 + 20), (float)(cur_y % 480 + 10)), IM_COL32(255, 255, 255, 255));
+				draw_list->AddText(font, ImGui::GetFontSize(), ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), IM_COL32(255, 0, 0, 255), buf);
+			}
+		}
 	}
 	ImGui::PopStyleVar();
 	ImGui::End();

@@ -206,6 +206,9 @@ void btas::pre_init() {
 	// Clipboard
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe1fa), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe2cd), &temp, 1, &bW) != 0 && bW == 1);
+	// ExecuteObjectAction ignore if statements (part of bullet fix)
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
 }
 
 void btas::init() {
@@ -246,12 +249,14 @@ void btas::fix_bullets() {
 	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 	for (auto it = temp_bullets.begin(); it != temp_bullets.end(); it++) {
 		int old_h = *it;
-		int x = pState->objectList[old_h * 2]->xPos;
-		int y = pState->objectList[old_h * 2]->yPos;
-		auto dir = pState->objectList[old_h * 2]->hoCurrentDirection;
+		auto old_b = pState->objectList[old_h * 2];
+		int x = old_b->xPos;
+		int y = old_b->yPos;
+		auto dir = old_b->hoCurrentDirection;
+		old_b->xPos = old_b->yPos = -13337;
 		DestroyObject(old_h, 1);
+		cout << "fixing bullet " << x << " " << y << " " << dir << std::endl;
 		launch_bullet(x, y, (int)dir);
-		cout << "bullet fixed " << x << " " << y << " " << dir << std::endl;
 	}
 	temp_bullets.clear();
 }
@@ -357,16 +362,17 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.total);
 		load_bin(f, dummy); // cur pos
 		load_bin(f, dummy);
-		st.cur_pos[0] = st.cur_pos[1] = 0;
 		load_bin(f, dummy); // last_pos
 		load_bin(f, dummy);
-		st.last_pos[0] = st.last_pos[1] = 0;
 		load_bin(f, dummy); // time
 		short dummy3;
 		load_bin(f, dummy3); // seed
 		std::vector<int> dummy2; // prev
 		load_bin(f, dummy2);
+		load_bin(f, st.ev);
 		if (reset_on_replay) {
+			st.cur_pos[0] = st.cur_pos[1] = 0;
+			st.last_pos[0] = st.last_pos[1] = 0;
 			st.frame = st.sc_frame = 0;
 			st.time = 0;
 			st.ev.clear();
@@ -384,14 +390,15 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.time);
 		load_bin(f, st.seed);
 		load_bin(f, st.prev);
+		load_bin(f, st.ev);
 	}
-	load_bin(f, st.ev);
 	// pState->RandomSeed = st.seed;
 	if (!is_replay) {
 		b_loading_state = true;
 		temp_bullets.clear();
 		state_load(&f);
 		b_loading_state = false;
+		btas::fix_bullets();
 	}
 	pState->RandomSeed = st.seed;
 	pState->rhNextFrame = 0;
@@ -402,7 +409,12 @@ static void b_state_load(int slot, bool from_loop) {
 void btas::reg_obj(int handle) {
 	if (b_loading_state) {
 		cout << "bullet reg\n";
-		temp_bullets.push_back(handle);
+		if (conf::fix_bul)
+			temp_bullets.push_back(handle);
+	}
+	else {
+		//RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+		//auto obj = pState->objectList[handle * 2];
 	}
 }
 
@@ -542,6 +554,9 @@ void btas::on_after_update() {
 			st.cur_pos[0] = pp->xPos;
 			st.cur_pos[1] = pp->yPos;
 		}
+		else {
+			st.cur_pos[0] = st.cur_pos[1] = st.last_pos[0] = st.last_pos[1] = 0;
+		}
 	}
 	if (is_hourglass) {
 		Sleep(20);
@@ -665,5 +680,6 @@ void btas::draw_tab() {
 			repl_index = 0;
 		}
 		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
+		ImGui::Checkbox("Fix bullets", &conf::fix_bul);
 	}
 }
