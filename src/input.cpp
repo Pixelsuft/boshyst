@@ -18,7 +18,7 @@ namespace conf {
 }
 extern HWND hwnd;
 extern HWND mhwnd;
-static LRESULT(__stdcall* SusProc)(HWND param_1, UINT param_2, WPARAM param_3, LPARAM param_4) = nullptr;
+LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM) = nullptr;
 
 static int cur_x = -100;
 static int cur_y = -100;
@@ -26,8 +26,11 @@ static int cur_y = -100;
 BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
     if (is_btas) {
-        p->x = cur_x;
-        p->y = cur_y;
+        int w, h;
+        get_win_size(w, h);
+        btas::my_mouse_pos(p->x, p->y);
+        p->x = (long)(p->x * (float)w / 640.f);
+        p->y = (long)(p->y * (float)h / 480.f);
         return ClientToScreen(hwnd, p);
     }
     if (!conf::emu_mouse && (!show_menu || conf::tas_mode))

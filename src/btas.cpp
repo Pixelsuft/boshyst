@@ -24,11 +24,13 @@ using std::string;
 
 extern HANDLE hproc;
 extern HWND hwnd;
+extern HWND mhwnd;
 extern SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 extern DWORD(__stdcall* timeGetTimeOrig)();
 extern bool state_save(bfs::File* file);
 extern bool state_load(bfs::File* file);
 extern int(__stdcall* UpdateGameFrameOrig)();
+extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
 static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
 static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
@@ -89,6 +91,7 @@ struct BTasState {
 	std::vector<int> prev;
 	int cur_pos[2];
 	int last_pos[2];
+	int m_pos[2];
 	int scene;
 	int frame;
 	int sc_frame;
@@ -103,11 +106,13 @@ struct BTasState {
 		scene = 0;
 		total = 0;
 		cur_pos[0] = cur_pos[1] = last_pos[0] = last_pos[1] = 0;
+		m_pos[0] = m_pos[1] = -100;
 		seed = 0;
 		c1 = 0;
 	}
 };
 
+static std::vector<BTasEvent> temp_ev;
 static std::vector<BTasBind> binds;
 static std::vector<int> holding;
 static std::vector<int> repl_holding;
@@ -320,6 +325,8 @@ static void b_state_save(int slot) {
 	write_bin(f, st.cur_pos[1]);
 	write_bin(f, st.last_pos[0]);
 	write_bin(f, st.last_pos[1]);
+	write_bin(f, st.m_pos[0]);
+	write_bin(f, st.m_pos[1]);
 	write_bin(f, st.time);
 	write_bin(f, st.c1);
 	write_bin(f, st.seed);
@@ -337,6 +344,7 @@ static void b_state_load(int slot, bool from_loop) {
 		last_msg = "Failed to open file for reading to load state " + to_str(slot);
 		return;
 	}
+	temp_ev.clear();
 	char buf[4];
 	ASS(f.read(buf, 4));
 	ASS(memcmp(buf, "btas", 4) == 0);
@@ -374,6 +382,8 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy);
 		load_bin(f, dummy); // last_pos
 		load_bin(f, dummy);
+		load_bin(f, dummy); // m_pos
+		load_bin(f, dummy);
 		load_bin(f, dummy); // time
 		load_bin(f, dummy); // c1
 		short dummy3;
@@ -384,6 +394,7 @@ static void b_state_load(int slot, bool from_loop) {
 		if (reset_on_replay) {
 			st.cur_pos[0] = st.cur_pos[1] = 0;
 			st.last_pos[0] = st.last_pos[1] = 0;
+			st.m_pos[0] = st.m_pos[1] = -100;
 			st.frame = st.sc_frame = 0;
 			st.time = 0;
 			st.seed = 0;
@@ -401,6 +412,8 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.cur_pos[1]);
 		load_bin(f, st.last_pos[0]);
 		load_bin(f, st.last_pos[1]);
+		load_bin(f, st.m_pos[0]);
+		load_bin(f, st.m_pos[1]);
 		load_bin(f, st.time);
 		load_bin(f, st.c1);
 		load_bin(f, st.seed);
@@ -450,6 +463,43 @@ short btas::TasGetKeyState(int k) {
 	return (eit == holding.end()) ? 0 : -32767;
 }
 
+static void exec_event(BTasEvent& ev) {
+	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	switch (ev.idx) {
+	case 1: {
+		repl_holding.push_back(ev.key.k);
+		break;
+	}
+	case 2: {
+		auto it = std::find(repl_holding.begin(), repl_holding.end(), ev.key.k);
+		ASS(it != repl_holding.end());
+		repl_holding.erase(it);
+		break;
+	}
+	case 3: {
+		int comp_val = st.cur_pos[0] ^ st.cur_pos[1];
+		if (comp_val != ev.hash.val)
+			last_msg = string("Hash check (POS) failed on frame ~") + to_str(st.frame);
+		break;
+	}
+	case 4: {
+		int comp_val = (int)pState->RandomSeed;
+		if (comp_val != ev.hash.val)
+			last_msg = string("Hash check (RNG) failed on frame ~") + to_str(st.frame);
+		break;
+	}
+	case 5: {
+		st.m_pos[0] = ev.click.x;
+		st.m_pos[1] = ev.click.y;
+		if (ev.click.x < 0 || ev.click.y < 0)
+			break;
+		SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
+		SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
+		break;
+	}
+	}
+}
+
 bool btas::on_before_update() {
 	now = timeGetTimeOrig();
 
@@ -471,6 +521,7 @@ bool btas::on_before_update() {
 		pState->isPaused = true;
 		return true;
 	}
+	pState->isPaused = false;
 	if (is_replay) {
 		for (; repl_index < (int)st.ev.size(); repl_index++) {
 			BTasEvent& ev = st.ev[repl_index];
@@ -478,30 +529,7 @@ bool btas::on_before_update() {
 				break;
 			if (ev.frame < st.frame)
 				continue;
-			switch (ev.idx) {
-			case 1: {
-				repl_holding.push_back(ev.key.k);
-				break;
-			}
-			case 2: {
-				auto it = std::find(repl_holding.begin(), repl_holding.end(), ev.key.k);
-				ASS(it != repl_holding.end());
-				repl_holding.erase(it);
-				break;
-			}
-			case 3: {
-				int comp_val = st.cur_pos[0] ^ st.cur_pos[1];
-				if (comp_val != ev.hash.val)
-					last_msg = string("Hash check 1 failed on frame ") + to_str(st.frame);
-				break;
-			}
-			case 4: {
-				int comp_val = (int)pState->RandomSeed;
-				if (comp_val != ev.hash.val)
-					last_msg = string("Hash check 2 failed on frame ") + to_str(st.frame);
-				break;
-			}
-			}
+			exec_event(ev);
 		}
 		if (st.frame == st.total && st.frame != 0) {
 			is_replay = false;
@@ -532,6 +560,11 @@ bool btas::on_before_update() {
 				st.ev.push_back(ev);
 			}
 		}
+		for (auto it = temp_ev.begin(); it != temp_ev.end(); it++) {
+			exec_event(*it);
+			st.ev.push_back(*it);
+		}
+		temp_ev.clear();
 		if (st.frame % 20 == 0) {
 			BTasEvent ev;
 			if (st.frame % 40 == 0) {
@@ -550,7 +583,6 @@ bool btas::on_before_update() {
 	last_upd  = true;
 	st.prev = holding;
 	next_step = false;
-	pState->isPaused = false;
 	return false;
 }
 
@@ -681,14 +713,18 @@ void btas::draw_info() {
 }
 
 void btas::draw_tab() {
+	if (!is_replay)
+		is_paused = true; // TODO: configure that
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
 		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState->RandomSeed));
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
 			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
-			if (is_replay)
+			if (is_replay) {
 				repl_holding.clear();
+				temp_ev.clear();
+			}
 			else {
 				st.prev = repl_holding;
 				repl_holding.clear();
@@ -699,5 +735,22 @@ void btas::draw_tab() {
 		}
 		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
 		ImGui::Checkbox("Fix bullets", &conf::fix_bul);
+		ImGui::Text("Temp event queue size: %i", (int)temp_ev.size());
+		static int mpos[2] = { 0, 0 };
+		ImGui::InputInt2("Mouse pos for click", mpos);
+		if (ImGui::Button("Push mouse click")) {
+			// TODO: split into 2 events to reduce size
+			BTasEvent ev;
+			ev.click.x = mpos[0];
+			ev.click.y = mpos[1];
+			ev.frame = st.frame;
+			ev.idx = 5;
+			temp_ev.push_back(ev);
+		}
 	}
+}
+
+void btas::my_mouse_pos(long& x, long& y) {
+	x = (long)st.m_pos[0];
+	y = (long)st.m_pos[1];
 }
