@@ -5,6 +5,7 @@
 #include "ass.hpp"
 #include "conf.hpp"
 #include "utils.hpp"
+#include "btas.hpp"
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
@@ -215,6 +216,8 @@ void rec::stop(void* dev) {
 void rec::rec_tick(void* dev) {
     conf::cur_mouse_checked = false;
     if (!conf::allow_render)
+        return;
+    if (is_btas && !last_upd)
         return;
     if (conf::cap_start == 0 && conf::cap_cnt == 0) {
         // Special case

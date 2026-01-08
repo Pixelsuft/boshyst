@@ -140,7 +140,7 @@ static DWORD now = 0;
 static int need_scene_state_slot = -1;
 static bool next_step = false;
 static bool slowmo = false;
-static bool last_upd = false;
+bool last_upd = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
 static int bullet_cur_delay = -1;
@@ -271,6 +271,8 @@ void btas::init() {
 	strcpy(export_buf, "replay");
 	DestroyObject = (decltype(DestroyObject))(mem::get_base() + 0x1e710);
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
+	st.clear();
+	st.clear_arr();
 	last_time = now = timeGetTimeOrig();
 }
 
@@ -302,6 +304,13 @@ void btas::fix_bullets() {
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
 	buf2[1] = 0x19;
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
+}
+
+static void trim_current_state() {
+	st.total = st.frame;
+	// Hacky
+	while (!st.ev.empty() && (st.ev.end() - 1)->frame > st.frame)
+		st.ev.erase(st.ev.end() - 1);
 }
 
 template<typename T>
@@ -378,8 +387,10 @@ static void b_state_load(int slot, bool from_loop) {
 	ASS(memcmp(buf, "btas", 4) == 0);
 	int scene_id;
 	load_bin(f, scene_id);
-	if (is_replay && reset_on_replay && st.frame != 0) {
-		cout << "game reset\n";
+	if (is_replay && reset_on_replay && !from_loop && st.frame != 0) {
+		st.prev.clear();
+		st.ev.clear();
+		repl_holding.clear();
 		need_scene_state_slot = slot;
 		last_msg = "Restarting game";
 		RunHeader& pState = get_state();
@@ -404,10 +415,7 @@ static void b_state_load(int slot, bool from_loop) {
 	if (is_replay) {
 		if (reset_on_replay) {
 			st.clear();
-			st.temp_ev.clear();
-			st.rng_buf.clear();
-			st.prev.clear();
-			init_temp_saves();
+			st.clear_arr();
 		}
 		int dummy;
 		load_bin(f, dummy); // frame
@@ -429,6 +437,10 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy2); // prev
 		load_bin(f, dummy2); // temp_ev
 		load_bin(f, st.ev);
+		if (reset_on_replay) {
+			repl_holding.clear();
+			init_temp_saves();
+		}
 		bullet_cur_delay = -1;
 	}
 	else {
@@ -457,6 +469,7 @@ static void b_state_load(int slot, bool from_loop) {
 		state_load(&f);
 		b_loading_state = false;
 		bullet_cur_delay = conf::fix_bul ? bullet_fix_delay : -1;
+		trim_current_state();
 	}
 	pState.lastFrameScore = st.c1;
 	pState.RandomSeed = st.seed;
@@ -841,13 +854,15 @@ void btas::draw_tab() {
 				repl_holding.clear();
 				st.temp_ev.clear();
 				bullet_cur_delay = -1;
+				repl_index = 0;
 			}
 			else {
 				repl_holding.clear();
-				st.total = st.frame;
-				st.ev.resize(repl_index);
+				trim_current_state();
+				// st.ev.resize(repl_index);
+				ASS(repl_index == (int)st.ev.size());
+				repl_index = 0;
 			}
-			repl_index = 0;
 		}
 		ImGui::Checkbox("Reset game on replay (BETA)", &reset_on_replay);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
