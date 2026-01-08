@@ -133,7 +133,7 @@ static bool last_upd = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
 static int bullet_cur_delay = -1;
-static int bullet_fix_delay = 0;
+static int bullet_fix_delay = 1;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -273,9 +273,9 @@ void btas::fix_bullets() {
 		int y = old_b->yPos;
 		auto dir = old_b->hoCurrentDirection;
 		// bullet_speed = 9
-		old_b->xPos = old_b->yPos = -13337;
-		DestroyObject(old_h, 1);
+		// old_b->xPos = old_b->yPos = -13337;
 		// x += (dir == 0 ? 9 : -9);
+		DestroyObject(old_h, 1);
 		cout << "fixing bullet " << x << " " << y << " " << dir << std::endl;
 		launch_bullet(x, y, (int)dir);
 	}
@@ -412,8 +412,7 @@ static void b_state_load(int slot, bool from_loop) {
 			st.frame = st.sc_frame = 0;
 			st.time = 0;
 			st.seed = 0;
-			// FIXME (?)
-			// st.c1 = 0;
+			st.c1 = 0;
 			st.temp_ev.clear();
 			st.rng_buf.clear();
 			st.prev.clear();

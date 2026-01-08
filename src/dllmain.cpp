@@ -125,6 +125,8 @@ void try_to_init() {
 #endif
     init_simple_hacks();
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+    if (!is_hourglass)
+        fix_win32_theme();
 }
 
 extern "C" __declspec(dllexport) void dummy_func() {}

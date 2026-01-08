@@ -295,6 +295,11 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
+        /*
+        if (uMsg == WM_CONTEXTMENU && SendMessageA(hWnd, WM_NCHITTEST, 0, lParam) == HTCAPTION) {
+            return 0;
+        }
+        */
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;

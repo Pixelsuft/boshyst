@@ -162,6 +162,7 @@
     <ClCompile Include="minhook\src\trampoline.c" />
     <ClCompile Include="src\btas.cpp" />
     <ClCompile Include="src\conf.cpp" />
+    <ClCompile Include="src\darkmode.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\fs.cpp" />
     <ClCompile Include="src\input.cpp" />
@@ -183,6 +184,9 @@
     <ClInclude Include="src\rec.hpp" />
     <ClInclude Include="src\ui.hpp" />
     <ClInclude Include="src\utils.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="settings.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

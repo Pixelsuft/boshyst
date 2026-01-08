@@ -7,4 +7,5 @@ DebugForRel
 Release
 RelNoOpt
 x64
+*.aps
 *.zip
