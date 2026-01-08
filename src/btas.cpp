@@ -76,15 +76,15 @@ struct BTasEvent {
 			int val;
 		} hash;
 		struct {
-			int val;
 			int range;
+			int val;
 		} rng;
 	};
 	int frame;
 	uint8_t idx;
 
 	BTasEvent() {
-		key.k = 0;
+		click.x = click.y = 0;
 		frame = 0;
 		idx = 0;
 	}
@@ -107,6 +107,17 @@ struct BTasState {
 	short seed;
 
 	BTasState() {
+		clear();
+	}
+
+	void clear_arr() {
+		ev.clear();
+		temp_ev.clear();
+		rng_buf.clear();
+		prev.clear();
+	}
+
+	void clear() {
 		time = 0;
 		frame = sc_frame = 0;
 		scene = 0;
@@ -134,12 +145,18 @@ static bool reset_on_replay = false;
 static int repl_index = 0;
 static int bullet_cur_delay = -1;
 static int bullet_fix_delay = 1;
+static char export_buf[MAX_PATH];
+static bool export_hash = true;
 
 bool is_btas = false;
 bool fast_forward = false;
 bool is_paused = true;
 bool is_replay = false;
 bool b_loading_state = false;
+
+static RunHeader& get_state() {
+	return **(RunHeader**)(mem::get_base() + 0x59a9c);
+}
 
 void btas::read_setting(const string& line, const string& line_orig) {
 	BTasBind bind;
@@ -225,7 +242,6 @@ void btas::pre_init() {
 
 void btas::init() {
 	cout << "btas init\n";
-
 	const uint8_t buf2[] = { 0x90, 0x90 };
 	const uint8_t buf5[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
 	uint8_t temp = 0xeb;
@@ -252,6 +268,7 @@ void btas::init() {
 	pTimeEndPeriod = (decltype(pTimeEndPeriod))GetProcAddress(h, "timeEndPeriod");
 	ASS(pTimeBeginPeriod != nullptr && pTimeEndPeriod != nullptr);
 	last_msg = "None";
+	strcpy(export_buf, "replay");
 	DestroyObject = (decltype(DestroyObject))(mem::get_base() + 0x1e710);
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	last_time = now = timeGetTimeOrig();
@@ -265,10 +282,10 @@ void btas::fix_bullets() {
 	// ExecuteObjectAction ignore if statements (part of bullet fix)
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	RunHeader& pState = get_state();
 	for (auto it = temp_bullets.begin(); it != temp_bullets.end(); it++) {
 		int old_h = *it;
-		auto old_b = pState->objectList[old_h * 2];
+		auto old_b = pState.objectList[old_h * 2];
 		int x = old_b->xPos;
 		int y = old_b->yPos;
 		auto dir = old_b->hoCurrentDirection;
@@ -325,7 +342,7 @@ static void b_state_save(int slot) {
 		last_msg = "Failed to open file for writing to save state " + std::to_string((long long)slot);
 		return;
 	}
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	RunHeader& pState = get_state();
 	ASS(f.write("btas", 4));
 	write_bin(f, st.scene);
 	write_bin(f, st.frame);
@@ -349,7 +366,7 @@ static void b_state_save(int slot) {
 }
 
 static void b_state_load(int slot, bool from_loop) {
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	RunHeader& pState = get_state();
 	string path = string("state") + to_str(slot) + ".bstate";
 	bfs::File f(path, 0);
 	if (!f.is_open()) {
@@ -365,9 +382,9 @@ static void b_state_load(int slot, bool from_loop) {
 		cout << "game reset\n";
 		need_scene_state_slot = slot;
 		last_msg = "Restarting game";
-		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-		pState->rhNextFrame = 4;
-		pState->rhNextFrameData = 0;
+		RunHeader& pState = get_state();
+		pState.rhNextFrame = 4;
+		pState.rhNextFrameData = 0;
 		st.frame = st.sc_frame = 0;
 		st.time = 0;
 		ExecuteTriggeredEvent(0xfffefffd);
@@ -378,13 +395,20 @@ static void b_state_load(int slot, bool from_loop) {
 		need_scene_state_slot = slot;
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
 		last_msg = string("Loading scene ") + to_str(scene_id);
-		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-		pState->rhNextFrame = 3;
-		pState->rhNextFrameData = scene_id | 0x8000;
+		RunHeader& pState = get_state();
+		pState.rhNextFrame = 3;
+		pState.rhNextFrameData = scene_id | 0x8000;
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
 	if (is_replay) {
+		if (reset_on_replay) {
+			st.clear();
+			st.temp_ev.clear();
+			st.rng_buf.clear();
+			st.prev.clear();
+			init_temp_saves();
+		}
 		int dummy;
 		load_bin(f, dummy); // frame
 		load_bin(f, dummy); // sc frame
@@ -405,19 +429,6 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, dummy2); // prev
 		load_bin(f, dummy2); // temp_ev
 		load_bin(f, st.ev);
-		if (reset_on_replay) {
-			st.cur_pos[0] = st.cur_pos[1] = 0;
-			st.last_pos[0] = st.last_pos[1] = 0;
-			st.m_pos[0] = st.m_pos[1] = -100;
-			st.frame = st.sc_frame = 0;
-			st.time = 0;
-			st.seed = 0;
-			st.c1 = 0;
-			st.temp_ev.clear();
-			st.rng_buf.clear();
-			st.prev.clear();
-			init_temp_saves();
-		}
 		bullet_cur_delay = -1;
 	}
 	else {
@@ -439,7 +450,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.temp_ev);
 		load_bin(f, st.ev);
 	}
-	// pState->RandomSeed = st.seed;
+	// pState.RandomSeed = st.seed;
 	if (!is_replay) {
 		b_loading_state = true;
 		temp_bullets.clear();
@@ -447,11 +458,65 @@ static void b_state_load(int slot, bool from_loop) {
 		b_loading_state = false;
 		bullet_cur_delay = conf::fix_bul ? bullet_fix_delay : -1;
 	}
-	pState->lastFrameScore = st.c1;
-	pState->RandomSeed = st.seed;
-	//pState->rhNextFrame = 0;
+	pState.lastFrameScore = st.c1;
+	pState.RandomSeed = st.seed;
+	// pState.rhNextFrame = 0;
 	cout << "state loaded\n";
 	last_msg = string("State ") + to_str(slot) + " loaded";
+}
+
+static void export_replay(const std::string& path) {
+	bfs::File f(path, 1);
+	if (!f.is_open()) {
+		last_msg = "Failed to open file for writing replay";
+		return;
+	}
+	ASS(f.write_line("brep"));
+	ASS(f.write_line(string("total: ") + to_str(st.total)));
+	ASS(f.write_line("data: "));
+	for (auto it = st.ev.begin(); it != st.ev.end(); it++) {
+		BTasEvent& ev = *it;
+		if (!export_hash && (ev.idx == 3 || ev.idx == 4))
+			continue;
+		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7) {
+			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x)));
+		}
+		else {
+			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x) + "," + to_str(ev.click.y)));
+		}
+	}
+	last_msg = "Replay exported";
+}
+
+static void import_replay(const std::string& path) {
+	bfs::File f(path, 0);
+	if (!f.is_open()) {
+		last_msg = "Failed to open file for reading replay";
+		return;
+	}
+	string line;
+	ASS(f.read_line(line) && line == "brep");
+	st.clear_arr();
+	st.clear();
+	while (f.read_line(line)) {
+		if (starts_with(line, "total: "))
+			st.total = std::atoi(line.substr(7).c_str());
+		else if (starts_with(line, "data: "))
+			break;
+	}
+	while (f.read_line(line)) {
+		int idx = atoi(line.c_str());
+		BTasEvent ev;
+		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7)
+			ASS(sscanf(line.c_str(), "%i,%i,%i", &idx, &ev.frame, &ev.click.x) == 3);
+		else
+			ASS(sscanf(line.c_str(), "%i,%i,%i,%i", &idx, &ev.frame, &ev.click.x, &ev.click.y) == 4);
+		ev.idx = (uint8_t)idx;
+		// cout << idx << ' ' << ev.frame << ' ' << ev.click.x << ' ' << ev.click.y << std::endl;
+		st.ev.push_back(ev);
+	}
+	is_replay = true;
+	last_msg = "Replay imported";
 }
 
 void btas::reg_obj(int handle) {
@@ -461,8 +526,8 @@ void btas::reg_obj(int handle) {
 			temp_bullets.push_back(handle);
 	}
 	else {
-		//RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-		//auto obj = pState->objectList[handle * 2];
+		//RunHeader& pState = get_state();
+		//auto obj = pState.objectList[handle * 2];
 	}
 }
 
@@ -489,7 +554,7 @@ short btas::TasGetKeyState(int k) {
 }
 
 static void exec_event(BTasEvent& ev) {
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	RunHeader& pState = get_state();
 	switch (ev.idx) {
 	case 1: {
 		repl_holding.push_back(ev.key.k);
@@ -508,7 +573,7 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 4: {
-		int comp_val = (int)pState->RandomSeed;
+		int comp_val = (int)pState.RandomSeed;
 		if (comp_val != ev.hash.val)
 			last_msg = string("Hash check (RNG) failed on frame ~") + to_str(st.frame);
 		break;
@@ -547,7 +612,7 @@ static void exec_event(BTasEvent& ev) {
 bool btas::on_before_update() {
 	now = timeGetTimeOrig();
 
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+	RunHeader& pState = get_state();
 	if (need_scene_state_slot != -1) {
 		cout << "load state\n";
 		b_state_load(need_scene_state_slot, true);
@@ -558,14 +623,14 @@ bool btas::on_before_update() {
 	if (cur_scene != st.scene)
 		st.sc_frame = 0;
 	st.scene = cur_scene;
-	pState->frameSkipAccumulator = 0;
-	pState->subTickStep = 1;
-	// cout << pState->frameStatus << std::endl;
+	pState.frameSkipAccumulator = 0;
+	pState.subTickStep = 1;
+	// cout << pState.frameStatus << std::endl;
 	if (is_paused && !next_step) {
-		pState->isPaused = true;
+		pState.isPaused = true;
 		return true;
 	}
-	pState->isPaused = false;
+	pState.isPaused = false;
 	if (is_replay) {
 		for (; repl_index < (int)st.ev.size(); repl_index++) {
 			BTasEvent& ev = st.ev[repl_index];
@@ -609,7 +674,7 @@ bool btas::on_before_update() {
 				ev.idx = 3;
 			}
 			else {
-				ev.hash.val = (int)pState->RandomSeed;
+				ev.hash.val = (int)pState.RandomSeed;
 				ev.idx = 4;
 			}
 			ev.frame = st.frame;
@@ -631,9 +696,9 @@ bool btas::on_before_update() {
 }
 
 void btas::on_after_update() {
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-	st.c1 = pState->lastFrameScore;
-	st.seed = pState->RandomSeed;
+	RunHeader& pState = get_state();
+	st.c1 = pState.lastFrameScore;
+	st.seed = pState.RandomSeed;
 	if (last_upd) {
 		last_upd = false;
 		st.frame++;
@@ -767,8 +832,8 @@ void btas::draw_tab() {
 	if (!is_replay)
 		is_paused = true; // TODO: configure that
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
-		RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState->RandomSeed));
+		RunHeader& pState = get_state();
+		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState.RandomSeed));
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
 			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
@@ -785,6 +850,14 @@ void btas::draw_tab() {
 			repl_index = 0;
 		}
 		ImGui::Checkbox("Reset game on replay (BETA)", &reset_on_replay);
+		ImGui::InputText("Replay name", export_buf, MAX_PATH);
+		ImGui::Checkbox("Export hash checks", &export_hash);
+		if (ImGui::Button("Export"))
+			export_replay(string(export_buf) + ".breplay");
+		if (st.frame == 0)
+			ImGui::SameLine();
+		if (st.frame == 0 && ImGui::Button("Import"))
+			import_replay(string(export_buf) + ".breplay");
 		ImGui::Checkbox("Fix bullets", &conf::fix_bul);
 		ImGui::InputInt("Bullet fix delay (frames)", &bullet_fix_delay);
 		static int mpos[2] = { 0, 0 };
