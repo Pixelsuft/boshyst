@@ -56,13 +56,17 @@ struct AudioCapture {
     uint32_t bytesWritten;
     unsigned long startTime;
     uint32_t byteRate;
+    uint32_t currentFrequency;
     
     AudioCapture() {
+        currentFrequency = 0;
         bytesWritten = 0;
         startTime = 0;
         byteRate = 0;
     }
+
     AudioCapture(string fn) : file(fn, 1) {
+        currentFrequency = 0;
         bytesWritten = 0;
         startTime = 0;
         byteRate = 0;
@@ -71,15 +75,16 @@ struct AudioCapture {
 
 static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
 static std::mutex g_audioMutex;
-extern bool is_paused;
 
 typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD, LPVOID, DWORD);
+typedef HRESULT(STDMETHODCALLTYPE* SetFrequency_t)(IDirectSoundBuffer*, DWORD);
 
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
+static SetFrequency_t fpSetFrequency = nullptr;
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
@@ -126,12 +131,22 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(pThis);
     if (it != g_captures.end() && it->second.file.is_open()) {
-        // Only write if we haven't exceeded real-time TAS duration yet
-        // (Prevents files from growing indefinitely if Unlock is called excessively)
         if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
         if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
     }
     return fpUnlock(pThis, pv1, db1, pv2, db2);
+}
+
+static HRESULT STDMETHODCALLTYPE DetourSetFrequency(IDirectSoundBuffer* pThis, DWORD dwFrequency) {
+    std::lock_guard<std::mutex> lock(g_audioMutex);
+    auto it = g_captures.find(pThis);
+    if (it != g_captures.end()) {
+        // Update our internal tracking map with the new frequency setting
+        it->second.currentFrequency = dwFrequency;
+    }
+
+    // Call the original function
+    return fpSetFrequency(pThis, dwFrequency);
 }
 
 static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LPCDSBUFFERDESC desc, LPDIRECTSOUNDBUFFER* buffer, LPUNKNOWN unk) {
@@ -156,7 +171,10 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
         void* target = (*(void***)*buffer)[19]; // Unlock
         if (fpUnlock == nullptr) {
             hook(target, DetourUnlock, &fpUnlock);
-            MH_EnableHook(target);
+            ASS(MH_EnableHook(target) == MH_OK);
+            target = (*(void***)*buffer)[16]; // Set frequency
+            hook(target, DetourSetFrequency, &fpSetFrequency);
+            ASS(MH_EnableHook(target) == MH_OK);
         }
     }
     return hr;
@@ -168,7 +186,7 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         void* target = (*(void***)*ds)[3]; // CreateSoundBuffer
         if (fpCreateSoundBuffer == nullptr) {
             hook(target, DetourCreateSoundBuffer, &fpCreateSoundBuffer);
-            MH_EnableHook(target);
+            ASS(MH_EnableHook(target) == MH_OK);
         }
     }
     return hr;
