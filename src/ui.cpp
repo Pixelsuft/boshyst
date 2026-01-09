@@ -5,6 +5,7 @@
 #include "conf.hpp"
 #include "mem.hpp"
 #include "fs.hpp"
+#include "init.hpp"
 #include "input.hpp"
 #include "btas.hpp"
 #include "utils.hpp"
@@ -241,6 +242,9 @@ static void ui_menu_draw() {
 			}
 			if (ImGui::Button("Stop recording")) {
 				SetWindowTextA(hwnd, "I Wanna Be The Boshy S");
+			}
+			if (conf::cap_au && ImGui::Button("Flush audio capture")) {
+				audio_stop();
 			}
 		}
 		if (ImGui::CollapsingHeader("Info")) {

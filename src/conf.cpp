@@ -27,6 +27,7 @@ namespace conf {
     bool old_rec;
     bool no_vp;
     bool no_ps;
+    bool cap_au;
     bool no_sh;
     bool god;
     bool menu;
@@ -154,6 +155,8 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(""));
+    ASS(file.write_line("audio_capture = 0 // Capture audio in tas mode"));
+    ASS(file.write_line(""));
     ASS(file.write_line("allow_render = 0 // Allow video capturing"));
     ASS(file.write_line("direct_render = 1 // Capture video directly using Direct3D 9 instead of making screenshots of the window using Win32 API"));
     ASS(file.write_line("fix_white_render = 1 // Fix white screen when using direct render"));
@@ -228,7 +231,7 @@ void conf::read() {
     conf::first_run = false;
     conf::fix_bul = true;
     conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
-        conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps =
+        conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps = conf::cap_au =
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
 	conf::cur_mouse_checked = false;
@@ -281,6 +284,8 @@ void conf::read() {
             conf::draw_cursor = read_int(line) != 0;
         else if (starts_with(line, "simulate_mouse="))
             conf::emu_mouse = read_int(line) != 0;
+        else if (starts_with(line, "audio_capture="))
+            conf::cap_au = read_int(line) != 0;
         else if (starts_with(line, "allow_render="))
             conf::allow_render = read_int(line) != 0;
         else if (starts_with(line, "direct_render="))

@@ -712,7 +712,6 @@ bool btas::on_before_update() {
 	return false;
 }
 
-extern void audio_stop();
 void btas::on_after_update() {
 	RunHeader& pState = get_state();
 	st.c1 = pState.lastFrameScore;
@@ -723,9 +722,6 @@ void btas::on_after_update() {
 		st.sc_frame++;
 		st.total = std::max(st.total, st.frame);
 		st.time += 20;
-		if (st.frame >= 1000) {
-			audio_stop();
-		}
 
 		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
 		if (pp != nullptr) {

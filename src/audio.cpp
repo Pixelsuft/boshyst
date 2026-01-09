@@ -1,10 +1,12 @@
-#include <windows.h>
+#include <Windows.h>
 #include <dsound.h>
 #include "mem.hpp"
 #include "ass.hpp"
 #include "btas.hpp"
 #include "hook.hpp"
 #include "fs.hpp"
+#include "utils.hpp"
+#include "conf.hpp"
 #include <iostream>
 #include <map>
 #include <string>
@@ -17,30 +19,54 @@ using std::string;
 
 #pragma pack(push, 1)
 struct WavHeader {
-    char riff[4] = { 'R', 'I', 'F', 'F' };
-    uint32_t fileSize = 0;
-    char wave[4] = { 'W', 'A', 'V', 'E' };
-    char fmt[4] = { 'f', 'm', 't', ' ' };
-    uint32_t fmtLen = 16;
-    uint16_t formatTag = 1; // PCM
-    uint16_t channels = 0;
-    uint32_t sampleRate = 0;
-    uint32_t byteRate = 0;
-    uint16_t blockAlign = 0;
-    uint16_t bitsPerSample = 0;
-    char data[4] = { 'd', 'a', 't', 'a' };
-    uint32_t dataLen = 0;
+    char riff[4];
+    uint32_t fileSize;
+    char wave[4];
+    char fmt[4];
+    uint32_t fmtLen;
+    uint16_t formatTag;
+    uint16_t channels;
+    uint32_t sampleRate;
+    uint32_t byteRate;
+    uint16_t blockAlign;
+    uint16_t bitsPerSample;
+    char data[4];
+    uint32_t dataLen;
+
+    WavHeader() {
+        memcpy(riff, "RIFF", 4);
+        fileSize = 0;
+        memcpy(wave, "WAVE", 4);
+        memcpy(fmt, "fmt ", 4);
+        fmtLen = 16;
+        formatTag = 1;
+        channels = 0;
+        sampleRate = 0;
+        byteRate = 0;
+        blockAlign = 0;
+        bitsPerSample = 0;
+        memcpy(data, "data", 4);
+        dataLen = 0;
+    }
 };
 #pragma pack(pop)
 
 struct AudioCapture {
     bfs::File file;
-    uint32_t bytesWritten = 0;
-    unsigned long startTime = 0;
-    uint32_t byteRate = 0;
+    uint32_t bytesWritten;
+    unsigned long startTime;
+    uint32_t byteRate;
     
-    AudioCapture() {}
-    AudioCapture(string fn) : file(fn, 1) {}
+    AudioCapture() {
+        bytesWritten = 0;
+        startTime = 0;
+        byteRate = 0;
+    }
+    AudioCapture(string fn) : file(fn, 1) {
+        bytesWritten = 0;
+        startTime = 0;
+        byteRate = 0;
+    }
 };
 
 static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
@@ -55,15 +81,12 @@ static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
 
-// TRIMS or PADS audio to match TAS ResetTime - StartTime
-void finalize_wav(AudioCapture& cap) {
+static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
         unsigned long currentTime = btas::get_time();
         unsigned long elapsedMs = (currentTime > cap.startTime) ? (currentTime - cap.startTime) : 0;
-
         // Exact byte count required for this duration
         uint32_t targetBytes = (uint32_t)((uint64_t)elapsedMs * cap.byteRate / 1000);
-
         if (cap.bytesWritten > targetBytes) {
             // TRIM: The game produced too much audio (ahead of TAS time)
             cap.bytesWritten = targetBytes;
@@ -75,14 +98,12 @@ void finalize_wav(AudioCapture& cap) {
             cap.file.write(silence.data(), padding);
             cap.bytesWritten += padding;
         }
-
         // Finalize headers and physically truncate the file
         uint32_t finalFileSize = cap.bytesWritten + 36;
         cap.file.seek(4);
         cap.file.write((char*)&finalFileSize, 4);
         cap.file.seek(40);
         cap.file.write((char*)&cap.bytesWritten, 4);
-
         cap.file.close();
     }
 }
@@ -96,8 +117,9 @@ void audio_on_reset() {
 }
 
 void audio_stop() {
+    if (!conf::cap_au)
+        return;
     audio_on_reset();
-    is_paused = true;
 }
 
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
@@ -117,7 +139,7 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
     if (SUCCEEDED(hr) && buffer && *buffer && desc->lpwfxFormat) {
         std::lock_guard<std::mutex> lock(g_audioMutex);
         unsigned long timestamp = btas::get_time();
-        string filename = "audio_" + std::to_string(timestamp) + "_" + std::to_string((uintptr_t)*buffer) + ".wav";
+        string filename = "audio_" + to_str(timestamp) + "_" + to_str((size_t)*buffer) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
             WavHeader h;
@@ -153,6 +175,8 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
 }
 
 void audio_init() {
+    if (!conf::cap_au)
+        return;
     LoadLibraryW(L"dsound.dll");
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
     MH_EnableHook(MH_ALL_HOOKS);

@@ -6,6 +6,7 @@ extern bool gr_hooked;
 
 bool fix_win32_theme();
 void audio_init();
+void audio_stop();
 void try_to_init();
 void init_temp_saves();
 void try_to_hook_graphics();
