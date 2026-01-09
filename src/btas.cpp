@@ -256,7 +256,11 @@ void btas::init() {
 	// No multimedia timers (I hope it doesn't crash)
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x4459f), &temp, 1, &bW) != 0 && bW == 1);
 	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x41af4), &temp, 1, &bW) != 0 && bW == 1);
-	
+	// No threads, Lacewing.mfx!
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0x88cb), buf5, 5, &bW) != 0 && bW == 5);
+	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb340), buf5, 5, &bW) != 0 && bW == 5);
+
 	std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) {
 		return a.key > b.key;
 	});
@@ -708,6 +712,7 @@ bool btas::on_before_update() {
 	return false;
 }
 
+extern void audio_stop();
 void btas::on_after_update() {
 	RunHeader& pState = get_state();
 	st.c1 = pState.lastFrameScore;
@@ -718,6 +723,9 @@ void btas::on_after_update() {
 		st.sc_frame++;
 		st.total = std::max(st.total, st.frame);
 		st.time += 20;
+		if (st.frame >= 1000) {
+			audio_stop();
+		}
 
 		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
 		if (pp != nullptr) {

@@ -202,11 +202,13 @@ static DWORD __stdcall timeGetTimeHook() {
     return btas::get_time();
 }
 
+extern void audio_on_reset();
 BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     if (hwnd != ::hwnd)
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
+    audio_on_reset();
     if (capturing && strcmp(cap, "I Wanna Be The Boshy") == 0) {
         next_white = true;
         return FALSE;
@@ -339,14 +341,20 @@ static void __stdcall FlushInputQueueHook(void) {
     // cout << "queue\n";
 }
 
-static HMODULE (__stdcall *LoadLibraryAOrig)(LPCSTR lpLibFileName);
+static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
-    if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
+    /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
         || c_ends_with(lpLibFileName, "Select.mfx") || c_ends_with(lpLibFileName, "Layer.mfx")
         || c_ends_with(lpLibFileName, "clickteam-movement-controller.mfx"))
-        lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";
+        lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";*/
     cout << "load hook: " << lpLibFileName << std::endl;
     return LoadLibraryAOrig(lpLibFileName);
+}
+
+static HMODULE(__stdcall* LoadLibraryWOrig)(LPCWSTR lpLibFileName);
+static HMODULE __stdcall LoadLibraryWHook(LPCWSTR lpLibFileName) {
+    std::wcout << L"load w hook: " << lpLibFileName << L'\n';
+    return LoadLibraryWOrig(lpLibFileName);
 }
 
 static HINSTANCE __stdcall ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd) {
@@ -376,17 +384,29 @@ static void __cdecl _ftimeHook(struct my_timeb* timeptr) {
     }
 }
 
-BOOL (__stdcall *QueryPerformanceFrequencyOrig)(LARGE_INTEGER* ret);
+BOOL (__stdcall *QueryPerformanceFrequencyOrig)(LARGE_INTEGER* ret) = QueryPerformanceFrequency;
 static BOOL __stdcall QueryPerformanceFrequencyHook(LARGE_INTEGER* ret) {
     ret->QuadPart = 1000;
     return TRUE;
 }
 
-BOOL (__stdcall *QueryPerformanceCounterOrig)(LARGE_INTEGER* ret);
+BOOL (__stdcall *QueryPerformanceCounterOrig)(LARGE_INTEGER* ret) = QueryPerformanceCounter;
 static BOOL __stdcall QueryPerformanceCounterHook(LARGE_INTEGER* ret) {
     if (!hooks_inited)
         return QueryPerformanceCounterOrig(ret);
     ret->QuadPart = (LONGLONG)btas::get_time();
+    return TRUE;
+}
+
+static void __stdcall GetSystemTimeAsFileTimeHook(LPFILETIME tm) {
+    ((LARGE_INTEGER*)tm)->QuadPart = (LONGLONG)btas::get_time();
+}
+
+static BOOL __stdcall GetProcessTimesHook(HANDLE hProcess, LPFILETIME lpCreationTime, LPFILETIME lpExitTime, LPFILETIME lpKernelTime, LPFILETIME lpUserTime) {
+    ((LARGE_INTEGER*)lpCreationTime)->QuadPart = 0;
+    ((LARGE_INTEGER*)lpKernelTime)->QuadPart = 0;
+    ((LARGE_INTEGER*)lpUserTime)->QuadPart = (LONGLONG)btas::get_time();
+    ((LARGE_INTEGER*)lpExitTime)->QuadPart = (LONGLONG)btas::get_time();
     return TRUE;
 }
 
@@ -400,13 +420,16 @@ void init_game_loop() {
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
-        // TODO: fix imgui with that one
-        // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, QueryPerformanceFrequencyOrig);
-        // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
+        hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
+        hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
+        hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
+        hook(mem::addr("GetProcessTimes", "kernel32.dll"), GetProcessTimesHook);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
+        // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
         btas::pre_init();
     }
+    audio_init();
     ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
 }
 

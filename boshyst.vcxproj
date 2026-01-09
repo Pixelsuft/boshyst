@@ -160,6 +160,7 @@
     <ClCompile Include="minhook\src\hde\hde64.c" />
     <ClCompile Include="minhook\src\hook.c" />
     <ClCompile Include="minhook\src\trampoline.c" />
+    <ClCompile Include="src\audio.cpp" />
     <ClCompile Include="src\btas.cpp" />
     <ClCompile Include="src\conf.cpp" />
     <ClCompile Include="src\darkmode.cpp" />
