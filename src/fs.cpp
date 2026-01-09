@@ -69,6 +69,32 @@ bool File::write(const void* buf, size_t size) {
     return WriteFile(handle, buf, (DWORD)size, &bytesWritten, nullptr) && (DWORD)size == bytesWritten;
 }
 
+bool File::seek(long long offset, SeekMode mode) {
+    ASS(is_open());
+
+    LARGE_INTEGER liOffset;
+    liOffset.QuadPart = offset;
+
+    DWORD moveMethod;
+    switch (mode) {
+    case SeekMode::Current: moveMethod = FILE_CURRENT; break;
+    case SeekMode::End:     moveMethod = FILE_END;     break;
+    default:                moveMethod = FILE_BEGIN;   break;
+    }
+
+    return SetFilePointerEx(handle, liOffset, nullptr, moveMethod) != 0;
+}
+
+long long File::tell() {
+    ASS(is_open());
+    LARGE_INTEGER liOffset;
+    liOffset.QuadPart = 0;
+    LARGE_INTEGER newPos;
+    if (SetFilePointerEx(handle, liOffset, &newPos, FILE_CURRENT))
+        return newPos.QuadPart;
+    return -1;
+}
+
 void File::close() {
     if (is_open()) {
         ASS(CloseHandle(handle) != 0);

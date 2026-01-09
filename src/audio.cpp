@@ -151,7 +151,6 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
 }
 
 void audio_init() {
-    return;
     LoadLibraryW(L"dsound.dll");
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
     MH_EnableHook(MH_ALL_HOOKS);
