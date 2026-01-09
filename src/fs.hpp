@@ -18,6 +18,7 @@ namespace bfs {
 	private:
 		void* handle;
 	public:
+		File() NOEXCEPT;
 		File(const std::string& path, int mode) NOEXCEPT;
 		bool is_open();
 		bool read_line(std::string& line);

@@ -1,10 +1,10 @@
 #include <windows.h>
 #include <dsound.h>
-#include <fstream>
 #include "mem.hpp"
 #include "ass.hpp"
 #include "btas.hpp"
 #include "hook.hpp"
+#include "fs.hpp"
 #include <iostream>
 #include <map>
 #include <string>
@@ -34,10 +34,13 @@ struct WavHeader {
 #pragma pack(pop)
 
 struct AudioCapture {
-    std::ofstream file;
+    bfs::File file;
     uint32_t bytesWritten = 0;
     unsigned long startTime = 0;
     uint32_t byteRate = 0;
+    
+    AudioCapture() {}
+    AudioCapture(string fn) : file(fn, 1) {}
 };
 
 static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
@@ -75,9 +78,9 @@ void finalize_wav(AudioCapture& cap) {
 
         // Finalize headers and physically truncate the file
         uint32_t finalFileSize = cap.bytesWritten + 36;
-        cap.file.seekp(4, std::ios::beg);
+        cap.file.seek(4);
         cap.file.write((char*)&finalFileSize, 4);
-        cap.file.seekp(40, std::ios::beg);
+        cap.file.seek(40);
         cap.file.write((char*)&cap.bytesWritten, 4);
 
         cap.file.close();
@@ -113,10 +116,9 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
     HRESULT hr = fpCreateSoundBuffer(pThis, desc, buffer, unk);
     if (SUCCEEDED(hr) && buffer && *buffer && desc->lpwfxFormat) {
         std::lock_guard<std::mutex> lock(g_audioMutex);
-        AudioCapture cap;
         unsigned long timestamp = btas::get_time();
         string filename = "audio_" + std::to_string(timestamp) + "_" + std::to_string((uintptr_t)*buffer) + ".wav";
-        cap.file.open(filename, std::ios::binary);
+        AudioCapture cap(filename);
         if (cap.file.is_open()) {
             WavHeader h;
             h.channels = desc->lpwfxFormat->nChannels;

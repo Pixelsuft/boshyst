@@ -8,6 +8,10 @@
 using std::string;
 using bfs::File;
 
+File::File() NOEXCEPT {
+    handle = INVALID_HANDLE_VALUE;
+}
+
 File::File(const string& path, int mode) NOEXCEPT {
     wchar_t* w_path = utf8_to_unicode(path);
     handle = (void*)CreateFileW(
