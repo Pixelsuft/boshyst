@@ -80,11 +80,13 @@ typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN)
 typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD, LPVOID, DWORD);
 typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DWORD);
+typedef int(__fastcall* tStopHardwareBuffer)(IDirectSoundBuffer**, void*);
 
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
-tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
+static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
+static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
@@ -142,6 +144,15 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
     return fpApplyFrequencyToBuffer(pThis, edx, freq);
 }
 
+static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
+    auto it = g_captures.find(*pThis);
+    if (it != g_captures.end()) {
+        cout << "hkStopHardwareBuffer\n";
+        finalize_wav(it->second);
+    }
+    return fpStopHardwareBuffer(pThis, edx);
+}
+
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(pThis);
@@ -172,13 +183,10 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
             cap.currentFrequency = h.sampleRate;
             g_captures[*buffer] = std::move(cap);
         }
-        if (fpApplyFrequencyToBuffer == nullptr) {
-            cout << "enabling hooks\n";
+        if (fpUnlock == nullptr) {
+            cout << "audio enabling hooks 2\n";
             void* target = (*(void***)*buffer)[19]; // Unlock
             hook(target, DetourUnlock, &fpUnlock);
-            enable_hook(target);
-            target = (void*)(mem::get_base("mmfs2.dll") + 0x451d0);
-            hook(target, hkApplyFrequencyToBuffer, &fpApplyFrequencyToBuffer);
             enable_hook(target);
         }
     }
@@ -187,12 +195,19 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
 
 static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk) {
     HRESULT hr = fpDirectSoundCreate(guid, ds, unk);
-    if (SUCCEEDED(hr) && ds && *ds) {
-        void* target = (*(void***)*ds)[3]; // CreateSoundBuffer
-        if (fpCreateSoundBuffer == nullptr) {
-            hook(target, DetourCreateSoundBuffer, &fpCreateSoundBuffer);
-            enable_hook(target);
-        }
+    if (SUCCEEDED(hr) && ds && *ds && fpCreateSoundBuffer == nullptr) {
+        cout << "audio enabling hooks 1\n";
+        void* target = (*(void***)*ds)[3];
+        hook(target, DetourCreateSoundBuffer, &fpCreateSoundBuffer);
+        enable_hook(target);
+        // Somewhy hooking freq from dsound doesnt work
+        target = (void*)(mem::get_base("mmfs2.dll") + 0x451d0);
+        hook(target, hkApplyFrequencyToBuffer, &fpApplyFrequencyToBuffer);
+        enable_hook(target);
+        target = (void*)(mem::get_base("mmfs2.dll") + 0x45060);
+        hook(target, hkStopHardwareBuffer, &fpStopHardwareBuffer);
+        enable_hook(target);
+        // TODO: mmfs2.dll + 0x448d3 for disabling event?
     }
     return hr;
 }
