@@ -53,23 +53,18 @@ struct WavHeader {
 
 struct AudioCapture {
     bfs::File file;
+    WavHeader h;
     uint32_t bytesWritten;
     unsigned long startTime;
-    uint32_t byteRate;
-    uint32_t currentFrequency;
     
     AudioCapture() {
-        currentFrequency = 0;
         bytesWritten = 0;
         startTime = 0;
-        byteRate = 0;
     }
 
     AudioCapture(string fn) : file(fn, 1) {
-        currentFrequency = 0;
         bytesWritten = 0;
         startTime = 0;
-        byteRate = 0;
     }
 };
 
@@ -81,19 +76,30 @@ typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFF
 typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD, LPVOID, DWORD);
 typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DWORD);
 typedef int(__fastcall* tStopHardwareBuffer)(IDirectSoundBuffer**, void*);
+typedef int(__fastcall* tResetBufferPosition)(IDirectSoundBuffer**, void*);
 
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
 static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
 static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
+static tResetBufferPosition fpResetBufferPosition = nullptr;
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
         unsigned long currentTime = btas::get_time();
         unsigned long elapsedMs = (currentTime > cap.startTime) ? (currentTime - cap.startTime) : 0;
+        if (cap.bytesWritten == 0 || elapsedMs == 0) {
+            // Delete empty file
+            FILE_DISPOSITION_INFO disInfo;
+            ZeroMemory(&disInfo, sizeof(FILE_DISPOSITION_INFO));
+            disInfo.DeleteFile = TRUE;
+            ASS(SetFileInformationByHandle((HANDLE)cap.file.get_handle(), FileDispositionInfo, &disInfo, sizeof(disInfo)));
+            cap.file.close();
+            return;
+        }
         // Exact byte count required for this duration
-        uint32_t targetBytes = (uint32_t)((uint64_t)elapsedMs * cap.byteRate / 1000);
+        uint32_t targetBytes = (uint32_t)((uint64_t)elapsedMs * cap.h.byteRate / 1000);
         if (cap.bytesWritten > targetBytes) {
             // TRIM: The game produced too much audio (ahead of TAS time)
             cap.bytesWritten = targetBytes;
@@ -110,9 +116,9 @@ static void finalize_wav(AudioCapture& cap) {
         cap.file.seek(4);
         cap.file.write((char*)&finalFileSize, 4);
         cap.file.seek(24);
-        cap.file.write((char*)&cap.currentFrequency, 4);
+        cap.file.write((char*)&cap.h.sampleRate, 4);
         cap.file.seek(28);
-        cap.file.write((char*)&cap.byteRate, 4);
+        cap.file.write((char*)&cap.h.byteRate, 4);
         cap.file.seek(40);
         cap.file.write((char*)&cap.bytesWritten, 4);
         cap.file.close();
@@ -136,9 +142,9 @@ void audio_stop() {
 static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void* edx, DWORD freq) {
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(*pThis);
-    if (it != g_captures.end() && freq != 0 && freq != it->second.currentFrequency) {
-        // std::cout << "Freq hook: " << it->second.currentFrequency << " -> " << freq << std::endl;
-        it->second.currentFrequency = freq;
+    if (it != g_captures.end() && freq != 0 && freq != it->second.h.sampleRate) {
+        // std::cout << "Freq hook: " << it->second.h.sampleRate << " -> " << freq << std::endl;
+        it->second.h.sampleRate = freq;
     }
 
     return fpApplyFrequencyToBuffer(pThis, edx, freq);
@@ -148,7 +154,7 @@ static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
-        cout << "hkStopHardwareBuffer\n";
+        // cout << "hkStopHardwareBuffer\n";
         finalize_wav(it->second);
     }
     return fpStopHardwareBuffer(pThis, edx);
@@ -162,6 +168,24 @@ static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void*
         g_captures.erase(it);
     }
     *pThis = nullptr;
+}
+
+static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* edx) {
+    // return fpResetBufferPosition(pThis, edx);
+    // FIXME
+    std::lock_guard<std::mutex> lock(g_audioMutex);
+    auto it = g_captures.find(*pThis);
+    auto cur_time = btas::get_time();
+    if (it != g_captures.end() && it->second.bytesWritten > 0 && it->second.startTime < cur_time) {
+        cout << "hkResetBufferPosition " << it->second.bytesWritten << "\n";
+        finalize_wav(it->second);
+        string filename = "audio_" + to_str(cur_time) + "_" + to_str((size_t)*pThis) + ".wav";
+        it->second.file = bfs::File(filename, 1);
+        it->second.file.write((char*)&it->second.h, sizeof(WavHeader));
+        it->second.bytesWritten = 0;
+        it->second.startTime = cur_time;
+    }
+    return fpResetBufferPosition(pThis, edx);
 }
 
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
@@ -182,16 +206,13 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
         string filename = "audio_" + to_str(timestamp) + "_" + to_str((size_t)*buffer) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
-            WavHeader h;
-            h.channels = desc->lpwfxFormat->nChannels;
-            h.sampleRate = desc->lpwfxFormat->nSamplesPerSec;
-            h.bitsPerSample = desc->lpwfxFormat->wBitsPerSample;
-            h.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
-            h.blockAlign = desc->lpwfxFormat->nBlockAlign;
-            cap.file.write((char*)&h, sizeof(h));
+            cap.h.channels = desc->lpwfxFormat->nChannels;
+            cap.h.sampleRate = desc->lpwfxFormat->nSamplesPerSec;
+            cap.h.bitsPerSample = desc->lpwfxFormat->wBitsPerSample;
+            cap.h.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
+            cap.h.blockAlign = desc->lpwfxFormat->nBlockAlign;
+            cap.file.write((char*)&cap.h, sizeof(WavHeader));
             cap.startTime = timestamp;
-            cap.byteRate = h.byteRate;
-            cap.currentFrequency = h.sampleRate;
             g_captures[*buffer] = std::move(cap);
         }
         if (fpUnlock == nullptr) {
@@ -217,6 +238,10 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         enable_hook(target);
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45060);
         hook(target, hkStopHardwareBuffer, &fpStopHardwareBuffer);
+        enable_hook(target);
+        // Does not help anyway
+        //target = (void*)(mem::get_base("mmfs2.dll") + 0x45070);
+        //hook(target, hkResetBufferPosition, &fpResetBufferPosition);
         enable_hook(target);
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45050);
         hook(target, hkReleaseHardwareBuffer);

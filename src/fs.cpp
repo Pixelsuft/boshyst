@@ -16,7 +16,7 @@ File::File(const string& path, int mode) NOEXCEPT {
     wchar_t* w_path = utf8_to_unicode(path);
     handle = (void*)CreateFileW(
         w_path,
-        mode == 1 ? GENERIC_WRITE : GENERIC_READ,
+        mode == 1 ? (GENERIC_WRITE | DELETE) : GENERIC_READ,
         mode == 1 ? 0 : FILE_SHARE_READ,
         nullptr,
         mode == 1 ? CREATE_ALWAYS : OPEN_EXISTING,
