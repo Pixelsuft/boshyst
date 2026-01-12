@@ -107,6 +107,12 @@ static void finalize_wav(AudioCapture& cap) {
         uint32_t finalFileSize = cap.bytesWritten + 36;
         cap.file.seek(4);
         cap.file.write((char*)&finalFileSize, 4);
+        /*
+        cap.file.seek(24);
+        cap.file.write((char*)&cap.currentFrequency, 4);
+        cap.file.seek(28);
+        cap.file.write((char*)&cap.byteRate, 4);
+        */
         cap.file.seek(40);
         cap.file.write((char*)&cap.bytesWritten, 4);
         cap.file.close();
@@ -140,8 +146,9 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
 static HRESULT STDMETHODCALLTYPE DetourSetFrequency(IDirectSoundBuffer* pThis, DWORD dwFrequency) {
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(pThis);
-    if (it != g_captures.end()) {
+    if (it != g_captures.end() && dwFrequency != 0) {
         // Update our internal tracking map with the new frequency setting
+        cout << "freq set: " << it->second.currentFrequency << " -> " << dwFrequency << '\n';
         it->second.currentFrequency = dwFrequency;
     }
 

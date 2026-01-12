@@ -3,8 +3,9 @@ IWBTB mod with hacks and tools to help speedrunning and creating TAS
 ## Building and running
 For testing, just build the DLL using Visual Studio and inject it into the game process (`boshyst.conf` config will be created is in the game dir). <br />
 For hourglass (Windows XP compatible), build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files, configure includes), put it into the game folder (with config file, also set `tas_mode` to 1 in config), replace `wintasee.dll` with [modified version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) to automatically inject the mod when launching the game through the hourglass. Allow normal thread creation. <br />
-Building recording helper scripts:
+Building helper scripts (use MinGW32 for compatibility):
 ```sh
+gcc btas.c -o btas.exe
 gcc start_cap.c -o start_cap.exe -mwindows
 gcc end_cap.c -o end_cap.exe -mwindows
 ```
@@ -24,9 +25,11 @@ When **not** using direct render, capture starts from the frame you currently se
 When using direct render, capture starts from the frame you will see, and ends with the frame you currently see (back buffer capturing). <br />
 Warning: game window should **not** be resized while recording.
 ## Useful links
-[Boshyst DLL](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll) and [config](https://github.com/Pixelsuft/boshyst/blob/main/boshyst.conf) <br />
+[Boshyst DLL (Windows 8+)](TODO)<br />
+[Boshyst DLL (Windows XP compatible)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll)<br />
 [Modified wintasee.dll for hourglass r90](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) <br />
 [Modified wintasee.dll for hourglass r78](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee%20r78.dll) <br />
 Capture [start](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/start_cap.exe) and [end](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/end_cap.exe) scripts <br />
+[BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/btas.exe) <br />
 [Simple DLL Injector](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/Inject-x86.exe) (Windows 7+) <br />
-[Modified hourglass r90 for recording](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe)
+[Modified hourglass r90 for video recording](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe)
