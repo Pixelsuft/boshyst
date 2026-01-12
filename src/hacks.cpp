@@ -32,6 +32,8 @@ static int next_bullet_x = 0;
 static int next_bullet_y = 0;
 static uint next_bullet_dir = 0;
 static bool audio_timer_hooked = false;
+static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
+static void (*ProcessFrameRendering)(void);
 int player_oi_handle = -1;
 int bullet_id = 106;
 int bullet_speed = 70;
@@ -231,8 +233,6 @@ static int __stdcall UpdateGameFrameHook() {
 
     if (is_btas && btas::on_before_update()) {
         auto ret = UpdateGameFrameOrig();
-        void (*ProcessFrameRendering)(void);
-        ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
         ProcessFrameRendering();
         btas::on_after_update();
         return ret;
@@ -246,11 +246,8 @@ static int __stdcall UpdateGameFrameHook() {
 
     auto ret = UpdateGameFrameOrig();
 
-    if (audio_timer_hooked) {
-        static void (__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
-        AudioTimerCallback = reinterpret_cast<decltype(AudioTimerCallback)>(mem::get_base("mmfs2.dll") + 0x42940);
+    if (audio_timer_hooked)
         AudioTimerCallback(1337228, 0, 0, 0, 0);
-    }
 
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
@@ -425,6 +422,7 @@ static MMRESULT __stdcall timeSetEventHook(UINT uDelay, UINT uResolution, LPTIME
         // Hacky (i think no need to check for AudioTimerCallback
         ASS(!audio_timer_hooked);
         audio_timer_hooked = true;
+        AudioTimerCallback = reinterpret_cast<decltype(AudioTimerCallback)>(mem::get_base("mmfs2.dll") + 0x42940);
         return 1337228;
     }
     return timeSetEventOrig(uDelay, uResolution, lpTimeProc, dwUser, fuEvent);
@@ -441,6 +439,7 @@ static MMRESULT __stdcall timeKillEventHook(UINT uTimerID) {
 }
 
 void init_game_loop() {
+    ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
