@@ -3,7 +3,6 @@
 #include <shlwapi.h>
 #include <iostream>
 #include <cstdio>
-#include <MinHook.h>
 #include <kiero.h>
 #include <backends/imgui_impl_win32.h>
 #include <backends/imgui_impl_dx9.h>
@@ -15,6 +14,7 @@
 #include "rec.hpp"
 #include "utils.hpp"
 #include "btas.hpp"
+#include "hook.hpp"
 #define SHOW_STAGES 0
 
 using std::cout;
@@ -107,7 +107,7 @@ void try_to_hook_graphics() {
 #if SHOW_STAGES
     cout << "graphics hooking 6\n";
 #endif
-    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+    enable_hook();
 #if SHOW_STAGES
     cout << "hooks enabled\n";
 #endif
@@ -124,7 +124,7 @@ void try_to_init() {
     cout << "game hooks start 2\n";
 #endif
     init_simple_hacks();
-    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+    enable_hook();
     if (!is_hourglass)
         fix_win32_theme();
 }

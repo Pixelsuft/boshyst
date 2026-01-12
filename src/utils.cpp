@@ -70,7 +70,7 @@ std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
 	return ret;
 }
 
-HMODULE GetSxSModuleHandle(const char* targetPart) {
+static HMODULE GetSxSModuleHandle(const char* targetPart) {
 	HMODULE hMods[1024];
 	HANDLE hProcess = GetCurrentProcess();
 	DWORD cbNeeded;

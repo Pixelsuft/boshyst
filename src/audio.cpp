@@ -79,12 +79,12 @@ static std::mutex g_audioMutex;
 typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD, LPVOID, DWORD);
-typedef HRESULT(STDMETHODCALLTYPE* SetFrequency_t)(IDirectSoundBuffer*, DWORD);
+typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DWORD);
 
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
+tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
-static SetFrequency_t fpSetFrequency = nullptr;
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
@@ -133,6 +133,17 @@ void audio_stop() {
     audio_on_reset();
 }
 
+static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void* edx, DWORD freq) {
+    std::lock_guard<std::mutex> lock(g_audioMutex);
+    auto it = g_captures.find(*pThis);
+    if (it != g_captures.end() && freq != 0 && freq != it->second.currentFrequency) {
+        // std::cout << "Freq hook: " << it->second.currentFrequency << " -> " << freq << std::endl;
+        it->second.currentFrequency = freq;
+    }
+
+    return fpApplyFrequencyToBuffer(pThis, edx, freq);
+}
+
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(pThis);
@@ -141,19 +152,6 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
         if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
     }
     return fpUnlock(pThis, pv1, db1, pv2, db2);
-}
-
-static HRESULT STDMETHODCALLTYPE DetourSetFrequency(IDirectSoundBuffer* pThis, DWORD dwFrequency) {
-    std::lock_guard<std::mutex> lock(g_audioMutex);
-    auto it = g_captures.find(pThis);
-    if (it != g_captures.end() && dwFrequency != 0) {
-        // Update our internal tracking map with the new frequency setting
-        cout << "freq set: " << it->second.currentFrequency << " -> " << dwFrequency << '\n';
-        it->second.currentFrequency = dwFrequency;
-    }
-
-    // Call the original function
-    return fpSetFrequency(pThis, dwFrequency);
 }
 
 static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LPCDSBUFFERDESC desc, LPDIRECTSOUNDBUFFER* buffer, LPUNKNOWN unk) {
@@ -173,15 +171,17 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
             cap.file.write((char*)&h, sizeof(h));
             cap.startTime = timestamp;
             cap.byteRate = h.byteRate;
+            cap.currentFrequency = h.sampleRate;
             g_captures[*buffer] = std::move(cap);
         }
-        void* target = (*(void***)*buffer)[19]; // Unlock
-        if (fpUnlock == nullptr) {
+        if (fpApplyFrequencyToBuffer == nullptr) {
+            cout << "enabling hooks\n";
+            void* target = (*(void***)*buffer)[19]; // Unlock
             hook(target, DetourUnlock, &fpUnlock);
-            ASS(MH_EnableHook(target) == MH_OK);
-            target = (*(void***)*buffer)[16]; // Set frequency
-            hook(target, DetourSetFrequency, &fpSetFrequency);
-            ASS(MH_EnableHook(target) == MH_OK);
+            enable_hook(target);
+            target = (void*)(mem::get_base("mmfs2.dll") + 0x451d0);
+            hook(target, hkApplyFrequencyToBuffer, &fpApplyFrequencyToBuffer);
+            enable_hook(target);
         }
     }
     return hr;
@@ -193,7 +193,7 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         void* target = (*(void***)*ds)[3]; // CreateSoundBuffer
         if (fpCreateSoundBuffer == nullptr) {
             hook(target, DetourCreateSoundBuffer, &fpCreateSoundBuffer);
-            ASS(MH_EnableHook(target) == MH_OK);
+            enable_hook(target);
         }
     }
     return hr;
@@ -204,5 +204,5 @@ void audio_init() {
         return;
     LoadLibraryW(L"dsound.dll");
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
-    MH_EnableHook(MH_ALL_HOOKS);
+    enable_hook();
 }

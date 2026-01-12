@@ -430,7 +430,7 @@ void init_game_loop() {
         btas::pre_init();
     }
     audio_init();
-    ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK);
+    enable_hook();
 }
 
 static int(__cdecl* strcmpOrig)(const char* s1, const char* s2) = nullptr;
