@@ -145,12 +145,23 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
 }
 
 static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
+    std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
         cout << "hkStopHardwareBuffer\n";
         finalize_wav(it->second);
     }
     return fpStopHardwareBuffer(pThis, edx);
+}
+
+static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
+    std::lock_guard<std::mutex> lock(g_audioMutex);
+    auto it = g_captures.find(*pThis);
+    if (it != g_captures.end()) {
+        finalize_wav(it->second);
+        g_captures.erase(it);
+    }
+    *pThis = nullptr;
 }
 
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
@@ -206,6 +217,9 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         enable_hook(target);
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45060);
         hook(target, hkStopHardwareBuffer, &fpStopHardwareBuffer);
+        enable_hook(target);
+        target = (void*)(mem::get_base("mmfs2.dll") + 0x45050);
+        hook(target, hkReleaseHardwareBuffer);
         enable_hook(target);
         // TODO: mmfs2.dll + 0x448d3 for disabling event?
     }
