@@ -5,6 +5,7 @@
 #include <iostream>
 #include <ctime>
 #include <imgui.h>
+#include <mmsystem.h>
 #include "hook.hpp"
 #include "mem.hpp"
 #include "conf.hpp"
@@ -30,6 +31,7 @@ static bool next_our_bullet = false;
 static int next_bullet_x = 0;
 static int next_bullet_y = 0;
 static uint next_bullet_dir = 0;
+static bool audio_timer_hooked = false;
 int player_oi_handle = -1;
 int bullet_id = 106;
 int bullet_speed = 70;
@@ -243,6 +245,13 @@ static int __stdcall UpdateGameFrameHook() {
         launch_bullet(-1, -1, -1);
 
     auto ret = UpdateGameFrameOrig();
+
+    if (audio_timer_hooked) {
+        static void (__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
+        AudioTimerCallback = reinterpret_cast<decltype(AudioTimerCallback)>(mem::get_base("mmfs2.dll") + 0x42940);
+        AudioTimerCallback(1337228, 0, 0, 0, 0);
+    }
+
     if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
@@ -410,11 +419,37 @@ static BOOL __stdcall GetProcessTimesHook(HANDLE hProcess, LPFILETIME lpCreation
     return TRUE;
 }
 
+static MMRESULT (__stdcall* timeSetEventOrig)(UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT);
+static MMRESULT __stdcall timeSetEventHook(UINT uDelay, UINT uResolution, LPTIMECALLBACK lpTimeProc, DWORD_PTR dwUser, UINT fuEvent) {
+    if (uDelay == 50 && uResolution == 10) {
+        // Hacky (i think no need to check for AudioTimerCallback
+        ASS(!audio_timer_hooked);
+        audio_timer_hooked = true;
+        return 1337228;
+    }
+    return timeSetEventOrig(uDelay, uResolution, lpTimeProc, dwUser, fuEvent);
+}
+
+static MMRESULT(__stdcall* timeKillEventOrig)(UINT);
+static MMRESULT __stdcall timeKillEventHook(UINT uTimerID) {
+    if (uTimerID == 1337228) {
+        ASS(audio_timer_hooked);
+        audio_timer_hooked = false;
+        return TIMERR_NOERROR;
+    }
+    return timeKillEventOrig(uTimerID);
+}
+
 void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
+        if (conf::cap_au) {
+            // TODO: config var to set audio processing to main thread
+            hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
+            hook(mem::addr("timeKillEvent", "winmm.dll"), timeKillEventHook, &timeKillEventOrig);
+        }
         hook(mem::addr("time", "msvcrt.dll"), timeHook);
         hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
