@@ -242,7 +242,7 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         // Does not help anyway
         //target = (void*)(mem::get_base("mmfs2.dll") + 0x45070);
         //hook(target, hkResetBufferPosition, &fpResetBufferPosition);
-        enable_hook(target);
+        //enable_hook(target);
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45050);
         hook(target, hkReleaseHardwareBuffer);
         enable_hook(target);
