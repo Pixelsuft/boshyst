@@ -107,12 +107,10 @@ static void finalize_wav(AudioCapture& cap) {
         uint32_t finalFileSize = cap.bytesWritten + 36;
         cap.file.seek(4);
         cap.file.write((char*)&finalFileSize, 4);
-        /*
         cap.file.seek(24);
         cap.file.write((char*)&cap.currentFrequency, 4);
         cap.file.seek(28);
         cap.file.write((char*)&cap.byteRate, 4);
-        */
         cap.file.seek(40);
         cap.file.write((char*)&cap.bytesWritten, 4);
         cap.file.close();
