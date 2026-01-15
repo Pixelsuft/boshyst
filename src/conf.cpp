@@ -45,7 +45,6 @@ namespace conf {
     bool skip_msg;
     bool input_in_menu;
     bool no_trans;
-    bool fix_bul;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -229,7 +228,6 @@ void conf::read() {
     conf::cap_cnt = 0;
     conf::rapid_bind = -1;
     conf::first_run = false;
-    conf::fix_bul = true;
     conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
         conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps = conf::cap_au =
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;

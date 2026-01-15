@@ -132,7 +132,6 @@ struct BTasState {
 static std::vector<BTasBind> binds;
 static std::vector<int> holding;
 static std::vector<int> repl_holding;
-static std::vector<int> temp_bullets;
 static string last_msg;
 static BTasState st;
 static DWORD last_time = 0;
@@ -143,8 +142,6 @@ static bool slowmo = false;
 bool last_upd = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
-static int bullet_cur_delay = -1;
-static int bullet_fix_delay = 1;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
 
@@ -278,37 +275,6 @@ void btas::init() {
 	st.clear();
 	st.clear_arr();
 	last_time = now = timeGetTimeOrig();
-}
-
-void btas::fix_bullets() {
-	if (temp_bullets.empty())
-		return;
-	DWORD bW;
-	uint8_t buf2[] = { 0x90, 0x90 };
-	// ExecuteObjectAction ignore if statements (part of bullet fix)
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
-	RunHeader& pState = get_state();
-	for (auto it = temp_bullets.begin(); it != temp_bullets.end(); it++) {
-		int old_h = *it;
-		auto old_b = pState.objectList[old_h * 2];
-		int x = old_b->xPos;
-		int y = old_b->yPos;
-		auto dir = old_b->hoCurrentDirection;
-		// bullet_speed = 9
-		// old_b->xPos = old_b->yPos = -13337;
-		// x += (dir == 0 ? 9 : -9);
-		// TODO: needs redraw flag
-		cout << "fixing bullet " << x << " " << y << " " << dir << std::endl;
-		launch_bullet(x, y, (int)dir);
-		DestroyObject(old_h, 1);
-	}
-	temp_bullets.clear();
-	buf2[0] = 0x74;
-	buf2[1] = 0x41;
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d26), buf2, 2, &bW) != 0 && bW == 2);
-	buf2[1] = 0x19;
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x10d4e), buf2, 2, &bW) != 0 && bW == 2);
 }
 
 static void trim_current_state() {
@@ -446,7 +412,6 @@ static void b_state_load(int slot, bool from_loop) {
 			repl_holding.clear();
 			init_temp_saves();
 		}
-		bullet_cur_delay = -1;
 	}
 	else {
 		st.scene = scene_id;
@@ -470,10 +435,8 @@ static void b_state_load(int slot, bool from_loop) {
 	// pState.RandomSeed = st.seed;
 	if (!is_replay) {
 		b_loading_state = true;
-		temp_bullets.clear();
 		state_load(&f);
 		b_loading_state = false;
-		bullet_cur_delay = conf::fix_bul ? bullet_fix_delay : -1;
 		trim_current_state();
 	}
 	pState.lastFrameScore = st.c1;
@@ -540,8 +503,6 @@ static void import_replay(const std::string& path) {
 void btas::reg_obj(int handle) {
 	if (b_loading_state && 0) {
 		cout << "bullet reg\n";
-		if (conf::fix_bul)
-			temp_bullets.push_back(handle);
 		RunHeader& pState = get_state();
 		auto obj = pState.objectList[handle * 2];
 	}
@@ -569,8 +530,6 @@ void btas::reg_obj(int handle) {
 		// TODO: 420aa6 ui set to remove anim
 		// 042e530 - player coll with objs
 	}
-	if (0)
-		temp_bullets.push_back(handle);
 }
 
 int (__cdecl*
@@ -583,7 +542,7 @@ GetCollidingObjectListH
 	ObjectHeader*** outList, int filterGroup) {
 	auto ret = GetCollidingObjectListO(sourceObj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
 	if (sourceObj->parentID == 28 && (int)outList == 0x19FCE8) {
-		// Bullet fix
+		// Bullet fix (check for SF_INACTIVE => means bullet is broken)
 		if ((sourceObj->spriteHandle->flags & 8) != 0) {
 			sourceObj->spriteHandle->flags &= ~8; // remove SF_INACTIVE
 			sourceObj->spriteHandle->flags |= 1; // add SF_RECREATEMASK
@@ -756,13 +715,6 @@ bool btas::on_before_update() {
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
-	if (bullet_cur_delay >= 0) {
-		bullet_cur_delay--;
-		if (bullet_cur_delay == 0) {
-			bullet_cur_delay = -1;
-			fix_bullets();
-		}
-	}
 	last_upd = true;
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
@@ -914,7 +866,6 @@ void btas::draw_tab() {
 			repl_holding.clear();
 			if (is_replay) {
 				st.temp_ev.clear();
-				bullet_cur_delay = -1;
 			}
 			else {
 				trim_current_state();
@@ -931,8 +882,6 @@ void btas::draw_tab() {
 			ImGui::SameLine();
 		if (st.frame == 0 && ImGui::Button("Import"))
 			import_replay(string(export_buf) + ".breplay");
-		ImGui::Checkbox("Fix bullets", &conf::fix_bul);
-		ImGui::InputInt("Bullet fix delay (frames)", &bullet_fix_delay);
 		static int mpos[2] = { 0, 0 };
 		ImGui::InputInt2("Mouse pos for click", mpos);
 		if (ImGui::Button("Push mouse click")) {
