@@ -583,7 +583,14 @@ GetCollidingObjectListH
 	ObjectHeader*** outList, int filterGroup) {
 	auto ret = GetCollidingObjectListO(sourceObj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
 	if (sourceObj->parentID == 28 && (int)outList == 0x19FCE8) {
-		sourceObj->spriteHandle->flags = 536870913; // FIXES BULLET
+		// Bullet fix
+		if ((sourceObj->spriteHandle->flags & 8) != 0) {
+			sourceObj->spriteHandle->flags &= ~8; // remove SF_INACTIVE
+			sourceObj->spriteHandle->flags |= 1; // add SF_RECREATEMASK
+			sourceObj->spriteHandle->flags |= 0x40; // add SF_RECALC
+		}
+		// cout << sourceObj->spriteHandle->flags << std::endl;
+		// sourceObj->spriteHandle->flags = 536870913; // FIXES BULLET
 		/*
 		cout << sourceObj->handle << " " << sourceObj->parentID << " " << sourceObj->spriteHandle << " "
 			<< sourceObj->renderGroup << " " << angle << " " << scale << " "
