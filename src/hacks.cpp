@@ -220,6 +220,41 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     return SetWindowTextAOrig(hwnd, cap);
 }
 
+void(__cdecl* ActOrig)(ActionHeader* act);
+void __cdecl ActHook(ActionHeader* act) {
+    auto act2 = act;
+    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+    // *(ushort*)(pState.currentExecutingEvent + 4) &= ~0x1e;
+    auto cnt = (uint) * (byte*)(pState.currentExecutingEvent + 3);
+    auto c = act->eventCode;
+    //if (c >= 0 && c != 2 && c != 32 && c != 33 && c != 34 && c != 36 && c != 41 && c != 58 && c != 61 && c != 57)
+    //    cout << 'a' << act->eventCode << std::endl;
+    auto a = act->actionID;
+    if (c == 33 && a == 94 && cnt > 4) {
+        cout << "begin " << act << std::endl;
+
+        for (uint i = 0u; i < cnt; i++) {
+            c = act->eventCode;
+            a = act->actionID;
+            if (c == -216 || c == -192) {
+                act->eventCode = 0;
+                act->actionID = 0;
+            }
+            c = act->eventCode;
+            a = act->actionID;
+            cout << act->creatorID << " " << act->launchSpeed << std::endl;
+            act++;
+        }
+        // act2 += 1;
+        // *(byte*)(pState.currentExecutingEvent + 3) -= 9;
+        ActOrig(act2);
+        return;
+    }
+    // 415740
+    // 415330
+    ActOrig(act2);
+}
+
 static bool hooks_inited = false;
 int(__stdcall* UpdateGameFrameOrig)() = nullptr;
 static int __stdcall UpdateGameFrameHook() {
@@ -438,6 +473,20 @@ static MMRESULT __stdcall timeKillEventHook(UINT uTimerID) {
     return timeKillEventOrig(uTimerID);
 }
 
+static void(__cdecl* DestroyObjectOrig)(int handle);
+static void __cdecl DestroyObjectHook(int handle) {
+    DestroyObjectOrig(handle);
+}
+
+extern int(__cdecl*
+    GetCollidingObjectListO)
+    (ObjectHeader*, uint, uint, float, float, int, int,
+        ObjectHeader***, int);
+extern int __cdecl
+GetCollidingObjectListH
+(ObjectHeader* sourceObj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
+    ObjectHeader*** outList, int filterGroup);
+
 void init_game_loop() {
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
@@ -461,6 +510,10 @@ void init_game_loop() {
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
         // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
+        hook(mem::get_base() + 0x1f730, DestroyObjectHook, &DestroyObjectOrig);
+        hook(mem::get_base() + 0x47140, GetCollidingObjectListH, &GetCollidingObjectListO);
+        // hook(mem::get_base() + 0x485d0, ActHook, &ActOrig);
+        // hook(mem::get_base() + 0x15740, EvaluateCondition, &EvaluateConditionO);
         btas::pre_init();
     }
     audio_init();

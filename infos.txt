@@ -1,3 +1,7 @@
 Object creation IDs:
 28 - Player
 106 - Bullet
+
+Action event codes:
+33 - someting with bullets (actionID = 94)
+57 - Player movement

@@ -298,9 +298,10 @@ void btas::fix_bullets() {
 		// bullet_speed = 9
 		// old_b->xPos = old_b->yPos = -13337;
 		// x += (dir == 0 ? 9 : -9);
-		DestroyObject(old_h, 1);
+		// TODO: needs redraw flag
 		cout << "fixing bullet " << x << " " << y << " " << dir << std::endl;
 		launch_bullet(x, y, (int)dir);
+		DestroyObject(old_h, 1);
 	}
 	temp_bullets.clear();
 	buf2[0] = 0x74;
@@ -537,15 +538,64 @@ static void import_replay(const std::string& path) {
 }
 
 void btas::reg_obj(int handle) {
-	if (b_loading_state) {
+	if (b_loading_state && 0) {
 		cout << "bullet reg\n";
 		if (conf::fix_bul)
 			temp_bullets.push_back(handle);
+		RunHeader& pState = get_state();
+		auto obj = pState.objectList[handle * 2];
 	}
-	else {
-		//RunHeader& pState = get_state();
-		//auto obj = pState.objectList[handle * 2];
+	if (1) {
+		RunHeader& pState = get_state();
+		auto& obj = *pState.objectList[handle * 2];
+		auto& s = *obj.spriteHandle;
+		cout << "launch " << handle << " " << s.flags << " " << s.layer << " "
+			<< s.numChildren << " " << s.textureHandleA << " " << s.textureHandleB << " "
+			<< s.zOrder << " "
+			<< std::endl;
+		// obj->movementType = 13
+		//void(__cdecl * MMF2_RefreshObject)(ObjectHeader*);
+		//MMF2_RefreshObject = (decltype(MMF2_RefreshObject))0x401870;
+		//MMF2_RefreshObject(obj);
+		// obj->nextSelectedHandle = -1;
+		// TODO: bullet warn!!!!!!!! 4479e8
+		// TODO: research
+		// should trigger destruction at 0411ed1
+
+		// renderGroup = 2
+		// upd cb 41EA60
+		// important 401eb6 RefreshObjectVisuals DestroyObjectInstance(refs)
+		// 40211e for showing boshyhitbox
+		// TODO: 420aa6 ui set to remove anim
+		// 042e530 - player coll with objs
 	}
+	if (0)
+		temp_bullets.push_back(handle);
+}
+
+int (__cdecl*
+GetCollidingObjectListO)
+(ObjectHeader*, uint, uint, float, float, int, int,
+	ObjectHeader***, int);
+int __cdecl
+GetCollidingObjectListH
+(ObjectHeader* sourceObj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
+	ObjectHeader*** outList, int filterGroup) {
+	auto ret = GetCollidingObjectListO(sourceObj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
+	if (sourceObj->parentID == 28 && (int)outList == 0x19FCE8) {
+		sourceObj->spriteHandle->flags = 536870913; // FIXES BULLET
+		/*
+		cout << sourceObj->handle << " " << sourceObj->parentID << " " << sourceObj->spriteHandle << " "
+			<< sourceObj->renderGroup << " " << angle << " " << scale << " "
+			<< scaleX << " " << scaleY << " " << x << " " << y << " " << (void*)outList << " "
+			<< filterGroup << " " << sourceObj->spriteHandle->flags << ": " << ret << std::endl;
+			*/
+	}
+	return ret;
+}
+
+void btas::unreg_obj(int handle) {
+	// TODO
 }
 
 unsigned int btas::get_rng(unsigned int maxv) {
@@ -854,19 +904,16 @@ void btas::draw_tab() {
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
 			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
+			repl_holding.clear();
 			if (is_replay) {
-				repl_holding.clear();
 				st.temp_ev.clear();
 				bullet_cur_delay = -1;
-				repl_index = 0;
 			}
 			else {
-				repl_holding.clear();
 				trim_current_state();
-				// st.ev.resize(repl_index);
-				ASS(repl_index == (int)st.ev.size());
-				repl_index = 0;
+				st.ev.resize(repl_index);
 			}
+			repl_index = 0;
 		}
 		ImGui::Checkbox("Reset game on replay (BETA)", &reset_on_replay);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
