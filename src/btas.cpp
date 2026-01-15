@@ -506,7 +506,7 @@ void btas::reg_obj(int handle) {
 		RunHeader& pState = get_state();
 		auto obj = pState.objectList[handle * 2];
 	}
-	if (1) {
+	if (0) {
 		RunHeader& pState = get_state();
 		auto& obj = *pState.objectList[handle * 2];
 		auto& s = *obj.spriteHandle;
@@ -532,36 +532,8 @@ void btas::reg_obj(int handle) {
 	}
 }
 
-int (__cdecl*
-GetCollidingObjectListO)
-(ObjectHeader*, uint, uint, float, float, int, int,
-	ObjectHeader***, int);
-int __cdecl
-GetCollidingObjectListH
-(ObjectHeader* sourceObj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
-	ObjectHeader*** outList, int filterGroup) {
-	auto ret = GetCollidingObjectListO(sourceObj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
-	if (sourceObj->parentID == 28 && (int)outList == 0x19FCE8) {
-		// Bullet fix (check for SF_INACTIVE => means bullet is broken)
-		if ((sourceObj->spriteHandle->flags & 8) != 0) {
-			sourceObj->spriteHandle->flags &= ~8; // remove SF_INACTIVE
-			sourceObj->spriteHandle->flags |= 1; // add SF_RECREATEMASK
-			sourceObj->spriteHandle->flags |= 0x40; // add SF_RECALC
-		}
-		// cout << sourceObj->spriteHandle->flags << std::endl;
-		// sourceObj->spriteHandle->flags = 536870913; // FIXES BULLET
-		/*
-		cout << sourceObj->handle << " " << sourceObj->parentID << " " << sourceObj->spriteHandle << " "
-			<< sourceObj->renderGroup << " " << angle << " " << scale << " "
-			<< scaleX << " " << scaleY << " " << x << " " << y << " " << (void*)outList << " "
-			<< filterGroup << " " << sourceObj->spriteHandle->flags << ": " << ret << std::endl;
-			*/
-	}
-	return ret;
-}
-
 void btas::unreg_obj(int handle) {
-	// TODO
+	// unused
 }
 
 unsigned int btas::get_rng(unsigned int maxv) {

@@ -123,8 +123,8 @@ static int __cdecl
 CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, void* creationParam,
     ushort creationFlags, uint initialDir, int layerIndex) {
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
-    if (is_btas && objectInfoID == 106 && ret != -1)
-        btas::reg_obj(ret);
+    // if (is_btas && objectInfoID == 106 && ret != -1)
+    //    btas::reg_obj(ret);
     if (objectInfoID == 28 && ret != -1)
         player_oi_handle = ret;
     return ret;
@@ -138,7 +138,7 @@ static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* o
         x = next_bullet_x;
         y = next_bullet_y;
         direction = next_bullet_dir;
-        cout << "BULLET EVENT " << x << " " << y << " " << direction << std::endl;
+        // cout << "BULLET EVENT " << x << " " << y << " " << direction << std::endl;
     }
     if (action->objectToLaunchID == 106) {
         action->objectToLaunchID = bullet_id;
@@ -478,14 +478,25 @@ static void __cdecl DestroyObjectHook(int handle) {
     DestroyObjectOrig(handle);
 }
 
-extern int(__cdecl*
-    GetCollidingObjectListO)
-    (ObjectHeader*, uint, uint, float, float, int, int,
-        ObjectHeader***, int);
-extern int __cdecl
-GetCollidingObjectListH
+static int(__cdecl* GetCollidingObjectListOrig)(ObjectHeader*, uint, uint, float, float, int, int, ObjectHeader***, int);
+static int __cdecl GetCollidingObjectListHook
 (ObjectHeader* sourceObj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
-    ObjectHeader*** outList, int filterGroup);
+    ObjectHeader*** outList, int filterGroup) {
+    // bullet created by player for sure
+    if (sourceObj && sourceObj->parentID == 28 && sourceObj->oiHandle == 106) {
+        // cout << sourceObj->oiHandle << " " << sourceObj->spriteHandle->flags << std::endl;
+        // Bullet fix (check for SF_INACTIVE => means bullet is broken)
+        if (sourceObj->spriteHandle->flags == 0x20000008) {
+            // cout << "fixed\n";
+            sourceObj->spriteHandle->flags &= ~0x8; // remove SF_INACTIVE
+            sourceObj->spriteHandle->flags |= 0x40; // add SF_RECALC
+            sourceObj->spriteHandle->flags |= 0x1; // add SF_RECREATEMASK
+        }
+    }
+    // TODO: fix player not teleporting after loading state
+    auto ret = GetCollidingObjectListOrig(sourceObj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
+    return ret;
+}
 
 void init_game_loop() {
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
@@ -510,12 +521,14 @@ void init_game_loop() {
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
         // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
-        hook(mem::get_base() + 0x1f730, DestroyObjectHook, &DestroyObjectOrig);
-        hook(mem::get_base() + 0x47140, GetCollidingObjectListH, &GetCollidingObjectListO);
+        // hook(mem::get_base() + 0x1f730, DestroyObjectHook, &DestroyObjectOrig);
         // hook(mem::get_base() + 0x485d0, ActHook, &ActOrig);
         // hook(mem::get_base() + 0x15740, EvaluateCondition, &EvaluateConditionO);
         btas::pre_init();
     }
+    // Actually might be useful for normal mod menu
+    if (is_btas || !is_hourglass)
+        hook(mem::get_base() + 0x47140, GetCollidingObjectListHook, &GetCollidingObjectListOrig);
     audio_init();
     enable_hook();
 }
