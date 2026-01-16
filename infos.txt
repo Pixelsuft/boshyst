@@ -5,3 +5,8 @@ Object creation IDs:
 Action event codes:
 33 - someting with bullets (actionID = 94)
 57 - Player movement
+
+g_SystemFlags:
+<0 - D3D9 mode
+0x20 - DDRAW mode
+0x40 - VRAM

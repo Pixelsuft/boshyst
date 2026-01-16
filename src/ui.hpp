@@ -1,7 +1,6 @@
 #pragma once
 
 extern bool show_menu;
-extern bool capturing;
 
 void get_win_size(int& w_buf, int& h_buf);
 void get_cursor_pos(int& x_buf, int& y_buf);

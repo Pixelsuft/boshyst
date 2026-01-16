@@ -35,6 +35,7 @@ static uint next_bullet_dir = 0;
 static bool audio_timer_hooked = false;
 static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
 static void (*ProcessFrameRendering)(void);
+static char temp_path[MAX_PATH];
 int player_oi_handle = -1;
 int bullet_id = 106;
 int bullet_speed = 70;
@@ -508,6 +509,17 @@ static int __cdecl GetCollidingObjectListHook
     return ret;
 }
 
+static DWORD __stdcall GetTempPathAHook(DWORD nBufferLength, LPSTR lpBuffer) {
+    if (!CreateDirectoryA(temp_path, nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
+        return 0;
+    strcpy(lpBuffer, temp_path);
+    return 4;
+}
+
+static void __stdcall DragAcceptFilesHook(HWND hWnd, BOOL fAccept) {
+    // cout << "DragAcceptFilesHook\n";
+}
+
 void init_game_loop() {
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
@@ -516,6 +528,7 @@ void init_game_loop() {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
         hook(mem::addr("time", "msvcrt.dll"), timeHook);
         hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
+        hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
@@ -530,6 +543,10 @@ void init_game_loop() {
         // hook(mem::get_base() + 0x1f730, DestroyObjectHook, &DestroyObjectOrig);
         // hook(mem::get_base() + 0x485d0, ActHook, &ActOrig);
         // hook(mem::get_base() + 0x15740, EvaluateCondition, &EvaluateConditionO);
+        auto cwd_len = GetCurrentDirectoryA(MAX_PATH, temp_path);
+        ASS(cwd_len > 0);
+        strcpy(temp_path + cwd_len, "\\temp");
+        hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         btas::pre_init();
     }
     if ((conf::tas_mode || is_btas) && conf::au_mth) {

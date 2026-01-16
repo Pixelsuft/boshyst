@@ -33,6 +33,7 @@ static bool c_ends_with(const char* str, const char* end) {
 }
 
 extern int player_oi_handle;
+extern bool capturing;
 
 bool MyKeyState(int k);
 int JustKeyState(int k);
