@@ -33,6 +33,7 @@ static HBITMAP bmp = nullptr;
 static HGDIOBJ old_bmp = nullptr;
 static HANDLE hChildStdinRead = nullptr;
 static HANDLE hChildStdinWrite = nullptr;
+static LPDIRECT3DSURFACE9 pSysSurface = nullptr;
 static PROCESS_INFORMATION pi;
 static std::vector<BYTE> data_buffer;
 static BITMAPINFO bmi;
@@ -76,6 +77,18 @@ void rec::init(void* dev) {
         bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
         ASS(bmp != nullptr);
         old_bmp = SelectObject(memdc, bmp);
+    }
+    else {
+        LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
+        LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
+        ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
+        D3DSURFACE_DESC desc;
+        ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
+        ASS(pDevice->CreateOffscreenPlainSurface(
+            desc.Width, desc.Height, desc.Format,
+            D3DPOOL_SYSTEMMEM, &pSysSurface, nullptr
+        ) == D3D_OK);
+        pBackBuffer->Release();
     }
     std::string command = "";
     // Yea it's ugly
@@ -160,12 +173,6 @@ void rec::cap(void* dev) {
         D3DSURFACE_DESC desc;
         ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
 
-        // TODO: maybe creating it every frame is not a good idea?
-        LPDIRECT3DSURFACE9 pSysSurface = nullptr;
-        ASS(pDevice->CreateOffscreenPlainSurface(
-            desc.Width, desc.Height, desc.Format,
-            D3DPOOL_SYSTEMMEM, &pSysSurface, NULL
-        ) == D3D_OK);
         ASS(pDevice->GetRenderTargetData(pBackBuffer, pSysSurface) == D3D_OK);
         D3DLOCKED_RECT lockedRect;
         auto temp_ret = pSysSurface->LockRect(&lockedRect, nullptr, D3DLOCK_READONLY);
@@ -178,7 +185,6 @@ void rec::cap(void* dev) {
             }
             pSysSurface->UnlockRect();
         }
-        pSysSurface->Release();
         pBackBuffer->Release();
     }
     next_white = false;
@@ -206,6 +212,9 @@ void rec::stop(void* dev) {
         if (bmp) DeleteObject(bmp);
         if (memdc) DeleteDC(memdc);
         if (srcdc) ReleaseDC(nullptr, srcdc);
+    }
+    else {
+        pSysSurface->Release();
     }
     hChildStdinWrite = nullptr;
     memdc = nullptr;
@@ -245,18 +254,18 @@ void rec::rec_tick(void* dev) {
         return;
     }
     // Legacy way
+    if (is_btas && !last_upd)
+        return;
     static int cur_total = 0;
     static int cur_cnt = 0;
     cur_total++;
     if (cur_total == conf::cap_start) {
         rec::init(dev);
-        if (!is_btas || last_upd)
-            rec::cap(dev);
+        rec::cap(dev);
         cur_cnt++;
     }
     else if (cur_cnt > 0) {
-        if (!is_btas || last_upd)
-            rec::cap(dev);
+        rec::cap(dev);
         cur_cnt++;
         if (cur_cnt == conf::cap_cnt) {
             rec::stop(dev);

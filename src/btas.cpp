@@ -355,11 +355,6 @@ static void b_state_load(int slot, bool from_loop) {
 		last_msg = "Failed to open file for reading to load state " + to_str(slot);
 		return;
 	}
-	char buf[4];
-	ASS(f.read(buf, 4));
-	ASS(memcmp(buf, "btas", 4) == 0);
-	int scene_id;
-	load_bin(f, scene_id);
 	if (is_replay && reset_on_replay && !from_loop && st.frame != 0) {
 		st.prev.clear();
 		st.ev.clear();
@@ -374,6 +369,11 @@ static void b_state_load(int slot, bool from_loop) {
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
+	char buf[4];
+	ASS(f.read(buf, 4));
+	ASS(memcmp(buf, "btas", 4) == 0);
+	int scene_id;
+	load_bin(f, scene_id);
 	if (!is_replay && scene_id != get_scene_id()) {
 		cout << "preparing change\n";
 		need_scene_state_slot = slot;
@@ -603,7 +603,7 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 7: {
-		// TODO: optimize
+		// TODO: optimize?
 		while (1) {
 			auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range, [](const IntPair& a, int range) {
 				return a.a > range;
@@ -622,7 +622,7 @@ bool btas::on_before_update() {
 
 	RunHeader& pState = get_state();
 	if (need_scene_state_slot != -1) {
-		cout << "load state\n";
+		// cout << "load state\n";
 		b_state_load(need_scene_state_slot, true);
 		repl_index = 0;
 		need_scene_state_slot = -1;
