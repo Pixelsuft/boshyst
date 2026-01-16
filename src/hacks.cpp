@@ -384,6 +384,11 @@ static void __stdcall FlushInputQueueHook(void) {
     // cout << "queue\n";
 }
 
+static BOOL __stdcall InternetGetConnectedStateHook(LPDWORD lpdwFlags, DWORD dwReserved) {
+    *lpdwFlags = 0x20;
+    return TRUE;
+}
+
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
@@ -399,6 +404,10 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5, &bW) != 0 && bW == 5);
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
+    }
+    if (is_btas && c_ends_with(lpLibFileName, "Yaso.mfx")) {
+        hook(mem::addr("InternetGetConnectedState", "wininet.dll"), InternetGetConnectedStateHook);
+        enable_hook();
     }
     return ret;
 }
@@ -520,6 +529,12 @@ static void __stdcall DragAcceptFilesHook(HWND hWnd, BOOL fAccept) {
     // cout << "DragAcceptFilesHook\n";
 }
 
+static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
+    cout << "GetUserNameAHook\n";
+    strcpy(lpBuffer, "BTAS");
+    return TRUE;
+}
+
 void init_game_loop() {
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
@@ -547,6 +562,8 @@ void init_game_loop() {
         ASS(cwd_len > 0);
         strcpy(temp_path + cwd_len, "\\temp");
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
+        hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
+        // *(int*)0x459aa8 = 1;
         btas::pre_init();
     }
     if ((conf::tas_mode || is_btas) && conf::au_mth) {

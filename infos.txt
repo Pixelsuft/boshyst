@@ -1,3 +1,21 @@
+IWBTB Command line args:
+-DDRAW - force DDRAW
+-DIB - force GDI
+-D3D8 - force D3D8
+-D3D9 - force D3D9
+-DEBUG - window title with extra info
+-MIS0 and -MIS1 (alt input?)
+-R0 - silent errors
+-R1 - normal errors
+-VSYNC - force vsync
+-NOVSYNC - disable vsync
+-NOF
+-NOK
+-NOC
+-NODS
+-NOVR
+-NOX
+
 Object creation IDs:
 28 - Player
 106 - Bullet
@@ -8,5 +26,5 @@ Action event codes:
 
 g_SystemFlags:
 <0 - D3D9 mode
-0x20 - DDRAW mode
+0x20 - DDRAW mode (or GDI?)
 0x40 - VRAM
