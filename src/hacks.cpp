@@ -19,6 +19,7 @@
 #pragma comment(lib, "Shlwapi.lib")
 
 using std::cout;
+extern HANDLE hproc;
 extern HWND hwnd;
 extern HWND mhwnd;
 extern bool capturing;
@@ -206,13 +207,11 @@ static DWORD __stdcall timeGetTimeHook() {
     return btas::get_time();
 }
 
-extern void audio_on_reset();
 BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     if (hwnd != ::hwnd)
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
-    audio_on_reset();
     if (capturing && strcmp(cap, "I Wanna Be The Boshy") == 0) {
         next_white = true;
         return FALSE;
@@ -351,7 +350,8 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             // cout << "1 " << (uMsg == WM_KEYDOWN) << std::endl;
             btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
         }
-        ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
+        if (!b_loading_saving_state)
+            ImGui_ImplWin32_WndProcHandler(::hwnd, uMsg, wParam, lParam);
     }
     auto ret = MainWindowProcOrig(hWnd, uMsg, wParam, lParam);
     return ret;
@@ -370,7 +370,8 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             // cout << "2 " << (uMsg == WM_KEYDOWN) << std::endl;
             btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
         }
-        ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
+        if (!b_loading_saving_state)
+           ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }
     if (is_btas && uMsg > WM_MOUSEFIRST && uMsg < WM_MOUSELAST)
         return 0;
@@ -388,8 +389,17 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         || c_ends_with(lpLibFileName, "Select.mfx") || c_ends_with(lpLibFileName, "Layer.mfx")
         || c_ends_with(lpLibFileName, "clickteam-movement-controller.mfx"))
         lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";*/
-    cout << "load hook: " << lpLibFileName << std::endl;
-    return LoadLibraryAOrig(lpLibFileName);
+    // cout << "load hook: " << lpLibFileName << std::endl;
+    auto ret = LoadLibraryAOrig(lpLibFileName);
+    // Disable extra threads for performance
+    uint8_t temp = 0xeb;
+    const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    DWORD bW;
+    if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
+        ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5, &bW) != 0 && bW == 5);
+        ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
+    }
+    return ret;
 }
 
 static HMODULE(__stdcall* LoadLibraryWOrig)(LPCWSTR lpLibFileName);
@@ -504,27 +514,27 @@ void init_game_loop() {
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
         hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
-        if (conf::cap_au) {
-            // TODO: config var to set audio processing to main thread
-            hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
-            hook(mem::addr("timeKillEvent", "winmm.dll"), timeKillEventHook, &timeKillEventOrig);
-        }
         hook(mem::addr("time", "msvcrt.dll"), timeHook);
         hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
-        hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
-        hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
+        // Ok this might be overkill
+        // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
+        // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
         hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
         hook(mem::addr("GetProcessTimes", "kernel32.dll"), GetProcessTimesHook);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
-        // hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
+        hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
         // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
         // hook(mem::get_base() + 0x1f730, DestroyObjectHook, &DestroyObjectOrig);
         // hook(mem::get_base() + 0x485d0, ActHook, &ActOrig);
         // hook(mem::get_base() + 0x15740, EvaluateCondition, &EvaluateConditionO);
         btas::pre_init();
+    }
+    if ((conf::tas_mode || is_btas) && conf::au_mth) {
+        hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
+        hook(mem::addr("timeKillEvent", "winmm.dll"), timeKillEventHook, &timeKillEventOrig);
     }
     // Actually might be useful for normal mod menu
     if (is_btas || !is_hourglass)

@@ -149,7 +149,7 @@ bool is_btas = false;
 bool fast_forward = false;
 bool is_paused = true;
 bool is_replay = false;
-bool b_loading_state = false;
+bool b_loading_saving_state = false;
 
 static RunHeader& get_state() {
 	return **(RunHeader**)(mem::get_base() + 0x59a9c);
@@ -341,7 +341,9 @@ static void b_state_save(int slot) {
 	write_bin(f, st.prev);
 	write_bin(f, st.temp_ev);
 	write_bin(f, st.ev);
+	b_loading_saving_state = true;
 	state_save(&f);
+	b_loading_saving_state = false;
 	last_msg = string("State ") + to_str(slot) + " saved";
 }
 
@@ -434,9 +436,9 @@ static void b_state_load(int slot, bool from_loop) {
 	}
 	// pState.RandomSeed = st.seed;
 	if (!is_replay) {
-		b_loading_state = true;
+		b_loading_saving_state = true;
 		state_load(&f);
-		b_loading_state = false;
+		b_loading_saving_state = false;
 		trim_current_state();
 	}
 	pState.lastFrameScore = st.c1;
@@ -501,7 +503,8 @@ static void import_replay(const std::string& path) {
 }
 
 void btas::reg_obj(int handle) {
-	if (b_loading_state && 0) {
+	// unused
+	if (b_loading_saving_state && 0) {
 		cout << "bullet reg\n";
 		RunHeader& pState = get_state();
 		auto obj = pState.objectList[handle * 2];
@@ -672,9 +675,9 @@ bool btas::on_before_update() {
 			st.ev.push_back(*it);
 		}
 		st.temp_ev.clear();
-		if (st.frame % 20 == 0) {
+		if (st.frame % 50 == 0) {
 			BTasEvent ev;
-			if (st.frame % 40 == 0) {
+			if (st.frame % 100 == 0) {
 				ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1];
 				ev.idx = 3;
 			}
@@ -683,7 +686,8 @@ bool btas::on_before_update() {
 				ev.idx = 4;
 			}
 			ev.frame = st.frame;
-			st.ev.push_back(ev);
+			if (ev.hash.val != 0)
+				st.ev.push_back(ev);
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
@@ -749,7 +753,7 @@ void btas::on_key(int k, bool pressed) {
 		BTasBind& bind = *it;
 		if (bind.key != k)
 			break;
-		if ((pressed && (bind.mod != current_mod)) || (!pressed && !bind.down)) {
+		if ((pressed && ((bind.mod != current_mod) || b_loading_saving_state)) || (!pressed && !bind.down)) {
 			it++;
 			continue;
 		}
@@ -824,6 +828,47 @@ void btas::draw_info() {
 	ImGui::Text("Scene ID: %i", get_scene_id());
 	// ImGui::Text("Time: %u", cur_time);
 	ImGui::Text("Message: %s", last_msg.c_str());
+	if (fast_forward)
+		return;
+	string cur_keys = "";
+	for (auto it = st.prev.cbegin(); it != st.prev.cend(); it++) {
+		switch (*it) {
+		case 'Q':
+		case 'R':
+		case 'S':
+		case 'Z':
+		case 'X':
+		case 'C':
+			cur_keys += ", ";
+			cur_keys += (char)*it;
+			break;
+		case VK_LEFT:
+			cur_keys += ", <-";
+			break;
+		case VK_RIGHT:
+			cur_keys += ", ->";
+			break;
+		case VK_DOWN:
+			cur_keys += ", \\/";
+			break;
+		case VK_UP:
+			cur_keys += ", ^";
+			break;
+		case VK_F2:
+			cur_keys += ", F2";
+			break;
+		case VK_F3:
+			cur_keys += ", F3";
+			break;
+		case VK_F5:
+			cur_keys += ", F5";
+			break;
+		case VK_ESCAPE:
+			cur_keys += ", ESC";
+			break;
+		}
+	}
+	ImGui::Text("Keys: %s", cur_keys.size() > 1 ? cur_keys.substr(2).c_str() : "");
 }
 
 void btas::draw_tab() {

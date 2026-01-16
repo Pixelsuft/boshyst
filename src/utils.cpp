@@ -260,7 +260,6 @@ bool state_save(bfs::File* file) {
 		SaveFunc(INVALID_HANDLE_VALUE);
 		return true;
 	}
-	// TODO: write needed info
 	auto ret = SaveFunc(file->get_handle());
 	// cout << "save ret: " << ret << "\n";
 	return true;
@@ -274,7 +273,6 @@ bool state_load(bfs::File* file) {
 		LoadFunc(INVALID_HANDLE_VALUE, &outver);
 		return true;
 	}
-	// TODO: read needed info
 	auto ret = LoadFunc(file->get_handle(), &outver);
 	// cout << "load ret: " << ret << "\n";
 	return true;

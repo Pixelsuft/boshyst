@@ -160,6 +160,7 @@ void rec::cap(void* dev) {
         D3DSURFACE_DESC desc;
         ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
 
+        // TODO: maybe creating it every frame is not a good idea?
         LPDIRECT3DSURFACE9 pSysSurface = nullptr;
         ASS(pDevice->CreateOffscreenPlainSurface(
             desc.Width, desc.Height, desc.Format,
@@ -194,6 +195,7 @@ void rec::cap(void* dev) {
 }
 
 void rec::stop(void* dev) {
+    capturing = false;
     CloseHandle(hChildStdinWrite);
     WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hProcess);
@@ -217,15 +219,13 @@ void rec::rec_tick(void* dev) {
     conf::cur_mouse_checked = false;
     if (!conf::allow_render)
         return;
-    if (is_btas && !last_upd)
-        return;
     if (conf::cap_start == 0 && conf::cap_cnt == 0) {
         // Special case
         char buf[32];
         int ret = GetWindowTextA(hwnd, buf, 32);
         ASS(ret > 0);
         buf[ret] = '\0';
-        if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing) {
+        if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing && (!is_btas || last_upd)) {
             capturing = true;
             rec::init(dev);
         }
@@ -239,20 +239,24 @@ void rec::rec_tick(void* dev) {
                 SetWindowTextAOrig(hwnd, "I Wanna Be The Boshy R");
                 next_white = conf::fix_white_render;
             }
-            rec::cap(dev);
+            if (!is_btas || last_upd)
+                rec::cap(dev);
         }
         return;
     }
+    // Legacy way
     static int cur_total = 0;
     static int cur_cnt = 0;
     cur_total++;
     if (cur_total == conf::cap_start) {
         rec::init(dev);
-        rec::cap(dev);
+        if (!is_btas || last_upd)
+            rec::cap(dev);
         cur_cnt++;
     }
     else if (cur_cnt > 0) {
-        rec::cap(dev);
+        if (!is_btas || last_upd)
+            rec::cap(dev);
         cur_cnt++;
         if (cur_cnt == conf::cap_cnt) {
             rec::stop(dev);

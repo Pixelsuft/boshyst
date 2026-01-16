@@ -236,11 +236,11 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("Use Direct3D9 render", &conf::direct_render);
 			ImGui::Checkbox("Fix white screen (Direct3D9)", &conf::fix_white_render);
 			ImGui::Checkbox("Old render (BitBlt)", &conf::old_rec);
-			if (ImGui::Button("Start recording")) {
+			if (conf::allow_render && ImGui::Button("Start recording")) {
 				conf::cap_start = conf::cap_cnt = 0; // Hack
 				SetWindowTextA(hwnd, "I Wanna Be The Boshy R");
 			}
-			if (ImGui::Button("Stop recording")) {
+			if (conf::allow_render && ImGui::Button("Stop recording")) {
 				SetWindowTextA(hwnd, "I Wanna Be The Boshy S");
 			}
 			if (conf::cap_au && ImGui::Button("Flush audio capture")) {
