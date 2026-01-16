@@ -21,10 +21,12 @@ FFmpeg is required to be in `PATH` variable. <br />
 
 Automatic start/end of the recording can be configured with `render_start`, `render_count`/`render_end` (not recommended because mod injection is unstable between mod starts). <br />
 It's recommended to set start/count vars to 0 and use [start_cap](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/start_cap.exe) and [end_cap](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/end_cap.exe) scripts. <br />
-When **not** using direct render, capture starts from the frame you currently see, and ends before the frame you currently see (front buffer capturing). <br />
-When using direct render, capture starts from the frame you will see, and ends with the frame you currently see (back buffer capturing). <br />
+**Not** using direct render <=> front buffer capturing. <br />
+Using direct render <=> back buffer capturing. <br />
+Capture starts from the frame you will see, and ends with the frame you currently see <br />
 Warning: game window should **not** be resized while recording.
 ## Useful links
+*Latest Boshyst DLL is not available yet, build it yourself!
 [Boshyst DLL (Windows 8+)](TODO)<br />
 [Boshyst DLL (Windows XP compatible)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll)<br />
 [Modified wintasee.dll for hourglass r90](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) <br />

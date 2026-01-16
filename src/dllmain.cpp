@@ -51,6 +51,10 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
     if (!inited)
     {
+        if (GetModuleHandleA("d3d9.dll") == nullptr) {
+            ass::show_err("Boshyst only supports Direct3D 9 mode, you are using a different one");
+            ASS(false);
+        }
         D3DDEVICE_CREATION_PARAMETERS params;
         pDevice->GetCreationParameters(&params);
         hwnd = params.hFocusWindow;
@@ -68,7 +72,8 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         cout << "graphics inited\n";
 #endif
     }
-    rec::rec_tick(conf::direct_render ? pDevice : nullptr);
+    if (conf::direct_render)
+        rec::rec_tick(pDevice);
 
     ImGui_ImplDX9_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -144,7 +149,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr;
         if (PathFileExistsA("is_btas.txt"))
             is_btas = true;
-        conf::read();
         if (is_btas || is_hourglass)
             conf::tas_mode = true;
 #if defined(_DEBUG)
@@ -155,6 +159,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
             AllocConsole();
             freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         }
+        conf::read();
         app_entry(nullptr);
         break;
     case DLL_THREAD_ATTACH:

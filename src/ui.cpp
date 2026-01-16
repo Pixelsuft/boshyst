@@ -232,8 +232,10 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("Allow in-game keyboard in menu", &conf::input_in_menu);
 		}
 		if (ImGui::CollapsingHeader("Recording")) {
-			ImGui::Checkbox("Allow render", &conf::allow_render);
-			ImGui::Checkbox("Use Direct3D9 render", &conf::direct_render);
+			if (ImGui::Checkbox("Allow render", &conf::allow_render) && !conf::allow_render && capturing)
+				conf::allow_render = true;
+			if (!capturing)
+				ImGui::Checkbox("Use Direct3D9 render", &conf::direct_render);
 			ImGui::Checkbox("Fix white screen (Direct3D9)", &conf::fix_white_render);
 			ImGui::Checkbox("Old render (BitBlt)", &conf::old_rec);
 			if (conf::allow_render && !capturing && ImGui::Button("Start recording")) {

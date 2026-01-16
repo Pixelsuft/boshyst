@@ -77,6 +77,8 @@ static int read_int(const string& line) {
             ret = (ret * 10) + (*it - '0');
             was_set = true;
         }
+        else if (was_eq && *it == '/')
+            return ret;
         else if (was_eq && !was_set && tolower(*it) == 't')
             return 1;
         else if (was_eq && !was_set && tolower(*it) == 'f')

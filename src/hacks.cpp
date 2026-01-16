@@ -270,6 +270,8 @@ static int __stdcall UpdateGameFrameHook() {
         auto ret = UpdateGameFrameOrig();
         ProcessFrameRendering();
         btas::on_after_update();
+        if (!conf::direct_render)
+            rec::rec_tick(nullptr);
         return ret;
     }
 
@@ -284,7 +286,10 @@ static int __stdcall UpdateGameFrameHook() {
     if (audio_timer_hooked)
         AudioTimerCallback(1337228, 0, 0, 0, 0);
 
-    if (!show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
+    if (!conf::direct_render)
+        rec::rec_tick(nullptr);
+
+    if (!is_btas && !show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
         if (player) {
@@ -389,6 +394,12 @@ static BOOL __stdcall InternetGetConnectedStateHook(LPDWORD lpdwFlags, DWORD dwR
     return TRUE;
 }
 
+static HRESULT __stdcall DirectDrawCreateHook(void* lpGUID, void* lplpDD, void* pUnkOuter) {
+    // We support only D3D9
+    cout << "Failing DirectDrawCreateHook\n";
+    return 0x8007000E;
+}
+
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
@@ -396,11 +407,21 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         || c_ends_with(lpLibFileName, "clickteam-movement-controller.mfx"))
         lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";*/
     // cout << "load hook: " << lpLibFileName << std::endl;
+    if (is_btas && c_ends_with(lpLibFileName, "mmf2d3d8.dll")) {
+        cout << "Failing to load mmf2d3d8.dll\n";
+        return nullptr;
+    }
     auto ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
     uint8_t temp = 0xeb;
     const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
     DWORD bW;
+    if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
+        hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
+        // TODO: hook mmfs2 dll funcs directly here
+        audio_init();
+        enable_hook();
+    }
     if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5, &bW) != 0 && bW == 5);
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
@@ -563,7 +584,6 @@ void init_game_loop() {
         strcpy(temp_path + cwd_len, "\\temp");
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
-        // *(int*)0x459aa8 = 1;
         btas::pre_init();
     }
     if ((conf::tas_mode || is_btas) && conf::au_mth) {
@@ -573,7 +593,6 @@ void init_game_loop() {
     // Actually might be useful for normal mod menu
     if (is_btas || !is_hourglass)
         hook(mem::get_base() + 0x47140, GetCollidingObjectListHook, &GetCollidingObjectListOrig);
-    audio_init();
     enable_hook();
 }
 
