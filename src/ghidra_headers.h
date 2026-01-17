@@ -489,6 +489,16 @@ struct ConditionHeader {
     short field3_0x6;
     short field4_0x8;
     byte field5_0xa;
+    undefined unk1;
+    undefined unk2;
+    undefined unk3;
+    undefined unk4;
+    undefined unk5;
+    undefined1 parameterData;
+    undefined unk6;
+    short conditionType;
+    uint interval;
+    int currentTimer;
 };
 
 typedef struct EngineState EngineState, *PEngineState;

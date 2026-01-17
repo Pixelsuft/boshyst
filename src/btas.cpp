@@ -94,6 +94,7 @@ struct BTasState {
 	std::vector<BTasEvent> ev;
 	std::vector<BTasEvent> temp_ev;
 	std::vector<IntPair> rng_buf;
+	std::vector<IntPair> timer_conds;
 	std::vector<int> prev;
 	int cur_pos[2];
 	int last_pos[2];
@@ -142,6 +143,7 @@ static bool slowmo = false;
 bool last_upd = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
+static int timers_to_fix = 0;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
 
@@ -350,6 +352,8 @@ static void b_state_save(int slot) {
 	write_bin(f, st.c1);
 	write_bin(f, st.seed);
 	write_bin(f, st.rng_buf);
+	write_bin(f, st.timer_conds);
+	cout << "saved " << st.timer_conds.size() << std::endl;
 	write_bin(f, st.prev);
 	write_bin(f, st.temp_ev);
 	write_bin(f, st.ev);
@@ -367,6 +371,7 @@ static void b_state_load(int slot, bool from_loop) {
 		last_msg = "Failed to open file for reading to load state " + to_str(slot);
 		return;
 	}
+	timers_to_fix = 0;
 	if (is_replay && reset_on_replay && !from_loop && st.frame != 0) {
 		st.prev.clear();
 		st.ev.clear();
@@ -419,6 +424,7 @@ static void b_state_load(int slot, bool from_loop) {
 		std::vector<int> dummy2;
 		std::vector<IntPair> dummy4;
 		load_bin(f, dummy4); // rng_buf
+		load_bin(f, dummy4); // timer_conds
 		load_bin(f, dummy2); // prev
 		load_bin(f, dummy2); // temp_ev
 		load_bin(f, st.ev);
@@ -442,6 +448,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.c1);
 		load_bin(f, st.seed);
 		load_bin(f, st.rng_buf);
+		load_bin(f, st.timer_conds);
 		load_bin(f, st.prev);
 		load_bin(f, st.temp_ev);
 		load_bin(f, st.ev);
@@ -454,13 +461,16 @@ static void b_state_load(int slot, bool from_loop) {
 		trim_current_state();
 		// Fix internal state load bug
 		// TODO: also do this in normal mode?
-		for (int i = 0; i < pState.objectCount; i++) {
+		for (int i = 0; i < pState.activeObjectCount; i++) {
 			ObjectHeader* obj = pState.objectList[i * 2];
 			if (!obj || !(obj->flags) || !obj->spriteHandle)
 				continue;
 			// Force mask recalculation
 			obj->spriteHandle->flags |= 1;
 		}
+		// I hate this
+		timers_to_fix = (int)st.timer_conds.size();
+		cout << "loaded " << timers_to_fix << std::endl;
 	}
 	pState.lastFrameScore = st.c1;
 	pState.RandomSeed = st.seed;
@@ -521,6 +531,34 @@ static void import_replay(const std::string& path) {
 	}
 	is_replay = true;
 	last_msg = "Replay imported";
+}
+
+int(__cdecl* UpdateTimerOrig)(ConditionHeader* cond);
+int __cdecl UpdateTimerHook(ConditionHeader* cond) {
+	if (timers_to_fix != 0) {
+		int index = (int)st.timer_conds.size() - timers_to_fix;
+		cout << "fixed " << (index + 1) << "/" << st.timer_conds.size() << std::endl;
+		if (index >= 0) {
+			if ((int)cond->interval == st.timer_conds[index].b) {
+				cond->currentTimer = st.timer_conds[index].a;
+				auto ret = UpdateTimerOrig(cond);
+				st.timer_conds[index].a = cond->currentTimer;
+				timers_to_fix--;
+				return ret;
+			}
+			else {
+				last_msg = "Failed to fix timer conditions (wrong conditions, WTF?)";
+				timers_to_fix = 0;
+			}
+		}
+		else {
+			last_msg = "Failed to fix timer conditions (out of bounds, WTF?)";
+			timers_to_fix = 0;
+		}
+	}
+	auto ret = UpdateTimerOrig(cond);
+	st.timer_conds.push_back(IntPair(cond->currentTimer, cond->interval));
+	return ret;
 }
 
 void btas::reg_obj(int handle) {
@@ -713,6 +751,10 @@ bool btas::on_before_update() {
 		}
 	}
 	last_upd = true;
+	if (timers_to_fix == 0) {
+		// cout << "clear conds\n";
+		st.timer_conds.clear();
+	}
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
 
@@ -721,10 +763,10 @@ bool btas::on_before_update() {
 
 void btas::on_after_update() {
 	RunHeader& pState = get_state();
-	st.c1 = pState.lastFrameScore;
-	st.seed = pState.RandomSeed;
 	if (last_upd) {
 		last_upd = false;
+		st.c1 = pState.lastFrameScore;
+		st.seed = pState.RandomSeed;
 		st.frame++;
 		st.sc_frame++;
 		st.total = std::max(st.total, st.frame);
