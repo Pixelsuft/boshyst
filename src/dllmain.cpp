@@ -51,10 +51,6 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
     if (!inited)
     {
-        if (GetModuleHandleA("d3d9.dll") == nullptr) {
-            ass::show_err("Boshyst only supports Direct3D 9 mode, you are using a different one");
-            ASS(false);
-        }
         D3DDEVICE_CREATION_PARAMETERS params;
         pDevice->GetCreationParameters(&params);
         hwnd = params.hFocusWindow;
@@ -97,6 +93,10 @@ void try_to_hook_graphics() {
             return;
     }
     gr_hooked = true;
+    if (GetModuleHandleA("mmf2d3d9.dll") == nullptr) {
+        ass::show_err("Boshyst only supports Direct3D 9 mode, you are using a different one");
+        ASS(false);
+    }
 #if SHOW_STAGES
     cout << "graphics hooking 3\n";
 #endif

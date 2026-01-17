@@ -196,6 +196,8 @@ void btas::read_setting(const string& line, const string& line_orig) {
 	binds.push_back(bind);
 }
 
+#define WPM(addr, data, size) do { ASS(WriteProcessMemory(hproc, (LPVOID)(addr), data, size, &bW) != 0 && bW == size); } while (0)
+
 void btas::pre_init() {
 	cout << "btas pre-init\n";
 	const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
@@ -206,40 +208,40 @@ void btas::pre_init() {
 	uint8_t temp = 0xeb;
 	DWORD bW;
 	// Disable timers when moving window to prevent desync
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b74), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4b6d), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4c29), &temp, 1, &bW) != 0 && bW == 1);
+	WPM(mem::get_base() + 0x4b74, buf, 5);
+	WPM(mem::get_base() + 0x4b6d, buf, 5);
+	WPM(mem::get_base() + 0x4c29, &temp, 1);
 	// Disable CRun_SyncFrameRate, MsgWaitForMultipleObjects and some other sync stuff when needed
-	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x365db), buf, 5, &bW) != 0 && bW == 5);
-	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x36630), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4659f), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a74), buf, 2, &bW) != 0 && bW == 2);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a49), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2a53), &temp, 1, &bW) != 0 && bW == 1); // No throttling
+	// WPM(mem::get_base() + 0x365db, buf, 5);
+	// WPM(mem::get_base() + 0x36630, buf, 5);
+	WPM(mem::get_base() + 0x4659f, buf, 5);
+	WPM(mem::get_base() + 0x2a74, buf, 2);
+	WPM(mem::get_base() + 0x2a49, &temp, 1);
+	WPM(mem::get_base() + 0x2a53, &temp, 1); // No throttling
 	// Disable controller options menu
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x43036), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x4304e), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x43056), buf, 5, &bW) != 0 && bW == 5);
+	WPM(mem::get_base() + 0x43036, buf, 5);
+	WPM(mem::get_base() + 0x4304e, buf, 5);
+	WPM(mem::get_base() + 0x43056, buf, 5);
 	// Joystick stuff
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x44e3), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xb245), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x2013b), joy_patch, 17, &bW) != 0 && bW == 17);
+	WPM(mem::get_base() + 0x44e3, buf, 5);
+	WPM(mem::get_base() + 0xb245, buf, 5);
+	WPM(mem::get_base() + 0x2013b, joy_patch, 17);
 	// Keyboard stuff (Disable TAB logic)
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x332df), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x3eaab), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x3ea96), buf, 5, &bW) != 0 && bW == 5);
+	WPM(mem::get_base() + 0x332df, &temp, 1);
+	WPM(mem::get_base() + 0x3eaab, buf, 5);
+	WPM(mem::get_base() + 0x3ea96, buf, 5);
 	// Disable replay mode (WTF?)
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x1d93e), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x1d931), buf, 5, &bW) != 0 && bW == 5);
+	WPM(mem::get_base() + 0x1d93e, buf, 5);
+	WPM(mem::get_base() + 0x1d931, buf, 5);
 	// Clipboard
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe1fa), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0xe2cd), &temp, 1, &bW) != 0 && bW == 1);
+	WPM(mem::get_base() + 0xe1fa, &temp, 1);
+	WPM(mem::get_base() + 0xe2cd, &temp, 1);
 	// No drag/drop
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x41985), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x425a1), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x436b4), &temp, 1, &bW) != 0 && bW == 1);
+	WPM(mem::get_base() + 0x41985, &temp, 1);
+	WPM(mem::get_base() + 0x425a1, &temp, 1);
+	WPM(mem::get_base() + 0x436b4, &temp, 1);
 	// Disable some dialogs (WTF?)
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base() + 0x431a2), &temp, 1, &bW) != 0 && bW == 1);
+	WPM(mem::get_base() + 0x431a2, &temp, 1);
 }
 
 void btas::init() {
@@ -248,19 +250,20 @@ void btas::init() {
 	uint8_t temp = 0xeb;
 	DWORD bW;
 	// No Sleep
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0xc3f3), buf, 2, &bW) != 0 && bW == 2);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0xc3a5), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x2dd58), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmf2d3d9.dll") + 0x270c), &temp, 1, &bW) != 0 && bW == 1);
-	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("ctrlx.mfx") + 0x4378), buf, 5, &bW) != 0 && bW == 5);
-	// ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("kcfloop.mfx") + 0x10f3), &temp, 1, &bW) != 0 && bW == 1); // Right??
+	WPM(mem::get_base("mmfs2.dll") + 0xc3f3, buf, 2);
+	WPM(mem::get_base("mmfs2.dll") + 0xc3a5, &temp, 1);
+	WPM(mem::get_base("mmfs2.dll") + 0x2dd58, &temp, 1);
+	if (GetModuleHandleA("mmf2d3d9.dll") != nullptr)
+		WPM(mem::get_base("mmf2d3d9.dll") + 0x270c, &temp, 1);
+	// WPM(mem::get_base("ctrlx.mfx") + 0x4378, buf, 5);
+	// WPM(mem::get_base("kcfloop.mfx") + 0x10f3, &temp, 1); // Right??
 	// No multimedia timers (I hope it doesn't crash)
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x4459f), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("mmfs2.dll") + 0x41af4), &temp, 1, &bW) != 0 && bW == 1);
+	WPM(mem::get_base("mmfs2.dll") + 0x4459f, &temp, 1);
+	WPM(mem::get_base("mmfs2.dll") + 0x41af4, &temp, 1);
 	// No threads, Lacewing.mfx!
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0x88cb), buf, 5, &bW) != 0 && bW == 5);
-	ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb340), buf, 5, &bW) != 0 && bW == 5);
+	WPM(mem::get_base("Lacewing.mfx") + 0xb209, &temp, 1);
+	WPM(mem::get_base("Lacewing.mfx") + 0x88cb, buf, 5);
+	WPM(mem::get_base("Lacewing.mfx") + 0xb340, buf, 5);
 
 	std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) {
 		return a.key > b.key;

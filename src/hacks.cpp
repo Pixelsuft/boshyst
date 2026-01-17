@@ -256,7 +256,7 @@ void __cdecl ActHook(ActionHeader* act) {
 }
 
 static bool hooks_inited = false;
-int(__stdcall* UpdateGameFrameOrig)() = nullptr;
+static int(__stdcall* UpdateGameFrameOrig)() = nullptr;
 static int __stdcall UpdateGameFrameHook() {
     if (!hooks_inited) {
         hooks_inited = true;

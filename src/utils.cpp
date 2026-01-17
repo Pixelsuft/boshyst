@@ -88,11 +88,12 @@ static HMODULE GetSxSModuleHandle(const char* targetPart) {
 	return NULL;
 }
 
+size_t mem::get_base() {
+	static auto def_ret = (size_t)GetModuleHandleW(nullptr);
+	return def_ret;
+}
+
 size_t mem::get_base(const char* obj_name) {
-	if (!obj_name) {
-		static auto def_ret = (size_t)GetModuleHandleW(nullptr);
-		return def_ret;
-	}
 	size_t ret = (size_t)GetModuleHandleA(obj_name);
 	ASS(ret != 0);
 	return (size_t)ret;
@@ -150,9 +151,8 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 }
 
 int get_scene_id() {
-	size_t gState = *(size_t*)0x0459a94;
-	int sc_id = *(int*)(gState + 0x1ec);
-	return sc_id;
+	RunApp& gState = **(RunApp**)0x0459a94;
+	return gState.rhCurrentFrame;
 }
 
 static void* get_player_by_id(int idx) {
