@@ -447,6 +447,15 @@ static void b_state_load(int slot, bool from_loop) {
 		state_load(&f);
 		b_loading_saving_state = false;
 		trim_current_state();
+		// Fix internal state load bug
+		// TODO: also do this in normal mode
+		for (int i = 0; i < pState.objectCount; i++) {
+			ObjectHeader* obj = pState.objectList[i * 2];
+			if (!obj || !(obj->flags) || !obj->spriteHandle)
+				continue;
+			// Force mask recalculation
+			obj->spriteHandle->flags |= 1;
+		}
 	}
 	pState.lastFrameScore = st.c1;
 	pState.RandomSeed = st.seed;
@@ -701,6 +710,7 @@ bool btas::on_before_update() {
 	last_upd = true;
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
+
 	return false;
 }
 

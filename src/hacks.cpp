@@ -129,10 +129,17 @@ CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, v
     //    btas::reg_obj(ret);
     if (objectInfoID == 28 && ret != -1)
         player_oi_handle = ret;
+    if (ret != -1 && 0) {
+        RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+        ObjectHeader* obj = pState->objectList[ret * 2];
+        if (obj && obj->spriteHandle) {
+            cout << "c: " << obj->spriteHandle->flags << " " << obj->spriteHandle->numChildren << "\n";
+        }
+    }
     return ret;
 }
 
-static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* sourceObj, int x, int y, uint direction);
+static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction);
 static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction) {
     if (next_our_bullet) {
         action->objectToLaunchID = 106;
@@ -519,23 +526,69 @@ static void __cdecl DestroyObjectHook(int handle) {
     DestroyObjectOrig(handle);
 }
 
+typedef int(__fastcall* tCheckSpriteCollision)(
+    void* pRunHeader,          // ECX
+    SpriteHandle* sprite,              // EDX
+    void* pObjectAndEventList, // Stack + 0x04
+    ObjectHeader* pSrc,                // Stack + 0x08
+    void** pOutput,            // Stack + 0x0C
+    float srcAngle,            // Stack + 0x10
+    int srcX,                  // Stack + 0x14
+    int srcY,                  // Stack + 0x18
+    float kindaRot,            // Stack + 0x1C (often used as 'scale' in MMF2)
+    float scaleX,              // Stack + 0x20
+    float scaleY,              // Stack + 0x24
+    unsigned int collisionFlags // Stack + 0x28 (implied by the uint uVar1 logic)
+    );
+
+static tCheckSpriteCollision fpCheckSpriteCollision = nullptr;
+
+// Detour function
+static int __fastcall DetourCheckSpriteCollision(
+    void* pRunHeader,
+    SpriteHandle* sprite,
+    void* pObjectAndEventList,
+    ObjectHeader* pSrc,
+    void** pOutput,
+    float srcAngle,
+    int srcX,
+    int srcY,
+    float kindaRot,
+    float scaleX,
+    float scaleY,
+    unsigned int collisionFlags
+) {
+    if (pSrc == nullptr || pRunHeader == nullptr) {
+        return 0;
+    }
+    auto ret = fpCheckSpriteCollision(
+        pRunHeader, sprite, pObjectAndEventList, pSrc,
+        pOutput, srcAngle, srcX, srcY, kindaRot, scaleX, scaleY, collisionFlags
+    );
+
+    if (ret > 0)
+    cout << ret << ": " << sprite->flags << " " << pSrc->oiHandle << " " << pSrc->collisionFlags << " "
+        << srcAngle << " " << kindaRot << " " << srcX << " " << scaleX << " " << collisionFlags << std::endl;
+
+    return ret;
+}
+
 static int(__cdecl* GetCollidingObjectListOrig)(ObjectHeader*, uint, uint, float, float, int, int, ObjectHeader***, int);
 static int __cdecl GetCollidingObjectListHook
-(ObjectHeader* sourceObj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
+(ObjectHeader* obj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
     ObjectHeader*** outList, int filterGroup) {
     // bullet created by player for sure
-    if (sourceObj && sourceObj->parentID == 28 && sourceObj->oiHandle == 106) {
-        // cout << sourceObj->oiHandle << " " << sourceObj->spriteHandle->flags << std::endl;
+    if (obj && obj->parentID == 28 && obj->oiHandle == 106) {
+        // cout << obj->oiHandle << " " << obj->spriteHandle->flags << std::endl;
         // Bullet fix (check for SF_INACTIVE => means bullet is broken)
-        if (sourceObj->spriteHandle->flags == 0x20000008) {
+        if (obj->spriteHandle->flags == 0x20000008) {
             // cout << "fixed\n";
-            sourceObj->spriteHandle->flags &= ~0x8; // remove SF_INACTIVE
-            sourceObj->spriteHandle->flags |= 0x40; // add SF_RECALC
-            sourceObj->spriteHandle->flags |= 0x1; // add SF_RECREATEMASK
+            obj->spriteHandle->flags &= ~0x8; // remove SF_INACTIVE
+            obj->spriteHandle->flags |= 0x40; // add SF_RECALC
+            obj->spriteHandle->flags |= 0x1; // add SF_RECREATEMASK
         }
     }
-    // TODO: fix player not teleporting after loading state
-    auto ret = GetCollidingObjectListOrig(sourceObj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
+    auto ret = GetCollidingObjectListOrig(obj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
     return ret;
 }
 
@@ -585,6 +638,9 @@ void init_game_loop() {
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
         btas::pre_init();
+        // Force GDI
+        // *(short*)0x0459a28 = 1;
+        // *(short*)0x0459a2a = 8;
     }
     if ((conf::tas_mode || is_btas) && conf::au_mth) {
         hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
@@ -637,6 +693,7 @@ void init_simple_hacks() {
     hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
+    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision, &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);

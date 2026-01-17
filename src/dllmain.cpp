@@ -82,8 +82,6 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
     return ret;
 }
 
-extern void init_simple_hacks();
-
 void try_to_hook_graphics() {
     if (gr_hooked)
         return;
@@ -94,8 +92,10 @@ void try_to_hook_graphics() {
     }
     gr_hooked = true;
     if (GetModuleHandleA("mmf2d3d9.dll") == nullptr) {
-        ass::show_err("Boshyst only supports Direct3D 9 mode, you are using a different one");
-        ASS(false);
+        ass::show_err("Boshyst menu only supports Direct3D 9 mode, you are using a different one");
+        show_menu = false;
+        // ASS(false);
+        return;
     }
 #if SHOW_STAGES
     cout << "graphics hooking 3\n";
@@ -155,7 +155,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #if defined(_DEBUG)
         if (true) {
 #else
-        if (conf::tas_mode) {
+        if (conf::tas_mode && 0) {
 #endif
             AllocConsole();
             freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);

@@ -1477,6 +1477,7 @@ typedef struct MovementController MovementController, *PMovementController;
 
 typedef struct SpriteHandle SpriteHandle, *PSpriteHandle;
 
+#pragma pack(push, 2) 
 struct RunHeader {
     void *hMainEngine;
     undefined4 field1_0x4;
@@ -5633,6 +5634,8 @@ struct RunHeader {
     undefined field4152_0x1277;
     struct ObjectHeader **objectList;
 };
+
+#pragma pack(pop) 
 
 struct ObjectHeader {
     short handle;
@@ -10297,4 +10300,3 @@ struct ObjectInfo {
     undefined field17_0x13;
     struct MovementController *pMovementBank;
 };
-

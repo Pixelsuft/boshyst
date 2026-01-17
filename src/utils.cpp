@@ -246,9 +246,9 @@ void* get_player_ptr(int s) {
 	}
 	if (s == 0 || s == 1)
 		return nullptr;
-	RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-	if (player_oi_handle != -1 && player_oi_handle < pState->objectCount)
-		return pState->objectList[player_oi_handle * 2];
+	RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+	if (player_oi_handle != -1 && player_oi_handle < pState.objectCount)
+		return pState.objectList[player_oi_handle * 2];
 	return nullptr;
 }
 
