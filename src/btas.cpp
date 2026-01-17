@@ -242,6 +242,11 @@ void btas::pre_init() {
 	WPM(mem::get_base() + 0x436b4, &temp, 1);
 	// Disable some dialogs (WTF?)
 	WPM(mem::get_base() + 0x431a2, &temp, 1);
+	// Patch save state bug in original code (rcBoundaryBottom instead of doubled rcBoundaryRight)
+	// TODO: move to hacks.cpp?
+	temp = 0x24;
+	WPM(mem::get_base() + 0x386fb, &temp, 1);
+	WPM(mem::get_base() + 0x3a4e9, &temp, 1);
 }
 
 void btas::init() {
@@ -448,7 +453,7 @@ static void b_state_load(int slot, bool from_loop) {
 		b_loading_saving_state = false;
 		trim_current_state();
 		// Fix internal state load bug
-		// TODO: also do this in normal mode
+		// TODO: also do this in normal mode?
 		for (int i = 0; i < pState.objectCount; i++) {
 			ObjectHeader* obj = pState.objectList[i * 2];
 			if (!obj || !(obj->flags) || !obj->spriteHandle)
