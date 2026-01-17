@@ -150,7 +150,14 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 	y_buf = point.y;
 }
 
+const char* get_scene_name() {
+	// TODO: mem::get_base()?
+	GlobalStats& gStats = **(GlobalStats**)(0x459a98);
+	return (gStats.sceneName && *gStats.sceneName) ? gStats.sceneName : "Unknown";
+}
+
 int get_scene_id() {
+	// TODO: mem::get_base()?
 	RunApp& gState = **(RunApp**)0x0459a94;
 	return gState.rhCurrentFrame;
 }

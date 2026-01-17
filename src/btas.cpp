@@ -842,7 +842,7 @@ void btas::draw_info() {
 	ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);
 	ImGui::Text("Align: %i", st.cur_pos[0] % 3);
 
-	ImGui::Text("Scene ID: %i", get_scene_id());
+	ImGui::Text("Scene: %i (%s)", get_scene_id(), get_scene_name());
 	// ImGui::Text("Time: %u", cur_time);
 	ImGui::Text("Message: %s", last_msg.c_str());
 	if (fast_forward)
