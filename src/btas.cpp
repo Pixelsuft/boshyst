@@ -140,6 +140,7 @@ static BTasState st;
 static DWORD last_time = 0;
 static DWORD now = 0;
 static int need_scene_state_slot = -1;
+static bool timers_fix = true;
 static bool next_step = false;
 static bool slowmo = false;
 bool last_upd = false;
@@ -335,14 +336,16 @@ static void load_bin(bfs::File& f, T& data) {
 }
 
 static void fill_timers_fix() {
-	// TODO: setting to toggle timer fix
+	// TODO: why so many timers if used much less?
+	if (!timers_fix)
+		return;
 	GlobalStats& gStats = get_stats();
 	EventGroup* eventPtr = gStats.pEventGroups;
 	while (eventPtr->length != 0) {
 		ConditionHeader* cond = (ConditionHeader*)&eventPtr->condStart;
 		for (int i = (int)eventPtr->eventCount; i != 0; i--) {
 			if (cond->condID == -4 && cond->conditionType == 13 && cond->size == 30) {
-				cout << "savin " << cond->currentTimer << " " << cond->interval << std::endl;
+				// cout << "savin " << cond->currentTimer << " " << cond->interval << std::endl;
 				st.timer_conds.push_back(IntPair(cond->currentTimer, cond->interval));
 			}
 			cond = (ConditionHeader*)((size_t)cond + (size_t)cond->size);
@@ -353,8 +356,14 @@ static void fill_timers_fix() {
 }
 
 static void import_timers_fix() {
-	if (st.timer_conds.empty())
+	if (!timers_fix) {
+		st.timer_conds.clear();
 		return;
+	}
+	if (st.timer_conds.empty()) {
+		last_msg = "Timer fix was not enabled";
+		return;
+	}
 	auto it = st.timer_conds.begin();
 	GlobalStats& gStats = get_stats();
 	EventGroup* eventPtr = gStats.pEventGroups;
@@ -362,7 +371,7 @@ static void import_timers_fix() {
 		ConditionHeader* cond = (ConditionHeader*)&eventPtr->condStart;
 		for (int i = (int)eventPtr->eventCount; i != 0; i--) {
 			if (cond->condID == -4 && cond->conditionType == 13 && cond->size == 30) {
-				cout << "loadin " << cond->currentTimer << " " << cond->interval << std::endl;
+				// cout << "loadin " << cond->currentTimer << " " << cond->interval << std::endl;
 				if (it == st.timer_conds.end()) {
 					last_msg = "Not enough data to re-fill timer conds (WTF?)";
 					st.timer_conds.clear();
@@ -393,6 +402,7 @@ static void b_state_save(int slot) {
 	}
 	RunHeader& pState = get_state();
 	ASS(f.write("btas", 4));
+	write_bin(f, (int)STATE_VER);
 	write_bin(f, st.scene);
 	write_bin(f, st.frame);
 	write_bin(f, st.sc_frame);
@@ -409,7 +419,7 @@ static void b_state_save(int slot) {
 	write_bin(f, st.rng_buf);
 	fill_timers_fix();
 	write_bin(f, st.timer_conds);
-	cout << "saved " << st.timer_conds.size() << std::endl;
+	// cout << "saved " << st.timer_conds.size() << std::endl;
 	st.timer_conds.clear();
 	write_bin(f, st.prev);
 	write_bin(f, st.temp_ev);
@@ -445,6 +455,12 @@ static void b_state_load(int slot, bool from_loop) {
 	char buf[4];
 	ASS(f.read(buf, 4));
 	ASS(memcmp(buf, "btas", 4) == 0);
+	int st_ver;
+	load_bin(f, st_ver);
+	if (st_ver != STATE_VER) {
+		last_msg = "Wrong state version";
+		return;
+	}
 	int scene_id;
 	load_bin(f, scene_id);
 	if (!is_replay && scene_id != get_scene_id()) {
@@ -533,6 +549,8 @@ static void b_state_load(int slot, bool from_loop) {
 	cout << "state loaded\n";
 	if (last_msg.empty())
 		last_msg = string("State ") + to_str(slot) + " loaded";
+	else
+		last_msg = string("State ") + to_str(slot) + " loaded (" + last_msg + ")";
 }
 
 static void export_replay(const std::string& path) {
@@ -587,12 +605,6 @@ static void import_replay(const std::string& path) {
 	}
 	is_replay = true;
 	last_msg = "Replay imported";
-}
-
-int(__cdecl* UpdateTimerOrig)(ConditionHeader* cond);
-int __cdecl UpdateTimerHook(ConditionHeader* cond) {
-	auto ret = UpdateTimerOrig(cond);
-	return ret;
 }
 
 void btas::reg_obj(int handle) {
@@ -993,6 +1005,7 @@ void btas::draw_tab() {
 			ImGui::SameLine();
 		if (st.frame == 0 && ImGui::Button("Import"))
 			import_replay(string(export_buf) + ".breplay");
+		ImGui::Checkbox("Timer conditions fix", &timers_fix);
 		static int mpos[2] = { 0, 0 };
 		ImGui::InputInt2("Mouse pos for click", mpos);
 		if (ImGui::Button("Push mouse click")) {

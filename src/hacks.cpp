@@ -602,9 +602,6 @@ static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
     return TRUE;
 }
 
-extern int (__cdecl* UpdateTimerOrig)(ConditionHeader* cond);
-extern int __cdecl UpdateTimerHook(ConditionHeader* cond);
-
 void init_game_loop() {
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
@@ -633,7 +630,6 @@ void init_game_loop() {
         strcpy(temp_path + cwd_len, "\\temp");
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
-        hook(mem::get_base() + 0x8d90, UpdateTimerHook, &UpdateTimerOrig);
         btas::pre_init();
         // Force GDI
         // *(short*)0x0459a28 = 1;
