@@ -286,9 +286,6 @@ static int __stdcall UpdateGameFrameHook() {
     if (audio_timer_hooked)
         AudioTimerCallback(1337228, 0, 0, 0, 0);
 
-    if (!conf::direct_render)
-        rec::rec_tick(nullptr);
-
     if (!is_btas && !show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
@@ -296,17 +293,23 @@ static int __stdcall UpdateGameFrameHook() {
             int x, y, w, h;
             get_win_size(w, h);
             get_cursor_pos_orig(x, y);
-            // TODO: how to map cursor pos into game properly (scaling)?
-            RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-            player->xPos = pState->currentViewportX + x * 640 / w;
-            player->yPos = pState->currentViewportY + y * 480 / h;
+            // TODO: how to map cursor pos into game properly (scaling) (need to hook Viewport.mfx?)?
+            RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+            player->xPos = pState.currentViewportX + x * 640 / w;
+            player->yPos = pState.currentViewportY + y * 480 / h;
             player->redrawFlag = 1;
         }
     }
-    if (is_btas)
-        btas::on_after_update();
 
-    // cout << "Hook!\n";
+    if (is_btas) {
+        btas::on_after_update();
+        if (!fast_forward_skip)
+            ProcessFrameRendering();
+    }
+
+    if (!conf::direct_render)
+        rec::rec_tick(nullptr);
+
     return ret;
 }
 

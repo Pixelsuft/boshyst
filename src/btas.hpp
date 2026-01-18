@@ -5,6 +5,7 @@ extern bool is_btas;
 extern bool is_paused;
 extern bool last_upd;
 extern bool b_loading_saving_state;
+extern bool fast_forward_skip;
 void launch_bullet(int x, int y, int dir);
 
 namespace btas {

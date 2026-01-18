@@ -151,6 +151,7 @@ static bool export_hash = true;
 
 bool is_btas = false;
 bool fast_forward = false;
+bool fast_forward_skip = false;
 bool is_paused = true;
 bool is_replay = false;
 bool b_loading_saving_state = false;
@@ -197,6 +198,14 @@ void btas::read_setting(const string& line, const string& line_orig) {
 		bind.idx = 7;
 		ASS(sscanf(line.substr(16).c_str(), "%i,%i,%i", &bind.key, &bind.mod, &bind.state.slot) == 3);
 	}
+	else if (starts_with(line, "btas=toggle_fastforward_skip,")) {
+		bind.idx = 8;
+		ASS(sscanf(line.substr(29).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
+	}
+	else if (starts_with(line, "btas=fastforward_skip,")) {
+		bind.idx = 9;
+		ASS(sscanf(line.substr(22).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
+	}
 	else {
 		ass::show_err((string("Unknown BTAS setting: ") + line_orig).c_str());
 		ASS(false);
@@ -215,6 +224,8 @@ void btas::pre_init() {
 	};
 	uint8_t temp = 0xeb;
 	DWORD bW;
+	// Disable automatic frame rendering
+	WPM(mem::get_base() + 0x1dcc1, buf, 5);
 	// Disable timers when moving window to prevent desync
 	WPM(mem::get_base() + 0x4b74, buf, 5);
 	WPM(mem::get_base() + 0x4b6d, buf, 5);
@@ -842,7 +853,7 @@ void btas::on_after_update() {
 	}
 	DWORD advance = slowmo ? 100 : 20;
 	// TODO: less performance eating way
-	while (!fast_forward && now < (last_time + advance))
+	while (!fast_forward && !fast_forward_skip && now < (last_time + advance))
 		now = timeGetTimeOrig();
 	if (IsIconic(hwnd))
 		Sleep(100);
@@ -921,6 +932,16 @@ void btas::on_key(int k, bool pressed) {
 				b_state_load(bind.state.slot, false);
 			break;
 		}
+		case 8: {
+			if (pressed && !show_menu)
+				fast_forward_skip = !fast_forward_skip;
+			break;
+		}
+		case 9: {
+			if (!show_menu)
+				fast_forward_skip = pressed;
+			break;
+		}
 		}
 		bind.down = pressed;
 		it++;
@@ -928,8 +949,7 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-	int inGameFrames = *(int*)(*(size_t*)(mem::get_base() + 0x59a9c) + 0xd0);
-	ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, st.sc_frame, inGameFrames);
+	ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, st.sc_frame, get_state().frameCount);
 
 	ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
 	ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);
@@ -938,7 +958,7 @@ void btas::draw_info() {
 	ImGui::Text("Scene: %i (%s)", get_scene_id(), get_scene_name());
 	// ImGui::Text("Time: %u", cur_time);
 	ImGui::Text("Message: %s", last_msg.c_str());
-	if (fast_forward)
+	if (fast_forward || fast_forward_skip)
 		return;
 	string cur_keys = "";
 	for (auto it = st.prev.cbegin(); it != st.prev.cend(); it++) {
@@ -986,7 +1006,7 @@ void btas::draw_tab() {
 		is_paused = true; // TODO: configure that
 	RECT test;
 	GetClientRect(::hwnd, &test);
-	cout << test.right << "x" << test.bottom << '\n';
+	//cout << test.right << "x" << test.bottom << '\n';
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader& pState = get_state();
 		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState.RandomSeed));

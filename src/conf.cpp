@@ -224,6 +224,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("# BTAS binds: function, keyboard_key, mod"));
     ASS(file.write_line("btas = toggle_pause, 19, 0 // PAUSE to pause/resume"));
     ASS(file.write_line("btas = fastforward, 9, 0 // Hold TAB for fastforward, you can use toggle_fastforward as well!"));
+    ASS(file.write_line("btas = fastforward_skip, 66, 0 // Hold 'B' for fastforward without drawing frames (you might need toggle_fastforward_skip)"));
     ASS(file.write_line("btas = step, 86, 0 // Play single frame on 'V'"));
     ASS(file.write_line("btas = slowmotion, 32, 0 // Slow-mo on Space"));
 }
