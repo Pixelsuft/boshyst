@@ -501,6 +501,35 @@ struct ConditionHeader {
     int currentTimer;
 };
 
+struct EventGroup {
+    short length;
+    byte eventCount;
+    undefined1 condCount; /* Created by retype action */
+    ushort flags;
+    short groupTimerBase;
+    short field5_0x8;
+    short field6_0xa;
+    undefined field7_0xc;
+    undefined field8_0xd;
+    short condStart;
+    int type;
+    undefined field11_0x14;
+    undefined field12_0x15;
+    undefined field13_0x16;
+    undefined field14_0x17;
+    undefined field15_0x18;
+    undefined field16_0x19;
+    undefined field17_0x1a;
+    undefined field18_0x1b;
+    undefined field19_0x1c;
+    undefined field20_0x1d;
+    undefined field21_0x1e;
+    undefined field22_0x1f;
+    undefined field23_0x20;
+    undefined field24_0x21;
+    ushort groupFlags;
+};
+
 typedef struct EngineState EngineState, *PEngineState;
 
 struct EngineState {
@@ -7575,10 +7604,7 @@ struct GlobalStats {
     uint TotalFrames;
     undefined4 frameTimer;
     struct RunHeader *pRunHeader;
-    undefined1 pEventGroups; /* Created by retype action */
-    undefined field56_0x81;
-    undefined field57_0x82;
-    undefined field58_0x83;
+    EventGroup* pEventGroups; /* Created by retype action */
     undefined field59_0x84;
     undefined field60_0x85;
     undefined field61_0x86;

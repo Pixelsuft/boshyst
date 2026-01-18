@@ -18,6 +18,7 @@
 #include <map>
 #undef max
 #undef min
+#define STATE_VER 1
 
 using std::cout;
 using std::string;
@@ -116,6 +117,7 @@ struct BTasState {
 		temp_ev.clear();
 		rng_buf.clear();
 		prev.clear();
+		timer_conds.clear();
 	}
 
 	void clear() {
@@ -143,7 +145,6 @@ static bool slowmo = false;
 bool last_upd = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
-static int timers_to_fix = 0;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
 
@@ -155,6 +156,10 @@ bool b_loading_saving_state = false;
 
 static RunHeader& get_state() {
 	return **(RunHeader**)(mem::get_base() + 0x59a9c);
+}
+
+static GlobalStats& get_stats() {
+	return **(GlobalStats**)(mem::get_base() + 0x59a98);
 }
 
 void btas::read_setting(const string& line, const string& line_orig) {
@@ -329,6 +334,56 @@ static void load_bin(bfs::File& f, T& data) {
 	ASS(f.read(&data, sizeof(T)));
 }
 
+static void fill_timers_fix() {
+	// TODO: setting to toggle timer fix
+	GlobalStats& gStats = get_stats();
+	EventGroup* eventPtr = gStats.pEventGroups;
+	while (eventPtr->length != 0) {
+		ConditionHeader* cond = (ConditionHeader*)&eventPtr->condStart;
+		for (int i = (int)eventPtr->eventCount; i != 0; i--) {
+			if (cond->condID == -4 && cond->conditionType == 13 && cond->size == 30) {
+				cout << "savin " << cond->currentTimer << " " << cond->interval << std::endl;
+				st.timer_conds.push_back(IntPair(cond->currentTimer, cond->interval));
+			}
+			cond = (ConditionHeader*)((size_t)cond + (size_t)cond->size);
+		}
+		eventPtr = (EventGroup*)
+			((size_t)eventPtr - (size_t)eventPtr->length);
+	}
+}
+
+static void import_timers_fix() {
+	if (st.timer_conds.empty())
+		return;
+	auto it = st.timer_conds.begin();
+	GlobalStats& gStats = get_stats();
+	EventGroup* eventPtr = gStats.pEventGroups;
+	while (eventPtr->length != 0) {
+		ConditionHeader* cond = (ConditionHeader*)&eventPtr->condStart;
+		for (int i = (int)eventPtr->eventCount; i != 0; i--) {
+			if (cond->condID == -4 && cond->conditionType == 13 && cond->size == 30) {
+				cout << "loadin " << cond->currentTimer << " " << cond->interval << std::endl;
+				if (it == st.timer_conds.end()) {
+					last_msg = "Not enough data to re-fill timer conds (WTF?)";
+					st.timer_conds.clear();
+					return;
+				}
+				if (it->b != cond->interval) {
+					last_msg = "Timer conds got fucked (WTF?)";
+					st.timer_conds.clear();
+					return;
+				}
+				cond->currentTimer = it->a;
+				it++;
+			}
+			cond = (ConditionHeader*)((size_t)cond + (size_t)cond->size);
+		}
+		eventPtr = (EventGroup*)
+			((size_t)eventPtr - (size_t)eventPtr->length);
+	}
+	st.timer_conds.clear();
+}
+
 static void b_state_save(int slot) {
 	string path = string("state") + std::to_string((long long)slot) + ".bstate";
 	bfs::File f(path, 1);
@@ -352,8 +407,10 @@ static void b_state_save(int slot) {
 	write_bin(f, st.c1);
 	write_bin(f, st.seed);
 	write_bin(f, st.rng_buf);
+	fill_timers_fix();
 	write_bin(f, st.timer_conds);
 	cout << "saved " << st.timer_conds.size() << std::endl;
+	st.timer_conds.clear();
 	write_bin(f, st.prev);
 	write_bin(f, st.temp_ev);
 	write_bin(f, st.ev);
@@ -371,7 +428,6 @@ static void b_state_load(int slot, bool from_loop) {
 		last_msg = "Failed to open file for reading to load state " + to_str(slot);
 		return;
 	}
-	timers_to_fix = 0;
 	if (is_replay && reset_on_replay && !from_loop && st.frame != 0) {
 		st.prev.clear();
 		st.ev.clear();
@@ -402,6 +458,7 @@ static void b_state_load(int slot, bool from_loop) {
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
 	}
+	last_msg = "";
 	if (is_replay) {
 		if (reset_on_replay) {
 			st.clear();
@@ -468,15 +525,14 @@ static void b_state_load(int slot, bool from_loop) {
 			// Force mask recalculation
 			obj->spriteHandle->flags |= 1;
 		}
-		// I hate this
-		timers_to_fix = (int)st.timer_conds.size();
-		cout << "loaded " << timers_to_fix << std::endl;
+		import_timers_fix();
 	}
 	pState.lastFrameScore = st.c1;
 	pState.RandomSeed = st.seed;
 	// pState.rhNextFrame = 0;
 	cout << "state loaded\n";
-	last_msg = string("State ") + to_str(slot) + " loaded";
+	if (last_msg.empty())
+		last_msg = string("State ") + to_str(slot) + " loaded";
 }
 
 static void export_replay(const std::string& path) {
@@ -535,29 +591,7 @@ static void import_replay(const std::string& path) {
 
 int(__cdecl* UpdateTimerOrig)(ConditionHeader* cond);
 int __cdecl UpdateTimerHook(ConditionHeader* cond) {
-	if (timers_to_fix != 0) {
-		int index = (int)st.timer_conds.size() - timers_to_fix;
-		cout << "fixed " << (index + 1) << "/" << st.timer_conds.size() << std::endl;
-		if (index >= 0) {
-			if ((int)cond->interval == st.timer_conds[index].b) {
-				cond->currentTimer = st.timer_conds[index].a;
-				auto ret = UpdateTimerOrig(cond);
-				st.timer_conds[index].a = cond->currentTimer;
-				timers_to_fix--;
-				return ret;
-			}
-			else {
-				last_msg = "Failed to fix timer conditions (wrong conditions, WTF?)";
-				timers_to_fix = 0;
-			}
-		}
-		else {
-			last_msg = "Failed to fix timer conditions (out of bounds, WTF?)";
-			timers_to_fix = 0;
-		}
-	}
 	auto ret = UpdateTimerOrig(cond);
-	st.timer_conds.push_back(IntPair(cond->currentTimer, cond->interval));
 	return ret;
 }
 
@@ -751,10 +785,6 @@ bool btas::on_before_update() {
 		}
 	}
 	last_upd = true;
-	if (timers_to_fix == 0) {
-		// cout << "clear conds\n";
-		st.timer_conds.clear();
-	}
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
 
