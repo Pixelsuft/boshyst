@@ -53,7 +53,8 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
     {
         D3DDEVICE_CREATION_PARAMETERS params;
         pDevice->GetCreationParameters(&params);
-        hwnd = params.hFocusWindow;
+        if (!is_btas)
+            hwnd = params.hFocusWindow;
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -122,8 +123,10 @@ void try_to_init() {
 #if SHOW_STAGES
     cout << "before hooking 1\n";
 #endif
-    hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
-    mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
+    if (!hwnd)
+        hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
+    if (!mhwnd)
+        mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
     ASS(mhwnd != nullptr);
 #if SHOW_STAGES
     cout << "game hooks start 2\n";

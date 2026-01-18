@@ -447,6 +447,10 @@ static HWND __stdcall GetActiveWindowHook() {
     return ::hwnd;
 }
 
+static HWND __stdcall SetFocusHook(HWND hWnd) {
+    return ::hwnd;
+}
+
 static DWORD __stdcall GetTickCountHook() {
     return (DWORD)btas::get_time();
 }
@@ -602,6 +606,57 @@ static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
     return TRUE;
 }
 
+static int (__stdcall* GetSystemMetricsOrig)(int nIndex);
+static int __stdcall GetSystemMetricsHook(int nIndex) {
+    switch (nIndex) {
+    //case SM_CXSCREEN:
+    //case SM_CXVIRTUALSCREEN:
+    //    return 3840;
+    //case SM_CYSCREEN:
+    //case SM_CYVIRTUALSCREEN:
+    //    return 2160;
+    case SM_CMONITORS:
+        return 1;
+    case SM_SAMEDISPLAYFORMAT:
+        return 1;
+    case SM_CXVSCROLL:
+    case SM_CYHSCROLL:
+    case SM_CYCAPTION:
+    case SM_CYSIZE:
+    case SM_CXFRAME:
+    case SM_CYFRAME:
+    case SM_CYVSCROLL:
+    case SM_CXHSCROLL:
+        return 0;
+    default:
+        return GetSystemMetricsOrig(nIndex);
+    }
+}
+
+static HWND (__stdcall* CreateWindowExAOrig)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
+
+static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
+    if (lpClassName && strcmp(lpClassName, "Mf2MainClassTh") == 0) {
+        HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+        ::hwnd = ret;
+        return ret;
+    }
+    else if (lpClassName && strcmp(lpClassName, "Mf2EditClassTh") == 0) {
+        HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+        ::mhwnd = ret;
+        return ret;
+    }
+    else if (lpClassName && (strcmp(lpClassName, "EDIT") == 0 || strcmp(lpClassName, "COMBOBOX") == 0 ||
+        strcmp(lpClassName, "LISTBOX") == 0 ||
+        strcmp(lpClassName, "omgwtfbbqColorButton") == 0 || strcmp(lpClassName, "omgwtfbbqColorSelector") == 0)) {
+        cout << "CreateWindowExAHook " << lpClassName << " -> STATIC\n";
+        lpClassName = "STATIC";
+    }
+    // cout << "create " << lpClassName << "\n";
+    HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+    return ret;
+}
+
 void init_game_loop() {
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
@@ -612,7 +667,11 @@ void init_game_loop() {
         hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
         hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
+        hook(mem::addr("SetFocus", "user32.dll"), SetFocusHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
+        hook(mem::addr("GetFocus", "user32.dll"), GetActiveWindowHook);
+        hook(mem::addr("CreateWindowExA", "user32.dll"), CreateWindowExAHook, &CreateWindowExAOrig);
+        hook(mem::addr("GetSystemMetrics", "user32.dll"), GetSystemMetricsHook, &GetSystemMetricsOrig);
         hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
         // Ok this might be overkill
         // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);

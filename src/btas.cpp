@@ -241,6 +241,8 @@ void btas::pre_init() {
 	// Disable replay mode (WTF?)
 	WPM(mem::get_base() + 0x1d93e, buf, 5);
 	WPM(mem::get_base() + 0x1d931, buf, 5);
+	// RNG disable SavedSeed use
+	WPM(mem::get_base() + 0x36241, buf, 2);
 	// Clipboard
 	WPM(mem::get_base() + 0xe1fa, &temp, 1);
 	WPM(mem::get_base() + 0xe2cd, &temp, 1);
@@ -982,6 +984,9 @@ void btas::draw_info() {
 void btas::draw_tab() {
 	if (!is_replay)
 		is_paused = true; // TODO: configure that
+	RECT test;
+	GetClientRect(::hwnd, &test);
+	cout << test.right << "x" << test.bottom << '\n';
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader& pState = get_state();
 		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState.RandomSeed));
