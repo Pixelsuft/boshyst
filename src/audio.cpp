@@ -226,6 +226,8 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
 }
 
 static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk) {
+    if (conf::no_au)
+        return DSERR_NODRIVER;
     HRESULT hr = fpDirectSoundCreate(guid, ds, unk);
     if (SUCCEEDED(hr) && ds && *ds && fpCreateSoundBuffer == nullptr) {
         cout << "audio enabling hooks 1\n";
@@ -252,7 +254,7 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
 }
 
 void audio_init() {
-    if (!conf::cap_au)
+    if (!conf::cap_au && !conf::no_au)
         return;
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
 }

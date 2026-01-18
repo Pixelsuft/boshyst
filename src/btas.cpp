@@ -546,7 +546,7 @@ static void b_state_load(int slot, bool from_loop) {
 	pState.lastFrameScore = st.c1;
 	pState.RandomSeed = st.seed;
 	// pState.rhNextFrame = 0;
-	cout << "state loaded\n";
+	// cout << "state loaded\n";
 	if (last_msg.empty())
 		last_msg = string("State ") + to_str(slot) + " loaded";
 	else

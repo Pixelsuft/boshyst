@@ -28,6 +28,7 @@ namespace conf {
     bool no_vp;
     bool no_ps;
     bool cap_au;
+    bool no_au;
     bool au_mth;
     bool no_sh;
     bool god;
@@ -157,6 +158,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(""));
+    ASS(file.write_line("tas_disable_audio = 0 // Disable audio output"));
     ASS(file.write_line("tas_audio_capture = 0 // Capture audio in tas mode"));
     ASS(file.write_line("tas_audio_main_thread = 0 // Force audio processing on main thread for stability"));
     ASS(file.write_line(""));
@@ -232,7 +234,7 @@ void conf::read() {
     conf::cap_cnt = 0;
     conf::rapid_bind = -1;
     conf::first_run = false;
-    conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec =
+    conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec = conf::no_au =
         conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps = conf::au_mth = conf::cap_au =
         conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
     conf::direct_render = conf::fix_white_render = true;
@@ -286,6 +288,8 @@ void conf::read() {
             conf::draw_cursor = read_int(line) != 0;
         else if (starts_with(line, "simulate_mouse="))
             conf::emu_mouse = read_int(line) != 0;
+        else if (starts_with(line, "tas_disable_audio="))
+            conf::no_au = read_int(line) != 0;
         else if (starts_with(line, "tas_audio_capture="))
             conf::cap_au = read_int(line) != 0;
         else if (starts_with(line, "tas_audio_main_thread="))

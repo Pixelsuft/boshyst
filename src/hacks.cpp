@@ -417,7 +417,7 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
     DWORD bW;
     if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
-        hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
+       //  hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
         // TODO: hook mmfs2 dll funcs directly here
         audio_init();
         enable_hook();

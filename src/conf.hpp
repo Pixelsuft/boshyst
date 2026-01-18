@@ -9,6 +9,7 @@ namespace conf {
 	extern bool no_sh;
 	extern bool no_ps;
 	extern bool cap_au;
+	extern bool no_au;
 	extern bool au_mth;
 	extern bool old_rec;
 	extern bool god;

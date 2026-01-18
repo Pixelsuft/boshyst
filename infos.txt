@@ -26,5 +26,6 @@ Action event codes:
 
 g_SystemFlags:
 <0 - D3D9 mode
-0x20 - DDRAW mode (or GDI?)
+3, 4, 6, 7, 8 - GDI mode
+0x60 - DDRAW mode
 0x40 - VRAM
