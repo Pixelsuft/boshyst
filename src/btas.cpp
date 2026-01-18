@@ -448,6 +448,7 @@ static void b_state_load(int slot, bool from_loop) {
 		pState.rhNextFrame = 4;
 		pState.rhNextFrameData = 0;
 		st.frame = st.sc_frame = 0;
+		st.seed = 0;
 		st.time = 0;
 		ExecuteTriggeredEvent(0xfffefffd);
 		return;
@@ -542,9 +543,9 @@ static void b_state_load(int slot, bool from_loop) {
 			obj->spriteHandle->flags |= 1;
 		}
 		import_timers_fix();
+		pState.lastFrameScore = st.c1;
+		pState.RandomSeed = st.seed;
 	}
-	pState.lastFrameScore = st.c1;
-	pState.RandomSeed = st.seed;
 	// pState.rhNextFrame = 0;
 	// cout << "state loaded\n";
 	if (last_msg.empty())
@@ -686,7 +687,7 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 4: {
-		int comp_val = (int)pState.RandomSeed;
+		int comp_val = st.seed;
 		if (comp_val != ev.hash.val)
 			last_msg = string("Hash check (RNG) failed on frame ~") + to_str(st.frame);
 		break;
@@ -787,7 +788,7 @@ bool btas::on_before_update() {
 				ev.idx = 3;
 			}
 			else {
-				ev.hash.val = (int)pState.RandomSeed;
+				ev.hash.val = (int)st.seed;
 				ev.idx = 4;
 			}
 			ev.frame = st.frame;
@@ -810,6 +811,7 @@ void btas::on_after_update() {
 		st.c1 = pState.lastFrameScore;
 		st.seed = pState.RandomSeed;
 		st.frame++;
+		// cout << st.frame << " " << st.seed << std::endl;
 		st.sc_frame++;
 		st.total = std::max(st.total, st.frame);
 		st.time += 20;
