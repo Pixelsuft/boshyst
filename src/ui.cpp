@@ -169,14 +169,26 @@ static void ui_menu_draw() {
 			7/9 - load state sus
 			*/
 			RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
-			if (ImGui::Button("Previous scene") && get_scene_id() != 0)
-				pState->rhNextFrame = 2;
-			if (ImGui::Button("Next scene") && get_scene_id() != 60)
-				pState->rhNextFrame = 1;
 			static int next_scene_id = 0;
 			static int prev_sc_id = 0;
 			if (prev_sc_id != get_scene_id())
 				next_scene_id = prev_sc_id = get_scene_id();
+			if (ImGui::Button("Previous scene") && prev_sc_id != 0) {
+				if (prev_sc_id == 55) {
+					pState->rhNextFrame = 3;
+					pState->rhNextFrameData = 53 | 0x8000;
+				}
+				else
+					pState->rhNextFrame = 2;
+			}
+			if (ImGui::Button("Next scene") && prev_sc_id != 60) {
+				if (prev_sc_id == 53) {
+					pState->rhNextFrame = 3;
+					pState->rhNextFrameData = 55 | 0x8000;
+				}
+				else
+					pState->rhNextFrame = 1;
+			}
 			ImGui::InputInt("Next scene ID", &next_scene_id);
 			next_scene_id = mclamp(next_scene_id, 0, 60);
 			if (next_scene_id == 54)
