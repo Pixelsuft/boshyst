@@ -100,8 +100,16 @@ size_t mem::get_base(const char* obj_name) {
 }
 
 void* mem::addr(const char* func_name, const char* obj_name) {
+	// cout << "trying to load " << obj_name << std::endl;
 	auto obj = (strcmp(obj_name, "MSVCR90.dll") == 0) ? GetSxSModuleHandle(obj_name) : GetModuleHandleA(obj_name);
+	if (!obj && 0) {
+		cout << "trying to fix " << obj_name << " for " << func_name << std::endl;
+		LoadLibraryA(obj_name);
+		obj = GetModuleHandleA(obj_name);
+	}
 	ASS(obj != nullptr);
+	if (!obj)
+		return nullptr;
 	auto ptr = GetProcAddress(obj, func_name);
 	ASS(ptr != nullptr);
 	return ptr;

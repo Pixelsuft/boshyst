@@ -152,17 +152,17 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr;
         if (PathFileExistsA("is_btas.txt"))
             is_btas = true;
-        conf::read();
-        if (is_btas || is_hourglass)
-            conf::tas_mode = true;
 #if defined(_DEBUG)
         if (true) {
 #else
-        if (conf::tas_mode && 0) {
+        if (is_btas || is_hourglass) {
 #endif
             AllocConsole();
             freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         }
+        conf::read();
+        if (is_btas || is_hourglass)
+            conf::tas_mode = true;
         app_entry(nullptr);
         break;
     case DLL_THREAD_ATTACH:

@@ -810,6 +810,7 @@ bool btas::on_before_update() {
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
+	pState.RandomSeed = (short)st.seed;
 	last_upd = true;
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;

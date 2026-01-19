@@ -403,6 +403,12 @@ static HRESULT __stdcall DirectDrawCreateHook(void* lpGUID, void* lplpDD, void* 
     return 0x8007000E;
 }
 
+static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
+    cout << "GetUserNameAHook\n";
+    strcpy(lpBuffer, "BTAS");
+    return TRUE;
+}
+
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
@@ -431,6 +437,7 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     }
     if (is_btas && c_ends_with(lpLibFileName, "Yaso.mfx")) {
         hook(mem::addr("InternetGetConnectedState", "wininet.dll"), InternetGetConnectedStateHook);
+        hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
         enable_hook();
     }
     return ret;
@@ -603,12 +610,6 @@ static void __stdcall DragAcceptFilesHook(HWND hWnd, BOOL fAccept) {
     // cout << "DragAcceptFilesHook\n";
 }
 
-static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
-    cout << "GetUserNameAHook\n";
-    strcpy(lpBuffer, "BTAS");
-    return TRUE;
-}
-
 static int (__stdcall* GetSystemMetricsOrig)(int nIndex);
 static int __stdcall GetSystemMetricsHook(int nIndex) {
     switch (nIndex) {
@@ -691,7 +692,6 @@ void init_game_loop() {
         ASS(cwd_len > 0);
         strcpy(temp_path + cwd_len, "\\temp");
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
-        hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
         btas::pre_init();
         // Force GDI
         // *(short*)0x0459a28 = 1;
