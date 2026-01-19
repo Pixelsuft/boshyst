@@ -200,7 +200,7 @@ static void ui_menu_draw() {
 		}
 		if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);
-			ImGui::Checkbox("Teleport with mouse (BETA)", &conf::tp_on_click);
+			ImGui::Checkbox("Teleport with mouse", &conf::tp_on_click);
 			/*
 			pState->rhNextFrame
 			1 - next

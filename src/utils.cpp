@@ -159,13 +159,13 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 }
 
 const char* get_scene_name() {
-	// TODO: mem::get_base()?
+	// TODO: return mem::get_base()?
 	GlobalStats& gStats = **(GlobalStats**)(0x459a98);
 	return (gStats.sceneName && *gStats.sceneName) ? gStats.sceneName : "Unknown";
 }
 
 int get_scene_id() {
-	// TODO: mem::get_base()?
+	// TODO: return mem::get_base()?
 	RunApp& gState = **(RunApp**)0x0459a94;
 	return gState.rhCurrentFrame;
 }
@@ -175,8 +175,67 @@ static void* get_player_by_id(int idx) {
 	return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 
+static int get_player_handle(int s) {
+	switch (s) {
+	case 2: return 28;
+	case 3: return 14;
+	case 4: return 331;
+	case 5: return 41;
+	case 6: return 38;
+	case 7: return 28;
+	case 8: return 25;
+	case 9: return 18;
+	case 10: return 614;
+	case 11: return 18;
+	case 12: return 519;
+	case 13: return 14;
+	case 14: return 34;
+	case 16: return 20;
+	case 21: return 42;
+	case 22: return 28;
+	case 23: return 14;
+	case 24: return 14;
+	case 25: return 76;
+	case 26: return 23;
+	case 27: return 14;
+	case 28: return 17;
+	case 29: return 13;
+	case 30: return 23;
+	case 31: return 17;
+	case 32: return 13;
+	case 33: return 13;
+	case 34: return 18;
+	case 35: return 16;
+	case 36: return 22;
+	case 37: return 11;
+	case 38: return 13;
+	case 39: return 13;
+	case 40: return 50;
+	case 43: return 50;
+	case 44: return 50;
+	case 45: return 21;
+	case 47: return 680;
+	case 48: return 40;
+	case 49: return 14;
+	case 50: return 38;
+	case 51: return 13;
+	case 52: return 15;
+	case 53: return 14;
+	case 58: return 18;
+	case 59: return 15;
+	case 60: return 13;
+	default: return -1;
+	}
+}
+
 void* get_player_ptr(int s) {
-	// FIXME: W4, W5, B8
+	int handle = get_player_handle(s);
+	RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+	if (handle != -1 && handle < pState.activeObjectCount)
+		return pState.objectList[handle * 2];
+	return nullptr;
+	/*
+	// FIXME: return W4, W5, B8
 	switch (s) {
 	// Tutorial
 	case 35:
@@ -259,12 +318,15 @@ void* get_player_ptr(int s) {
 	case 37:
 		return get_player_by_id(0x58);
 	}
-	if (s == 0 || s == 1)
+	if (s == 0 || s == 1 || s == 20) {
+		player_handle = -1;
 		return nullptr;
+	}
 	RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-	if (player_oi_handle != -1 && player_oi_handle < pState.objectCount)
-		return pState.objectList[player_oi_handle * 2];
-	return nullptr;
+	if (player_handle != -1 && player_handle < pState.activeObjectCount)
+		return pState.objectList[player_handle * 2];
+	player_handle = -1;
+	return nullptr;*/
 }
 
 bool state_save(bfs::File* file) {

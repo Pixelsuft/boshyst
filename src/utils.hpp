@@ -32,7 +32,6 @@ static bool c_ends_with(const char* str, const char* end) {
     return memcmp(str + sl - el, end, el) == 0;
 }
 
-extern int player_oi_handle;
 extern bool capturing;
 
 bool MyKeyState(int k);

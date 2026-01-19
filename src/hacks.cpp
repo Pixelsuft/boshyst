@@ -36,7 +36,6 @@ static bool audio_timer_hooked = false;
 static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
 static void (*ProcessFrameRendering)(void);
 static char temp_path[MAX_PATH];
-int player_oi_handle = -1;
 int bullet_id = 106;
 int bullet_speed = 70;
 int last_new_rand_val = 0;
@@ -127,8 +126,6 @@ CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, v
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
     // if (is_btas && objectInfoID == 106 && ret != -1)
     //    btas::reg_obj(ret);
-    if (objectInfoID == 28 && ret != -1)
-        player_oi_handle = ret;
     return ret;
 }
 
@@ -653,12 +650,22 @@ static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, L
     else if (lpClassName && (strcmp(lpClassName, "EDIT") == 0 || strcmp(lpClassName, "COMBOBOX") == 0 ||
         strcmp(lpClassName, "LISTBOX") == 0 ||
         strcmp(lpClassName, "omgwtfbbqColorButton") == 0 || strcmp(lpClassName, "omgwtfbbqColorSelector") == 0)) {
-        cout << "CreateWindowExAHook " << lpClassName << " -> STATIC\n";
+        // cout << "CreateWindowExAHook " << lpClassName << " -> STATIC\n";
         lpClassName = "STATIC";
     }
     // cout << "create " << lpClassName << "\n";
     HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
     return ret;
+}
+
+static void (__cdecl* UpdateObjectSusOrig)(ObjectHeader* obj);
+static void __cdecl UpdateObjectSusHook(ObjectHeader* obj) {
+    int mvtOffset = obj->hoAdpOffset;
+    ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
+    if ((*statusFlags & 1) == 0 && obj == get_player_ptr(get_scene_id())) {
+        // TODO: block from hiding
+    }
+    UpdateObjectSusOrig(obj);
 }
 
 void init_game_loop() {
@@ -752,6 +759,7 @@ void init_simple_hacks() {
     // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision, &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
-    hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
+    // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
+    hook(mem::get_base() + 0x20f0, UpdateObjectSusHook, &UpdateObjectSusOrig);
     init_temp_saves();
 }
