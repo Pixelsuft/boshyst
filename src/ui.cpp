@@ -66,8 +66,6 @@ static void post_draw() {
 }
 
 static void draw_basic_text() {
-	if (IsIconic(hwnd))
-		return; // FIXME: WTF why it crashes without it
 	static int ws[2];
 	get_win_size(ws[0], ws[1]);
 	int scene_id = get_scene_id();
@@ -155,7 +153,7 @@ static void draw_basic_text() {
 		// ImGui::Text("In-Game Frames: %i", inGameFrames);
 		ImGui::Text("Scene: %i (%s)", scene_id, get_scene_name());
 	}
-	if (conf::draw_cursor) {
+	if (conf::draw_cursor && ws[0] != 0 && ws[1] != 0) {
 		int x, y;
 		get_cursor_pos(x, y);
 		ImGui::Text("Cursor Pos: (%i, %i)", x * 640 / ws[0], y * 480 / ws[1]);
