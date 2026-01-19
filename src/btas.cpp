@@ -557,7 +557,7 @@ static void b_state_load(int slot, bool from_loop) {
 		}
 		import_timers_fix();
 		pState.lastFrameScore = st.c1;
-		pState.RandomSeed = st.seed;
+		// pState.RandomSeed = st.seed;
 	}
 	// pState.rhNextFrame = 0;
 	// cout << "state loaded\n";
@@ -810,7 +810,8 @@ bool btas::on_before_update() {
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
-	pState.RandomSeed = (short)st.seed;
+	ushort temp_seed = (ushort)st.seed;
+	pState.RandomSeed = *(short*)&temp_seed;
 	last_upd = true;
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
@@ -823,7 +824,7 @@ void btas::on_after_update() {
 	if (last_upd) {
 		last_upd = false;
 		st.c1 = pState.lastFrameScore;
-		st.seed = pState.RandomSeed;
+		st.seed = (int)*(ushort*)&pState.RandomSeed;
 		st.frame++;
 		// cout << st.frame << " " << st.seed << std::endl;
 		st.sc_frame++;
@@ -1010,7 +1011,6 @@ void btas::draw_tab() {
 	//cout << test.right << "x" << test.bottom << '\n';
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader& pState = get_state();
-		ImGui::Text("Random seed: %u", (unsigned int)(unsigned short)(pState.RandomSeed));
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
 			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
@@ -1033,7 +1033,10 @@ void btas::draw_tab() {
 			ImGui::SameLine();
 		if (st.frame == 0 && ImGui::Button("Import"))
 			import_replay(string(export_buf) + ".breplay");
+		ImGui::Text("Random seed: %i", st.seed);
 		ImGui::Checkbox("Timer conditions fix", &timers_fix);
+		ImGui::Checkbox("Paused", &is_paused);
+		ImGui::Checkbox("Fast forward", &fast_forward);
 		static int mpos[2] = { 0, 0 };
 		ImGui::InputInt2("Mouse pos for click", mpos);
 		if (ImGui::Button("Push mouse click")) {
