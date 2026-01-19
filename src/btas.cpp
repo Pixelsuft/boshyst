@@ -80,6 +80,9 @@ struct BTasEvent {
 			int range;
 			int val;
 		} rng;
+		struct {
+			int val;
+		} tm;
 	};
 	int frame;
 	uint8_t idx;
@@ -580,7 +583,7 @@ static void export_replay(const std::string& path) {
 		BTasEvent& ev = *it;
 		if (!export_hash && (ev.idx == 3 || ev.idx == 4))
 			continue;
-		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7) {
+		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7 || ev.idx == 8) {
 			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x)));
 		}
 		else {
@@ -609,7 +612,7 @@ static void import_replay(const std::string& path) {
 	while (f.read_line(line)) {
 		int idx = atoi(line.c_str());
 		BTasEvent ev;
-		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7)
+		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7 || idx == 8)
 			ASS(sscanf(line.c_str(), "%i,%i,%i", &idx, &ev.frame, &ev.click.x) == 3);
 		else
 			ASS(sscanf(line.c_str(), "%i,%i,%i,%i", &idx, &ev.frame, &ev.click.x, &ev.click.y) == 4);
@@ -695,14 +698,18 @@ static void exec_event(BTasEvent& ev) {
 	}
 	case 3: {
 		int comp_val = st.cur_pos[0] ^ st.cur_pos[1];
-		if (comp_val != ev.hash.val)
-			last_msg = string("Hash check (POS) failed on frame ~") + to_str(st.frame);
+		if (comp_val != ev.hash.val) {
+			last_msg = string("Hash check (POS) failed on frame ~") + to_str(st.frame) + ", resetting";
+			ev.hash.val = comp_val;
+		}
 		break;
 	}
 	case 4: {
 		int comp_val = st.seed;
-		if (comp_val != ev.hash.val)
-			last_msg = string("Hash check (RNG) failed on frame ~") + to_str(st.frame);
+		if (comp_val != ev.hash.val) {
+			last_msg = string("Hash check (RNG) failed on frame ~") + to_str(st.frame) + ", resetting";
+			ev.hash.val = comp_val;
+		}
 		break;
 	}
 	case 5: {
@@ -726,11 +733,15 @@ static void exec_event(BTasEvent& ev) {
 		while (1) {
 			auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range, [](const IntPair& a, int range) {
 				return a.a > range;
-			});
+				});
 			if (it == st.rng_buf.end() || it->a != ev.rng.range)
 				break;
 			st.rng_buf.erase(it);
 		}
+		break;
+	}
+	case 8: {
+		st.time = ev.tm.val;
 		break;
 	}
 	}
@@ -794,9 +805,9 @@ bool btas::on_before_update() {
 			st.ev.push_back(*it);
 		}
 		st.temp_ev.clear();
-		if (st.frame % 50 == 0) {
+		if (st.frame % 40 == 0) {
 			BTasEvent ev;
-			if (st.frame % 100 == 0) {
+			if (st.frame % 80 == 0) {
 				ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1];
 				ev.idx = 3;
 			}
@@ -1011,6 +1022,8 @@ void btas::draw_tab() {
 	//cout << test.right << "x" << test.bottom << '\n';
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader& pState = get_state();
+		ImGui::Checkbox("Paused", &is_paused);
+		ImGui::Checkbox("Fast forward", &fast_forward);
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
 			if (is_replay && st.frame != 0 && !reset_on_replay)
 				last_msg = "Running replay not from start, may desync!";
@@ -1033,21 +1046,9 @@ void btas::draw_tab() {
 			ImGui::SameLine();
 		if (st.frame == 0 && ImGui::Button("Import"))
 			import_replay(string(export_buf) + ".breplay");
-		ImGui::Text("Random seed: %i", st.seed);
 		ImGui::Checkbox("Timer conditions fix", &timers_fix);
-		ImGui::Checkbox("Paused", &is_paused);
-		ImGui::Checkbox("Fast forward", &fast_forward);
-		static int mpos[2] = { 0, 0 };
-		ImGui::InputInt2("Mouse pos for click", mpos);
-		if (ImGui::Button("Push mouse click")) {
-			BTasEvent ev;
-			ev.click.x = mpos[0];
-			ev.click.y = mpos[1];
-			ev.frame = st.frame;
-			ev.idx = 5;
-			st.temp_ev.push_back(ev);
-		}
 		static int rval[3] = { 0, 0, 0 };
+		ImGui::Text("Random seed: %i", st.seed);
 		ImGui::InputInt("RNG value", &rval[0]);
 		if (ImGui::InputInt("RNG range", &rval[1]))
 			rval[1] = std::max(rval[1], 1);
@@ -1062,9 +1063,16 @@ void btas::draw_tab() {
 			for (int i = 0; i < rval[2]; i++)
 				st.temp_ev.push_back(ev);
 		}
-		ImGui::Text("Temp event queue size: %i", (int)st.temp_ev.size());
-		if (ImGui::Button("Clear temp events"))
-			st.temp_ev.clear();
+		static int mpos[2] = { 0, 0 };
+		ImGui::InputInt2("Mouse pos for click", mpos);
+		if (ImGui::Button("Push mouse click")) {
+			BTasEvent ev;
+			ev.click.x = mpos[0];
+			ev.click.y = mpos[1];
+			ev.frame = st.frame;
+			ev.idx = 5;
+			st.temp_ev.push_back(ev);
+		}
 		static bool show_rng = false;
 		ImGui::Checkbox("Show RNG state (range: values)", &show_rng);
 		if (show_rng && !st.rng_buf.empty()) {
@@ -1081,6 +1089,19 @@ void btas::draw_tab() {
 			}
 			ImGui::TextUnformatted(cur_str.substr(0, cur_str.size() - 2).c_str());
 		}
+		static int time_val = 0;
+		if (ImGui::InputInt("New time", &time_val))
+			time_val = std::max(time_val, 0);
+		if (ImGui::Button("Push time")) {
+			BTasEvent ev;
+			ev.tm.val = time_val;
+			ev.frame = st.frame;
+			ev.idx = 8;
+			st.temp_ev.push_back(ev);
+		}
+		ImGui::Text("Temp event queue size: %i", (int)st.temp_ev.size());
+		if (ImGui::Button("Clear temp events"))
+			st.temp_ev.clear();
 	}
 }
 
