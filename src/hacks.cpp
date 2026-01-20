@@ -686,6 +686,10 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
     if (conf::hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
         RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+        obj->runtimeFlags = obj->runtimeFlags & 0xdf;
+        obj->isDirty = 1;
+        obj->animFinished = 0;
+        obj->collisionFlags = 0;
         Ordinal_78(pState.hMainEngine, obj->spriteHandle, 1);
         int count = conf::hitbox_level;
         for (int i = pState.activeObjectCount - 1; i > 20; i--) {
@@ -694,10 +698,7 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
                 continue;
             statusFlags = (ushort*)((int)&ptr->eventTriggerTable + mvtOffset);
             *statusFlags &= ~1;
-            ptr->isDirty = 1;
-            ptr->animFinished = 0;
-            ptr->collisionFlags = 0;
-            Ordinal_78(pState.hMainEngine, ptr->spriteHandle, 0);
+            HideObjectIfNeededOrig(ptr);
             count--;
             if (count == 0)
                 break;
