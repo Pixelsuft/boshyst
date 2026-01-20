@@ -234,7 +234,7 @@ void* get_player_ptr(int s) {
 	RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
 	if (handle != -1 && handle < pState.activeObjectCount) {
 		auto ret = pState.objectList[handle * 2];
-		if (ret && (ret->xPos <= 0 || ret->yPos <= 0)) // Died
+		if (ret && (ret->xPos > 60000 || ret->yPos == 0)) // Died
 			return nullptr;
 		return ret;
 	}

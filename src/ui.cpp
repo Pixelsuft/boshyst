@@ -87,28 +87,6 @@ static void draw_basic_text() {
 			ImGui::Text("Test anim: %i", anim->currentSpeedOrLikelyCounter);
 		}
 	}
-
-	if (0) {
-		// Display all object IDs
-		RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-		uint8_t* pp;
-		ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-		const ImFont* font = ImGui::GetFont();
-		for (size_t i = 0; i < 2000; i += 8) {
-			const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, i, 0 };
-			pp = (uint8_t*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-			if (!pp)
-				break;
-			int cur_x = *(int*)(pp + 0x4C);
-			int cur_y = *(int*)(pp + 0x54);
-			if (cur_x <= pState.currentViewportX || cur_x >= (pState.currentViewportX + 640) || cur_y <= pState.currentViewportY || cur_y >= (pState.currentViewportY + 480))
-				continue;
-			char buf[16];
-			_itoa((int)i, buf, 10);
-			draw_list->AddRectFilled(ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), ImVec2((float)(cur_x % 640 + 20), (float)(cur_y % 480 + 10)), IM_COL32(255, 255, 255, 255));
-			draw_list->AddText(font, ImGui::GetFontSize(), ImVec2((float)(cur_x % 640), (float)(cur_y % 480)), IM_COL32(255, 0, 0, 255), buf);
-		}
-	}
 	if (0) {
 		RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
 		ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
@@ -127,21 +105,6 @@ static void draw_basic_text() {
 			auto pos2 = ImVec2((float)(cur_x - pState.currentViewportX + 20), (float)(cur_y - pState.currentViewportY + 10));
 			draw_list->AddRectFilled(pos, pos2, IM_COL32(255, 255, 255, 255));
 			draw_list->AddText(font, ImGui::GetFontSize(), pos, IM_COL32(255, 0, 0, 255), buf);
-		}
-	}
-
-	if (0) {
-		for (size_t i = 0; i < 4000; i += 8) {
-			const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, i, 0 };
-			ObjectHeader* obj = (ObjectHeader*)mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
-			if (!obj)
-				break;
-			if (std::abs(obj->xPos - pp->xPos) <= 10 && std::abs(obj->yPos - pp->yPos) <= 10) {
-				if (ImGui::Button(std::to_string((long long)i).c_str())) {
-					obj->xPos = obj->yPos = 10;
-					obj->redrawFlag = 1;
-				}
-			}
 		}
 	}
 	if (is_btas) {
@@ -195,6 +158,8 @@ static void ui_menu_draw() {
 			ImGui::Checkbox("No perspective", &conf::no_ps);
 			ImGui::Checkbox("No shaders", &conf::no_sh);
 			ImGui::Checkbox("No transitions", &conf::no_trans);
+			if (ImGui::InputInt("Show hitbox level (BETA)", &conf::hitbox_level))
+				conf::hitbox_level = std::max(conf::hitbox_level, 0);
 		}
 		if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
 			ImGui::Checkbox("God mode", &conf::god);

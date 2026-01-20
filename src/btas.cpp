@@ -28,8 +28,6 @@ extern HWND hwnd;
 extern HWND mhwnd;
 extern SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 extern DWORD(__stdcall* timeGetTimeOrig)();
-extern bool state_save(bfs::File* file);
-extern bool state_load(bfs::File* file);
 extern int(__stdcall* UpdateGameFrameOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);

@@ -5,6 +5,7 @@ namespace conf {
 	extern int size[2];
 	extern int menu_hotkey;
 	extern int rapid_bind;
+	extern int hitbox_level;
 	extern bool no_vp;
 	extern bool no_sh;
 	extern bool no_ps;

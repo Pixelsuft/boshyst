@@ -11,6 +11,8 @@
 #include "ass.hpp"
 #include "btas.hpp"
 #include "fs.hpp"
+#undef max
+#undef min
 
 using std::string;
 using std::cout;
@@ -24,6 +26,7 @@ namespace conf {
     int cap_cnt;
     int rapid_bind;
     int menu_hotkey;
+    int hitbox_level;
     bool old_rec;
     bool no_vp;
     bool no_ps;
@@ -152,6 +155,8 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("menu_hotkey = 45 // Default menu toggle hotkey, VK_INSERT"));
     ASS(file.write_line(""));
     ASS(file.write_line("god = 0 // God mode"));
+    ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
+    ASS(file.write_line("hitbox_level = 0 // Can be changed to 1 or 2 to show default player"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
     ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
@@ -267,6 +272,8 @@ void conf::read() {
         // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god="))
             conf::god = read_int(line) != 0;
+        else if (starts_with(line, "teleport_with_mouse="))
+            conf::tp_on_click = read_int(line) != 0;
         else if (starts_with(line, "tas_mode="))
             conf::tas_mode = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport="))
@@ -279,6 +286,8 @@ void conf::read() {
             conf::no_ps = read_int(line) != 0;
         else if (starts_with(line, "skip_messageboxes="))
             conf::skip_msg = read_int(line) != 0;
+        else if (starts_with(line, "hitbox_level="))
+            conf::hitbox_level = std::max(read_int(line), 0);
         else if (starts_with(line, "menu_hotkey="))
             conf::menu_hotkey = read_int(line);
         else if (starts_with(line, "menu="))

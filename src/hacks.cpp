@@ -41,6 +41,7 @@ int bullet_speed = 70;
 int last_new_rand_val = 0;
 bool last_reset = false;
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
+static void(__stdcall* Ordinal_78)(void* hMainEngine, SpriteHandle* hSprite, BOOL bShow);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 struct my_timeb {
@@ -125,7 +126,7 @@ CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, v
     ushort creationFlags, uint initialDir, int layerIndex) {
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
     // if (is_btas && objectInfoID == 106 && ret != -1)
-    //    btas::reg_obj(ret);    //    btas::reg_obj(ret);
+    //    btas::reg_obj(ret);
     if (parentHandle == 28 && ret != -1) {
         // cout << "player h " << ret << std::endl;
     }
@@ -281,6 +282,18 @@ static int __stdcall UpdateGameFrameHook() {
     if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
         launch_bullet(-1, -1, -1);
 
+    static int spawn_x = 0;
+    static int spawn_y = 0;
+    if (0 && next_white) {
+        next_white = false;
+        auto pp = (ObjectHeader*)get_player_ptr(get_scene_id());
+        if (pp) {
+            cout << get_scene_id() << ": (" << pp->xPos << ", " << pp->yPos << ")" << std::endl;
+            spawn_x = pp->xPos;
+            spawn_y = pp->yPos;
+        }
+    }
+
     auto ret = UpdateGameFrameOrig();
 
     if (audio_timer_hooked)
@@ -297,6 +310,12 @@ static int __stdcall UpdateGameFrameHook() {
             RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
             player->xPos = pState.currentViewportX + x * 640 / w;
             player->yPos = pState.currentViewportY + y * 480 / h;
+            if (0) {
+                if (MyKeyState('A')) {
+                    player->xPos = spawn_x;
+                    player->yPos = spawn_y;
+                }
+            }
             player->redrawFlag = 1;
         }
     }
@@ -585,7 +604,7 @@ static int __cdecl GetCollidingObjectListHook
 (ObjectHeader* obj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
     ObjectHeader*** outList, int filterGroup) {
     // bullet created by player for sure
-    if (obj && obj->parentID == 28 && obj->oiHandle == 106) {
+    if (obj && obj->parentID == 28 && obj->oiHandle == 106 && obj->spriteHandle) {
         // cout << obj->oiHandle << " " << obj->spriteHandle->flags << std::endl;
         // Bullet fix (check for SF_INACTIVE => means bullet is broken)
         if (obj->spriteHandle->flags == 0x20000008) {
@@ -661,28 +680,31 @@ static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, L
     return ret;
 }
 
-static void (__cdecl* UpdateObjectSusOrig)(ObjectHeader* obj);
-static void __cdecl UpdateObjectSusHook(ObjectHeader* obj) {
+static void (__cdecl* HideObjectIfNeededOrig)(ObjectHeader* obj);
+static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     int mvtOffset = obj->hoAdpOffset;
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
-    if ((*statusFlags & 1) == 0 && obj == get_player_ptr(get_scene_id()) && 0) {
-        // TODO: block from hiding
-        *statusFlags |= 1;
+    if (conf::hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
         RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+        Ordinal_78(pState.hMainEngine, obj->spriteHandle, 1);
+        int count = conf::hitbox_level;
         for (int i = pState.activeObjectCount - 1; i > 20; i--) {
             ObjectHeader* ptr = pState.objectList[i * 2];
-            if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) >= 10 || std::abs(obj->yPos - ptr->yPos) >= 10)
+            if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) > 0 || std::abs(obj->yPos - ptr->yPos) > 0)
                 continue;
-            cout << obj->handle << " " << obj->oiHandle << "\n";
             statusFlags = (ushort*)((int)&ptr->eventTriggerTable + mvtOffset);
-            cout << "hiding " << ptr->handle << " " << ptr->oiHandle << " " << ptr->parentID << '\n';
-            ptr->spriteHandle = nullptr;
             *statusFlags &= ~1;
-            UpdateObjectSusOrig(ptr);
-            break;
+            ptr->isDirty = 1;
+            ptr->animFinished = 0;
+            ptr->collisionFlags = 0;
+            Ordinal_78(pState.hMainEngine, ptr->spriteHandle, 0);
+            count--;
+            if (count == 0)
+                break;
         }
+        return;
     }
-    UpdateObjectSusOrig(obj);
+    HideObjectIfNeededOrig(obj);
 }
 
 void init_game_loop() {
@@ -761,6 +783,7 @@ void init_simple_hacks() {
         MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
         EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
+    Ordinal_78 = (decltype(Ordinal_78))(mem::get_base("mmfs2.dll") + 0x116e0);
     // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
     hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
@@ -777,6 +800,6 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
-    hook(mem::get_base() + 0x20f0, UpdateObjectSusHook, &UpdateObjectSusOrig);
+    hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     init_temp_saves();
 }
