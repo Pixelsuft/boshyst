@@ -33,13 +33,14 @@ static int next_bullet_x = 0;
 static int next_bullet_y = 0;
 static uint next_bullet_dir = 0;
 static bool audio_timer_hooked = false;
-static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
-static void (*ProcessFrameRendering)(void);
 static char temp_path[MAX_PATH];
 int bullet_id = 106;
 int bullet_speed = 70;
 int last_new_rand_val = 0;
 bool last_reset = false;
+static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
+static void (*ProcessFrameRendering)(void);
+static void(__cdecl* ExecuteObjectAction)(ActionHeader* action);
 static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
 static void(__stdcall* Ordinal_78)(void* hMainEngine, SpriteHandle* hSprite, BOOL bShow);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -53,6 +54,7 @@ struct my_timeb {
 
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
+    // Viewport.mfx display hook
     if (conf::no_vp)
         return 0;
     auto ret = DisplayRunObjectVPOrig(pthis);
@@ -61,6 +63,7 @@ static short __stdcall DisplayRunObjectVPHook(void* pthis) {
 
 static short(__stdcall* DisplayRunObjectPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectPHook(void* pthis) {
+    // Perspective.mfx display hook
     if (conf::no_ps)
         return 0;
     auto ret = DisplayRunObjectVPOrig(pthis);
@@ -69,9 +72,15 @@ static short __stdcall DisplayRunObjectPHook(void* pthis) {
 
 static int(__cdecl* randOrig)() = nullptr;
 static int __cdecl randHook() {
-    if (is_btas)
-        return 0; // TODO
+    // For MMKRandomPool.mfx (used very rarely)
     int ret;
+    if (is_btas) {
+        ret = btas::get_rng(RAND_MAX);
+        if (ret != RAND_MAX)
+            return ret;
+        // I don't think it's good to call orig rand
+        return 0;
+    }
     if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (RAND_MAX + 1)))
         ret = (unsigned int)((float)RAND_MAX * fix_rng_val / 100.f);
     else
@@ -91,9 +100,11 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
         return -1;
     }
     else if (conf::god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
+        // god mode
         return -1;
     }
     else if (conf::no_trans && strcmp(s1, "teleporting") == 0) {
+        // no teleport effects
         return -1;
     }
     // menuChosen, NameTags, jump, doublejump, teleporting, save, Save, shoot, shooot, restart, KillAll, killboss
@@ -108,6 +119,7 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
         return NULL;
     char buf[MAX_PATH];
     if (c_ends_with(_fn, ".ini")) {
+        // Use temp files when needed
         strcpy(buf, _fn);
         size_t l = strlen(buf);
         strcpy(buf + l - 4, ".tmp.ini");
@@ -173,9 +185,7 @@ void launch_bullet(int x, int y, int dir) {
         next_bullet_y = y;
         next_bullet_dir = (uint)dir;
     }
-    cout << "launching\n";
-    void(__cdecl * ExecuteObjectAction)(ActionHeader* action);
-    ExecuteObjectAction = (decltype(ExecuteObjectAction))(mem::get_base() + 0x15180);
+    // cout << "launching\n";
     next_our_bullet = true;
     ExecuteObjectAction(&action);
 }
@@ -215,14 +225,16 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
     if (capturing && strcmp(cap, "I Wanna Be The Boshy") == 0) {
+        // This happens only when chaning/resetting scene lul
         next_white = true;
         return FALSE;
     }
     return SetWindowTextAOrig(hwnd, cap);
 }
 
-void(__cdecl* ActOrig)(ActionHeader* act);
-void __cdecl ActHook(ActionHeader* act) {
+static void(__cdecl* ActOrig)(ActionHeader* act);
+static void __cdecl ActHook(ActionHeader* act) {
+    // unused
     auto act2 = act;
     RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
     // *(ushort*)(pState.currentExecutingEvent + 4) &= ~0x1e;
@@ -259,7 +271,9 @@ void __cdecl ActHook(ActionHeader* act) {
 static bool hooks_inited = false;
 static int(__stdcall* UpdateGameFrameOrig)() = nullptr;
 static int __stdcall UpdateGameFrameHook() {
+    // Main update hook
     if (!hooks_inited) {
+        // Good point for init
         hooks_inited = true;
         try_to_init();
         if (is_btas)
@@ -268,6 +282,7 @@ static int __stdcall UpdateGameFrameHook() {
     try_to_hook_graphics();
 
     if (is_btas && btas::on_before_update()) {
+        // Paused, need to manually render
         auto ret = UpdateGameFrameOrig();
         ProcessFrameRendering();
         btas::on_after_update();
@@ -285,6 +300,7 @@ static int __stdcall UpdateGameFrameHook() {
     static int spawn_x = 0;
     static int spawn_y = 0;
     if (0 && next_white) {
+        // Used, used to get player spawn pos
         next_white = false;
         auto pp = (ObjectHeader*)get_player_ptr(get_scene_id());
         if (pp) {
@@ -300,6 +316,7 @@ static int __stdcall UpdateGameFrameHook() {
         AudioTimerCallback(1337228, 0, 0, 0, 0);
 
     if (!is_btas && !show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
+        // Teleport player with mouse
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
         if (player) {
@@ -322,6 +339,7 @@ static int __stdcall UpdateGameFrameHook() {
 
     if (is_btas) {
         btas::on_after_update();
+        // Still like to maually render in btas mode
         if (!fast_forward_skip)
             ProcessFrameRendering();
     }
@@ -334,6 +352,7 @@ static int __stdcall UpdateGameFrameHook() {
 
 static unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static unsigned int __cdecl RandomHook(unsigned int maxv) {
+    // Main random func
     unsigned int ret;
     if (is_btas) {
         ret = btas::get_rng(maxv);
@@ -412,6 +431,7 @@ static void __stdcall FlushInputQueueHook(void) {
 }
 
 static BOOL __stdcall InternetGetConnectedStateHook(LPDWORD lpdwFlags, DWORD dwReserved) {
+    // For sure
     *lpdwFlags = 0x20;
     return TRUE;
 }
@@ -423,13 +443,15 @@ static HRESULT __stdcall DirectDrawCreateHook(void* lpGUID, void* lplpDD, void* 
 }
 
 static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
-    cout << "GetUserNameAHook\n";
+    // For sure
+    // cout << "GetUserNameAHook\n";
     strcpy(lpBuffer, "BTAS");
     return TRUE;
 }
 
 static int(__stdcall* GetSystemMetricsOrig)(int nIndex);
 static int __stdcall GetSystemMetricsHook(int nIndex) {
+    // Still don't know why window size differs between Windows XP and newer
     switch (nIndex) {
         /*
         case SM_CXSCREEN:
@@ -488,12 +510,13 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
     DWORD bW;
     if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
-        //  hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
+        // hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
         // TODO: hook mmfs2 dll funcs directly here
         audio_init();
         enable_hook();
     }
     if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
+        // Disable thread creation as early as possible (for better stability)
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5, &bW) != 0 && bW == 5);
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
     }
@@ -512,14 +535,17 @@ static HMODULE __stdcall LoadLibraryWHook(LPCWSTR lpLibFileName) {
 }
 
 static HINSTANCE __stdcall ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd) {
+    // No need to open URLs
     return nullptr;
 }
 
 static HWND __stdcall GetActiveWindowHook() {
+    // In BTAS, we are always focused!
     return ::hwnd;
 }
 
 static HWND __stdcall SetFocusHook(HWND hWnd) {
+    // In BTAS, we are always focused!
     return ::hwnd;
 }
 
@@ -571,6 +597,7 @@ static BOOL __stdcall GetProcessTimesHook(HANDLE hProcess, LPFILETIME lpCreation
 static MMRESULT (__stdcall* timeSetEventOrig)(UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT);
 static MMRESULT __stdcall timeSetEventHook(UINT uDelay, UINT uResolution, LPTIMECALLBACK lpTimeProc, DWORD_PTR dwUser, UINT fuEvent) {
     if (uDelay == 50 && uResolution == 10) {
+        // Audio processing timer
         // Hacky (i think no need to check for AudioTimerCallback
         ASS(!audio_timer_hooked);
         audio_timer_hooked = true;
@@ -662,6 +689,7 @@ static int __cdecl GetCollidingObjectListHook
 }
 
 static DWORD __stdcall GetTempPathAHook(DWORD nBufferLength, LPSTR lpBuffer) {
+    // Why just not to use %GAME_PATH%/temp folder for temp files?
     if (!CreateDirectoryA(temp_path, nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
         return 0;
     strcpy(lpBuffer, temp_path);
@@ -698,6 +726,7 @@ static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, L
 
 static void (__cdecl* HideObjectIfNeededOrig)(ObjectHeader* obj);
 static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
+    // Ugly shit for showing hitbox (original player)
     int mvtOffset = obj->hoAdpOffset;
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
     if (conf::hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
@@ -725,6 +754,7 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
 }
 
 void init_game_loop() {
+    // Executed as early as possible
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
@@ -757,6 +787,7 @@ void init_game_loop() {
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         btas::pre_init();
         if (conf::force_gdi) {
+            // Force software renderer if needed somewhy
             *(short*)(mem::get_base() + 0x59a28) = 1;
             *(short*)(mem::get_base() + 0x59a2a) = 8;
         }
@@ -783,6 +814,7 @@ static int __cdecl strcmpHook(const char* s1, const char* s2) {
 }
 
 void init_temp_saves() {
+    // Cleanup temp files
     DeleteFileA("onlineLicense.tmp.ini");
     DeleteFileA("animation.tmp.ini");
     DeleteFileA("options.tmp.ini");
@@ -793,6 +825,7 @@ void init_temp_saves() {
 }
 
 void init_simple_hacks() {
+    // First-frame init
     input_init();
     if (!is_hourglass && (is_btas || !conf::tas_mode)) {
         // hook(mem::get_base() + 0x43e30, MainWindowProcHook, &MainWindowProcOrig);
@@ -800,6 +833,7 @@ void init_simple_hacks() {
         MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
         EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
+    ExecuteObjectAction = (decltype(ExecuteObjectAction))(mem::get_base() + 0x15180);
     Ordinal_78 = (decltype(Ordinal_78))(mem::get_base("mmfs2.dll") + 0x116e0);
     // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);

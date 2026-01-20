@@ -48,13 +48,13 @@ struct BTasBind {
 			int y;
 		} dummy;
 	};
-	int key;
-	int mod;
-	uint8_t idx;
-	bool down;
+	int key; // Actual keyboard key
+	int mod; // Ctrl, shift, alt
+	uint8_t idx; // What is bind used for
+	bool down; // Internal
 
 	BTasBind() {
-		mapper.k = 0;
+		dummy.x = dummy.y = 0;
 		key = 0;
 		mod = 0;
 		idx = 0;
@@ -93,20 +93,35 @@ struct BTasEvent {
 };
 
 struct BTasState {
+	// All the remembered events
 	std::vector<BTasEvent> ev;
+	// Temporary event buffer for events like click, RNG before pushing
 	std::vector<BTasEvent> temp_ev;
+	// RNG buffer (more like queue) for returning values
 	std::vector<IntPair> rng_buf;
+	// Buffer to fix timers not saving their values (yea its ugly)
 	std::vector<IntPair> timer_conds;
+	// Previous keyboard state (for comparing and generating new keyboard events)
 	std::vector<int> prev;
+	// Current player pos
 	int cur_pos[2];
+	// Last player pos (for calculating delta)
 	int last_pos[2];
+	// Mouse pos
 	int m_pos[2];
+	// Scene ID
 	int scene;
+	// Current frames
 	int frame;
+	// Frames on this scene
 	int sc_frame;
+	// Total frames (for replay)
 	int total;
+	// Current time (usually frame * 20)
 	int time;
+	// Save value not saved
 	int c1;
+	// Save RNG seed for sure
 	short seed;
 
 	BTasState() {
@@ -134,7 +149,9 @@ struct BTasState {
 };
 
 static std::vector<BTasBind> binds;
+// Holding in-game keys at the moment to compare with prev and push events
 static std::vector<int> holding;
+// Same but for replay to not cause problems when pressing real keys
 static std::vector<int> repl_holding;
 static string last_msg;
 static BTasState st;
@@ -265,9 +282,7 @@ void btas::pre_init() {
 	// Disable some dialogs (WTF?)
 	const uint8_t cent_patch[] = { 0x66, 0xe9, 0xca };
 	WPM(mem::get_base() + 0x431a2, cent_patch, 3);
-	// Disable window centering
-	// WPM(mem::get_base() + 0x330eb, &temp, 1);
-	// Patch save state bug in original code (rcBoundaryBottom instead of doubled rcBoundaryRight)
+	// Patch state bug in original code (rcBoundaryBottom instead of doubled rcBoundaryRight)
 	// TODO: move to hacks.cpp?
 	temp = 0x24;
 	WPM(mem::get_base() + 0x386fb, &temp, 1);
@@ -316,7 +331,7 @@ void btas::init() {
 
 static void trim_current_state() {
 	st.total = st.frame;
-	// Hacky
+	// Hacky way to trim events from st.total to st.frame
 	while (!st.ev.empty() && (st.ev.end() - 1)->frame > st.frame)
 		st.ev.erase(st.ev.end() - 1);
 }
@@ -327,6 +342,7 @@ static void write_bin(bfs::File& f, const std::vector<T>& data) {
 	ASS(f.write(&size, sizeof(size_t)));
 	if (size == 0)
 		return;
+	// Everything is trivial, no problems, ok?
 	ASS(f.write(data.data(), size * sizeof(T)));
 }
 
@@ -363,6 +379,7 @@ static void fill_timers_fix() {
 		for (int i = (int)eventPtr->eventCount; i != 0; i--) {
 			if (cond->condID == -4 && cond->conditionType == 13 && cond->size == 30) {
 				// cout << "savin " << cond->currentTimer << " " << cond->interval << std::endl;
+				// Remember that currentTimer value isnt being saved/loaded in MMF2 state
 				st.timer_conds.push_back(IntPair(cond->currentTimer, cond->interval));
 			}
 			cond = (ConditionHeader*)((size_t)cond + (size_t)cond->size);
@@ -456,18 +473,20 @@ static void b_state_load(int slot, bool from_loop) {
 		return;
 	}
 	if (is_replay && reset_on_replay && !from_loop && st.frame != 0) {
+		// Need to restart game before replay
 		st.prev.clear();
 		st.ev.clear();
 		repl_holding.clear();
 		need_scene_state_slot = slot;
 		last_msg = "Restarting game";
 		RunHeader& pState = get_state();
-		pState.rhNextFrame = 4;
+		pState.rhNextFrame = 4; // Restart flag
 		pState.rhNextFrameData = 0;
 		st.frame = st.sc_frame = 0;
 		st.seed = 0;
 		st.time = 0;
 		ExecuteTriggeredEvent(0xfffefffd);
+		// We can't just keep loading, do it later via need_scene_state_slot
 		return;
 	}
 	char buf[4];
@@ -482,18 +501,21 @@ static void b_state_load(int slot, bool from_loop) {
 	int scene_id;
 	load_bin(f, scene_id);
 	if (!is_replay && scene_id != get_scene_id()) {
+		// State was made in different scene
 		cout << "preparing change\n";
 		need_scene_state_slot = slot;
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
 		last_msg = string("Loading scene ") + to_str(scene_id);
 		RunHeader& pState = get_state();
-		pState.rhNextFrame = 3;
-		pState.rhNextFrameData = scene_id | 0x8000;
+		pState.rhNextFrame = 3; // Set scene flag
+		pState.rhNextFrameData = scene_id | 0x8000; // Scene ID
 		ExecuteTriggeredEvent(0xfffefffd);
+		// Same
 		return;
 	}
 	last_msg = "";
 	if (is_replay) {
+		// Don't need to load anything except some useful info and events
 		if (reset_on_replay) {
 			st.clear();
 			st.clear_arr();
@@ -521,6 +543,7 @@ static void b_state_load(int slot, bool from_loop) {
 		load_bin(f, st.ev);
 		if (reset_on_replay) {
 			repl_holding.clear();
+			// Delete temporary saves
 			init_temp_saves();
 		}
 	}
@@ -546,11 +569,12 @@ static void b_state_load(int slot, bool from_loop) {
 	}
 	// pState.RandomSeed = st.seed;
 	if (!is_replay) {
+		// Let's not touch anything while game loads state
 		b_loading_saving_state = true;
 		state_load(&f);
 		b_loading_saving_state = false;
 		trim_current_state();
-		// Fix internal state load bug
+		// Fix internal state load bug when dynamic sprites lose collision
 		// TODO: also do this in normal mode?
 		for (int i = 0; i < pState.activeObjectCount; i++) {
 			ObjectHeader* obj = pState.objectList[i * 2];
@@ -572,6 +596,7 @@ static void b_state_load(int slot, bool from_loop) {
 }
 
 static void export_replay(const std::string& path) {
+	// Export replay (only replay) in easy-to-edit text format  compatible between versions
 	bfs::File f(path, 1);
 	if (!f.is_open()) {
 		last_msg = "Failed to open file for writing replay";
@@ -595,6 +620,7 @@ static void export_replay(const std::string& path) {
 }
 
 static void import_replay(const std::string& path) {
+	// Import it
 	bfs::File f(path, 0);
 	if (!f.is_open()) {
 		last_msg = "Failed to open file for reading replay";
@@ -666,8 +692,10 @@ unsigned int btas::get_rng(unsigned int maxv) {
 	auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), (int)maxv, [](const IntPair& a, int range) {
 		return a.a > range;
 	});
+	// Do we have value for that range (maxv) in our queue?
 	if (it == st.rng_buf.end() || it->a != (int)maxv)
-		return maxv;
+		return maxv; // Should gen def value
+	// Return our value
 	auto ret = it->b;
 	st.rng_buf.erase(it);
 	return ret;
@@ -685,19 +713,23 @@ short btas::TasGetKeyState(int k) {
 }
 
 static void exec_event(BTasEvent& ev) {
+	// Used for replay or temp events
 	RunHeader& pState = get_state();
 	switch (ev.idx) {
 	case 1: {
+		// Key down
 		repl_holding.push_back(ev.key.k);
 		break;
 	}
 	case 2: {
+		// Key up
 		auto it = std::find(repl_holding.begin(), repl_holding.end(), ev.key.k);
 		ASS(it != repl_holding.end());
 		repl_holding.erase(it);
 		break;
 	}
 	case 3: {
+		// Check hash POS
 		int comp_val = st.cur_pos[0] ^ st.cur_pos[1];
 		if (comp_val != ev.hash.val) {
 			last_msg = string("Hash check (POS) failed on frame ~") + to_str(st.frame) + ", resetting";
@@ -706,14 +738,17 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 4: {
+		// Check hash RNG
 		int comp_val = st.seed;
 		if (comp_val != ev.hash.val) {
+			// I still have no idea why this happens
 			last_msg = string("Hash check (RNG) failed on frame ~") + to_str(st.frame) + ", resetting";
 			ev.hash.val = comp_val;
 		}
 		break;
 	}
 	case 5: {
+		// Mouse click
 		st.m_pos[0] = ev.click.x;
 		st.m_pos[1] = ev.click.y;
 		if (ev.click.x < 0 || ev.click.y < 0)
@@ -723,6 +758,7 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 6: {
+		// Push RNG value for range in our queue
 		st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
 		std::sort(st.rng_buf.begin(), st.rng_buf.end(), [](const IntPair& a, const IntPair& b) {
 			return a.a > b.a;
@@ -730,6 +766,7 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 7: {
+		// Clear RNG range
 		// TODO: optimize?
 		while (1) {
 			auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range, [](const IntPair& a, int range) {
@@ -742,6 +779,7 @@ static void exec_event(BTasEvent& ev) {
 		break;
 	}
 	case 8: {
+		// Set current time (only useful before any frames?)
 		st.time = ev.tm.val;
 		break;
 	}
@@ -762,10 +800,12 @@ bool btas::on_before_update() {
 	if (cur_scene != st.scene)
 		st.sc_frame = 0;
 	st.scene = cur_scene;
+	// Ok we have no frame drops
 	pState.frameSkipAccumulator = 0;
 	pState.subTickStep = 1;
 	// cout << pState.frameStatus << std::endl;
 	if (is_paused && !next_step) {
+		// we are paused
 		pState.isPaused = true;
 		return true;
 	}
@@ -781,6 +821,7 @@ bool btas::on_before_update() {
 		}
 	}
 	else {
+		// Compare current and prev keyboard holds to generate new events
 		for (auto it = holding.begin(); it != holding.end(); it++) {
 			auto pit = std::find(st.prev.begin(), st.prev.end(), *it);
 			if (pit == st.prev.end()) {
@@ -801,11 +842,13 @@ bool btas::on_before_update() {
 				st.ev.push_back(ev);
 			}
 		}
+		// Execute and push temp events
 		for (auto it = st.temp_ev.begin(); it != st.temp_ev.end(); it++) {
 			exec_event(*it);
 			st.ev.push_back(*it);
 		}
 		st.temp_ev.clear();
+		// Gen hash checks
 		if (st.frame % 40 == 0) {
 			BTasEvent ev;
 			if (st.frame % 80 == 0) {
@@ -823,6 +866,7 @@ bool btas::on_before_update() {
 		}
 	}
 	ushort temp_seed = (ushort)st.seed;
+	// Sync seed for sure
 	pState.RandomSeed = *(short*)&temp_seed;
 	last_upd = true;
 	st.prev = is_replay ? repl_holding : holding;
@@ -835,6 +879,7 @@ void btas::on_after_update() {
 	RunHeader& pState = get_state();
 	if (last_upd) {
 		last_upd = false;
+		// Time advance
 		st.c1 = pState.lastFrameScore;
 		st.seed = (int)*(ushort*)&pState.RandomSeed;
 		st.frame++;
@@ -845,6 +890,7 @@ void btas::on_after_update() {
 
 		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
 		if (pp != nullptr) {
+			// Remeber player pos
 			st.last_pos[0] = st.cur_pos[0];
 			st.last_pos[1] = st.cur_pos[1];
 			st.cur_pos[0] = pp->xPos;
@@ -862,6 +908,7 @@ void btas::on_after_update() {
 		}
 	}
 	if (is_hourglass) {
+		// Simulate 50FPS for hourglass
 		Sleep(20);
 		return;
 	}
@@ -888,6 +935,7 @@ void btas::on_key(int k, bool pressed) {
 		BTasBind& bind = *it;
 		if (bind.key != k)
 			break;
+		// Same keymods, not loading state, not double release
 		if ((pressed && ((bind.mod != current_mod) || b_loading_saving_state)) || (!pressed && !bind.down)) {
 			it++;
 			continue;
@@ -896,6 +944,7 @@ void btas::on_key(int k, bool pressed) {
 		case 0: {
 			if (bind.down && pressed)
 				break;
+			// In-game keyboard press or release
 			auto eit = std::find(holding.begin(), holding.end(), bind.mapper.k);
 			if (pressed) {
 				if (show_menu)
@@ -910,21 +959,25 @@ void btas::on_key(int k, bool pressed) {
 			break;
 		}
 		case 1: {
+			// Toggle pause
 			if (pressed && !show_menu)
 				is_paused = !is_paused;
 			break;
 		}
 		case 2: {
+			// Toggle fast forward
 			if (pressed && !show_menu)
 				fast_forward = !fast_forward;
 			break;
 		}
 		case 3: {
+			// Fast forward
 			if (!show_menu)
 				fast_forward = pressed;
 			break;
 		}
 		case 4: {
+			// Frame advance
 			if (!show_menu && pressed) {
 				next_step = true;
 				is_paused = true;
@@ -932,26 +985,31 @@ void btas::on_key(int k, bool pressed) {
 			break;
 		}
 		case 5: {
+			// Slomo
 			is_paused = !pressed;
 			slowmo = pressed;
 			break;
 		}
 		case 6: {
+			// State save
 			if (!show_menu && pressed && !bind.down)
 				b_state_save(bind.state.slot);
 			break;
 		}
 		case 7: {
+			// State load
 			if (!show_menu && pressed && !bind.down)
 				b_state_load(bind.state.slot, false);
 			break;
 		}
 		case 8: {
+			// Toggle fast forward with skipping
 			if (pressed && !show_menu)
 				fast_forward_skip = !fast_forward_skip;
 			break;
 		}
 		case 9: {
+			// Fast forward with skipping
 			if (!show_menu)
 				fast_forward_skip = pressed;
 			break;
@@ -1018,8 +1076,8 @@ void btas::draw_info() {
 void btas::draw_tab() {
 	if (!is_replay)
 		is_paused = true; // TODO: configure that
-	RECT test;
-	GetClientRect(::hwnd, &test);
+	//RECT test;
+	//GetClientRect(::hwnd, &test);
 	//cout << test.right << "x" << test.bottom << '\n';
 	if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
 		RunHeader& pState = get_state();
@@ -1033,12 +1091,13 @@ void btas::draw_tab() {
 				st.temp_ev.clear();
 			}
 			else {
+				// Trim total to current
 				trim_current_state();
 				st.ev.resize(repl_index);
 			}
 			repl_index = 0;
 		}
-		ImGui::Checkbox("Reset game on replay (BETA)", &reset_on_replay);
+		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
 		ImGui::Checkbox("Export hash checks", &export_hash);
 		if (ImGui::Button("Export"))
@@ -1060,7 +1119,10 @@ void btas::draw_tab() {
 			ev.rng.val = rval[0];
 			ev.rng.range = rval[1];
 			ev.frame = st.frame;
+			// Clear range or push?
 			ev.idx = rval[2] == 0 ? 7 : 6;
+			if (ev.idx == 7)
+				st.temp_ev.push_back(ev);
 			for (int i = 0; i < rval[2]; i++)
 				st.temp_ev.push_back(ev);
 		}
@@ -1075,8 +1137,9 @@ void btas::draw_tab() {
 			st.temp_ev.push_back(ev);
 		}
 		static bool show_rng = false;
-		ImGui::Checkbox("Show RNG state (range: values)", &show_rng);
+		ImGui::Checkbox("Show RNG state queue (range: values)", &show_rng);
 		if (show_rng && !st.rng_buf.empty()) {
+			// Show our RNG queue
 			int cur_range = -1;
 			string cur_str;
 			for (auto it = st.rng_buf.begin(); it != st.rng_buf.end(); it++) {

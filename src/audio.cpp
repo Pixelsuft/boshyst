@@ -125,7 +125,9 @@ static void finalize_wav(AudioCapture& cap) {
     }
 }
 
-void audio_on_reset() {
+void audio_stop() {
+    if (!conf::cap_au)
+        return;
     std::lock_guard<std::mutex> lock(g_audioMutex);
     for (auto& pair : g_captures) {
         finalize_wav(pair.second);
@@ -133,17 +135,13 @@ void audio_on_reset() {
     g_captures.clear();
 }
 
-void audio_stop() {
-    if (!conf::cap_au)
-        return;
-    audio_on_reset();
-}
-
 static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void* edx, DWORD freq) {
+    // IDK but hooking dsound directly doesnt work
     std::lock_guard<std::mutex> lock(g_audioMutex);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end() && freq != 0 && freq != it->second.h.sampleRate) {
         // std::cout << "Freq hook: " << it->second.h.sampleRate << " -> " << freq << std::endl;
+        // We dont support dynamic freq but just remember last
         it->second.h.sampleRate = freq;
     }
 
@@ -203,6 +201,7 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
     if (SUCCEEDED(hr) && buffer && *buffer && desc->lpwfxFormat) {
         std::lock_guard<std::mutex> lock(g_audioMutex);
         unsigned long timestamp = btas::get_time();
+        // create wav file for each sound to be joined later via script
         string filename = "audio_" + to_str(timestamp) + "_" + to_str((size_t)*buffer) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
@@ -235,6 +234,7 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         hook(target, DetourCreateSoundBuffer, &fpCreateSoundBuffer);
         enable_hook(target);
         // Somewhy hooking freq from dsound doesnt work
+        // Hooking more mmf2 funcs directly to avoid vtable shit
         target = (void*)(mem::get_base("mmfs2.dll") + 0x451d0);
         hook(target, hkApplyFrequencyToBuffer, &fpApplyFrequencyToBuffer);
         enable_hook(target);
@@ -248,7 +248,6 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45050);
         hook(target, hkReleaseHardwareBuffer);
         enable_hook(target);
-        // TODO: mmfs2.dll + 0x448d3 for disabling event?
     }
     return hr;
 }

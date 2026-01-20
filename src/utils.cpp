@@ -32,6 +32,7 @@ bool MyKeyState(int k) {
 }
 
 int JustKeyState(int k) {
+	// 1 - just pressed, -1 - just released
 	auto it = std::find(key_states.begin(), key_states.end(), k);
 	auto st = MyKeyState(k);
 	if (it == key_states.end()) {
@@ -71,6 +72,7 @@ std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
 }
 
 static HMODULE GetSxSModuleHandle(const char* targetPart) {
+	// When GetModuleHandleA doesn't work this might help
 	HMODULE hMods[1024];
 	HANDLE hProcess = GetCurrentProcess();
 	DWORD cbNeeded;
@@ -141,6 +143,7 @@ void get_win_size(int& w_buf, int& h_buf) {
 }
 
 void get_cursor_pos(int& x_buf, int& y_buf) {
+	// Virtual cursor pos
 	POINT point;
 	memset(&point, 0, sizeof(point));
 	GetCursorPos(&point);
@@ -150,6 +153,7 @@ void get_cursor_pos(int& x_buf, int& y_buf) {
 }
 
 void get_cursor_pos_orig(int& x_buf, int& y_buf) {
+	// Real cursor pos
 	POINT point;
 	memset(&point, 0, sizeof(point));
 	GetCursorPosOrig(&point);
@@ -159,13 +163,13 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 }
 
 const char* get_scene_name() {
-	// TODO: return mem::get_base()?
+	// TODO: mem::get_base()?
 	GlobalStats& gStats = **(GlobalStats**)(0x459a98);
 	return (gStats.sceneName && *gStats.sceneName) ? gStats.sceneName : "Unknown";
 }
 
 int get_scene_id() {
-	// TODO: return mem::get_base()?
+	// TODO: mem::get_base()?
 	RunApp& gState = **(RunApp**)0x0459a94;
 	return gState.rhCurrentFrame;
 }
@@ -335,7 +339,7 @@ void* get_player_ptr(int s) {
 }
 
 bool state_save(bfs::File* file) {
-	bool(__cdecl * SaveFunc)(HANDLE);
+	static bool(__cdecl* SaveFunc)(HANDLE);
 	SaveFunc = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
 	if (file == nullptr) {
 		// TODO: actually make save/load dialog
@@ -348,9 +352,9 @@ bool state_save(bfs::File* file) {
 }
 
 bool state_load(bfs::File* file) {
-	int outver = 0;
-	int(__cdecl * LoadFunc)(HANDLE, int*);
+	static int(__cdecl* LoadFunc)(HANDLE, int*);
 	LoadFunc = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
+	int outver = 0;
 	if (file == nullptr) {
 		LoadFunc(INVALID_HANDLE_VALUE, &outver);
 		return true;

@@ -66,9 +66,8 @@ std::string get_config_path() {
 }
 
 bool starts_with(const string& mainStr, const string& prefix) {
-    if (mainStr.length() < prefix.length()) {
+    if (mainStr.length() < prefix.length())
         return false;
-    }
     return mainStr.compare(0, prefix.length(), prefix) == 0;
 }
 
@@ -239,19 +238,19 @@ static void create_default_config(const string& path) {
 }
 
 void conf::read() {
-    conf::cap_cmd = "";
-    conf::cap_start = 0;
-    conf::cap_cnt = 0;
-    conf::rapid_bind = -1;
-    conf::first_run = false;
-    conf::tas_mode = conf::skip_msg = conf::god = conf::no_vp = conf::old_rec = conf::no_au = conf::force_gdi =
-        conf::no_sh = conf::keep_save = conf::no_trans = conf::no_ps = conf::au_mth = conf::cap_au =
-        conf::no_cmove = conf::draw_cursor = conf::emu_mouse = conf::allow_render = false;
-    conf::direct_render = conf::fix_white_render = true;
-	conf::cur_mouse_checked = false;
-    conf::tp_on_click = conf::input_in_menu = false;
-    conf::menu_hotkey = 45;
-    conf::menu = true;
+    cap_cmd = "";
+    cap_start = 0;
+    cap_cnt = 0;
+    rapid_bind = -1;
+    first_run = false;
+    tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi =
+        no_sh = keep_save = no_trans = no_ps = au_mth = cap_au =
+        no_cmove = draw_cursor = emu_mouse = allow_render = false;
+    direct_render = fix_white_render = true;
+	cur_mouse_checked = false;
+    tp_on_click = input_in_menu = false;
+    menu_hotkey = 45;
+    menu = true;
     pos[0] = pos[1] = 0;
     size[0] = 200;
     size[1] = 100;
@@ -261,7 +260,7 @@ void conf::read() {
         create_default_config(file_path);
         ifile = bfs::File(file_path, 0);
         ASS(ifile.is_open());
-        conf::first_run = true;
+        first_run = true;
     }
     int cap_end = -1;
     string line;
@@ -273,55 +272,55 @@ void conf::read() {
         // cout << "line: " << line << std::endl;
         // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god="))
-            conf::god = read_int(line) != 0;
+            god = read_int(line) != 0;
         else if (starts_with(line, "teleport_with_mouse="))
-            conf::tp_on_click = read_int(line) != 0;
+            tp_on_click = read_int(line) != 0;
         else if (starts_with(line, "tas_mode="))
-            conf::tas_mode = read_int(line) != 0;
+            tas_mode = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport="))
-            conf::no_vp = read_int(line) != 0;
+            no_vp = read_int(line) != 0;
         else if (starts_with(line, "disable_shaders="))
-            conf::no_sh = read_int(line) != 0;
+            no_sh = read_int(line) != 0;
         else if (starts_with(line, "disable_transitions="))
-            conf::no_trans = read_int(line) != 0;
+            no_trans = read_int(line) != 0;
         else if (starts_with(line, "disable_perspective="))
-            conf::no_ps = read_int(line) != 0;
+            no_ps = read_int(line) != 0;
         else if (starts_with(line, "skip_messageboxes="))
-            conf::skip_msg = read_int(line) != 0;
+            skip_msg = read_int(line) != 0;
         else if (starts_with(line, "hitbox_level="))
-            conf::hitbox_level = std::max(read_int(line), 0);
+            hitbox_level = std::max(read_int(line), 0);
         else if (starts_with(line, "menu_hotkey="))
-            conf::menu_hotkey = read_int(line);
+            menu_hotkey = read_int(line);
         else if (starts_with(line, "menu="))
-            conf::menu = read_int(line) != 0;
+            menu = read_int(line) != 0;
         else if (starts_with(line, "keep_save="))
-            conf::keep_save = read_int(line) != 0;
+            keep_save = read_int(line) != 0;
         else if (starts_with(line, "no_mouse_move="))
-            conf::no_cmove = read_int(line) != 0;
+            no_cmove = read_int(line) != 0;
         else if (starts_with(line, "draw_cursor="))
-            conf::draw_cursor = read_int(line) != 0;
+            draw_cursor = read_int(line) != 0;
         else if (starts_with(line, "simulate_mouse="))
-            conf::emu_mouse = read_int(line) != 0;
+            emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "tas_force_gdi="))
-            conf::force_gdi = read_int(line) != 0;
+            force_gdi = read_int(line) != 0;
         else if (starts_with(line, "tas_disable_audio="))
-            conf::no_au = read_int(line) != 0;
+            no_au = read_int(line) != 0;
         else if (starts_with(line, "tas_audio_capture="))
-            conf::cap_au = read_int(line) != 0;
+            cap_au = read_int(line) != 0;
         else if (starts_with(line, "tas_audio_main_thread="))
-            conf::au_mth = read_int(line) != 0;
+            au_mth = read_int(line) != 0;
         else if (starts_with(line, "allow_render="))
-            conf::allow_render = read_int(line) != 0;
+            allow_render = read_int(line) != 0;
         else if (starts_with(line, "direct_render="))
-            conf::direct_render = read_int(line) != 0;
+            direct_render = read_int(line) != 0;
         else if (starts_with(line, "old_render="))
-            conf::old_rec = read_int(line) != 0;
+            old_rec = read_int(line) != 0;
         else if (starts_with(line, "fix_white_render="))
-            conf::fix_white_render = read_int(line) != 0;
+            fix_white_render = read_int(line) != 0;
         else if (starts_with(line, "render_start="))
-            conf::cap_start = read_int(line);
+            cap_start = read_int(line);
         else if (starts_with(line, "render_count="))
-            conf::cap_cnt = read_int(line);
+            cap_cnt = read_int(line);
         else if (starts_with(line, "render_end="))
             cap_end = read_int(line);
         else if (starts_with(line, "win_pos="))
@@ -335,9 +334,9 @@ void conf::read() {
         else if (starts_with(line, "btas="))
             btas::read_setting(line, line_orig);
         else if (starts_with(line, "render_cmd=")) {
-            conf::cap_cmd = line_orig.substr(10);
-            while (conf::cap_cmd.size() > 0 && (isspace(conf::cap_cmd[0]) || conf::cap_cmd[0] == '='))
-                conf::cap_cmd = conf::cap_cmd.substr(1);
+            cap_cmd = line_orig.substr(10);
+            while (cap_cmd.size() > 0 && (isspace(cap_cmd[0]) || cap_cmd[0] == '='))
+                cap_cmd = cap_cmd.substr(1);
         }
         else {
             ass::show_err((string("Unknown setting: ") + line_orig).c_str());
@@ -345,5 +344,5 @@ void conf::read() {
         }
     }
     if (cap_end > 0)
-        conf::cap_cnt = cap_end - conf::cap_start;
+        cap_cnt = cap_end - cap_start;
 }

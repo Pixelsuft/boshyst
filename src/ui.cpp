@@ -59,6 +59,7 @@ static void post_draw() {
 		int x, y;
 		get_cursor_pos(x, y);
 		if (x >= 0 && y >= 0) {
+			// Draw cursor dot
 			ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
 			draw_list->AddCircleFilled(ImVec2((float)x, (float)y), 3.f, IM_COL32(255, 0, 0, 255), 8);
 		}
@@ -281,9 +282,8 @@ void ui::draw() {
 		last_reset = false;
 		return;
 	}
-	if (is_btas) {
+	if (is_btas)
 		ui_menu_draw();
-	}
 	else {
 		int scene_id = get_scene_id();
 		if (scene_id != last_scene) {

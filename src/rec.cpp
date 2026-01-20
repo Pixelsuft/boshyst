@@ -45,9 +45,11 @@ extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 
 static void get_buf_size(LPDIRECT3DDEVICE9 pDevice, int& w_buf, int& h_buf) {
     if (pDevice == nullptr) {
+        // Get default sizes
         get_win_size(w_buf, h_buf);
         return;
     }
+    // Get D3D9 output size
     LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
     ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
     D3DSURFACE_DESC desc;
@@ -62,6 +64,7 @@ void rec::init(void* dev) {
     buffer_size = ws.first * ws.second * 4;
     data_buffer.resize(buffer_size);
     if (dev == nullptr) {
+        // BitBlt/PrintWindow capture
         srcdc = GetDC(hwnd);
         ASS(srcdc != nullptr);
         memdc = CreateCompatibleDC(srcdc);
@@ -79,6 +82,7 @@ void rec::init(void* dev) {
         old_bmp = SelectObject(memdc, bmp);
     }
     else {
+        // D3D9 capture
         LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
         LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
         ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);

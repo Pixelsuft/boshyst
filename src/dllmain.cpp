@@ -51,6 +51,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
     if (!inited)
     {
+        // Init imgui
         D3DDEVICE_CREATION_PARAMETERS params;
         pDevice->GetCreationParameters(&params);
         if (!is_btas)
@@ -69,6 +70,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         cout << "graphics inited\n";
 #endif
     }
+    // Render before we draw our GUI
     if (conf::direct_render)
         rec::rec_tick(pDevice);
 
@@ -87,8 +89,9 @@ void try_to_hook_graphics() {
     if (gr_hooked)
         return;
     if (is_hourglass) {
+        // Somewhy hourglass freezes after logo when initing during logo scene
         int cur_scene = get_scene_id();
-        if (cur_scene < 2 || cur_scene > 60)
+        if (cur_scene < 1 || cur_scene > 59)
             return;
     }
     gr_hooked = true;
@@ -123,6 +126,8 @@ void try_to_init() {
 #if SHOW_STAGES
     cout << "before hooking 1\n";
 #endif
+    // These values might be already set in BTAS mode
+    // TODO: search in windows of the current process
     if (!hwnd)
         hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
     if (!mhwnd)
@@ -150,6 +155,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
         is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
         is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr;
+        // Hacky if needed to work under hourglass
         if (PathFileExistsA("is_btas.txt"))
             is_btas = true;
 #if defined(_DEBUG)
@@ -157,6 +163,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #else
         if (is_btas || is_hourglass) {
 #endif
+            // Alloc console as early as possible
             AllocConsole();
             freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         }

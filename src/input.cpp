@@ -69,7 +69,7 @@ void input_tick() {
         return;
     int w, h;
     get_win_size(w, h);
-    // TODO: better way to handle??? (BTAS way?)
+    // TODO: better way to handle??? (BTAS way?) (still need to be compatible with hourglass)
     for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
         if (JustKeyState(it->first) == 1) {
             // cout << "sus_click\n";

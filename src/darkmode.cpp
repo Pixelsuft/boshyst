@@ -15,7 +15,7 @@
 
 #define LOAD_FUNC_ORD(func_name, func_ord) do { \
 	win_shit.func_name = reinterpret_cast<func_name##_t>(GetProcAddress(win_shit.uxtheme_handle, MAKEINTRESOURCEA(func_ord))); \
-	if (win_shit.func_name == NULL) { \
+	if (win_shit.func_name == nullptr) { \
 		ass::show_err("WTF failed to load uxtheme.dll func " #func_name); \
 		FreeLibrary(win_shit.uxtheme_handle); \
 		return true; \
@@ -119,8 +119,9 @@ static win_shit_type win_shit;
 extern "C" NTSYSAPI WIN_NTDLL_NTSTATUS NTAPI RtlGetVersion(WIN_NTDLL_OSVERSIONINFOEXW* ver_info);
 
 bool fix_win32_theme() {
-	win_shit.uxtheme_handle = NULL;
-	win_shit.user32_handle = NULL;
+	// Just copy-pasted code from my game
+	win_shit.uxtheme_handle = nullptr;
+	win_shit.user32_handle = nullptr;
 	WIN_NTDLL_OSVERSIONINFOEXW os_ver;
 	os_ver.dwOSVersionInfoSize = sizeof(WIN_NTDLL_OSVERSIONINFOEXW);
 	RtlGetVersion(&os_ver);
@@ -128,13 +129,13 @@ bool fix_win32_theme() {
 	win_shit.build_num &= ~0xF0000000;
 	if (win_shit.build_num < 17763)
 		return true; // Lol ur windoes is too old;
-	win_shit.uxtheme_handle = LoadLibraryExW(L"uxtheme.dll", NULL, LOAD_IGNORE_CODE_AUTHZ_LEVEL | LOAD_LIBRARY_SEARCH_SYSTEM32);
-	if (win_shit.uxtheme_handle == NULL) {
+	win_shit.uxtheme_handle = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_IGNORE_CODE_AUTHZ_LEVEL | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	if (win_shit.uxtheme_handle == nullptr) {
 		ass::show_err("WTF failed to load uxtheme.dll");
 		return false;
 	};
-	win_shit.user32_handle = LoadLibraryExW(L"user32.dll", NULL, LOAD_IGNORE_CODE_AUTHZ_LEVEL | LOAD_LIBRARY_SEARCH_SYSTEM32);
-	if (win_shit.user32_handle == NULL) {
+	win_shit.user32_handle = LoadLibraryExW(L"user32.dll", nullptr, LOAD_IGNORE_CODE_AUTHZ_LEVEL | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	if (win_shit.user32_handle == nullptr) {
 		FreeLibrary(win_shit.uxtheme_handle);
 		ass::show_err("WTF failed to load user32.dll");
 		return false;
@@ -143,11 +144,11 @@ bool fix_win32_theme() {
 	LOAD_FUNC_ORD(ShouldAppsUseDarkMode, 132);
 	LOAD_FUNC_ORD(AllowDarkModeForWindow, 133);
 	if (win_shit.build_num < 18362) {
-		win_shit.SetPreferredAppMode = NULL;
+		win_shit.SetPreferredAppMode = nullptr;
 		LOAD_FUNC_ORD(AllowDarkModeForApp, 135);
 	}
 	else {
-		win_shit.AllowDarkModeForApp = NULL;
+		win_shit.AllowDarkModeForApp = nullptr;
 		LOAD_FUNC_ORD(SetPreferredAppMode, 135);
 	}
 	LOAD_FUNC_ORD(FlushMenuThemes, 136);
@@ -156,15 +157,15 @@ bool fix_win32_theme() {
 	if (win_shit.build_num >= 18290)
 		LOAD_FUNC_ORD(ShouldSystemUseDarkMode, 138);
 	else
-		win_shit.ShouldSystemUseDarkMode = NULL;
+		win_shit.ShouldSystemUseDarkMode = nullptr;
 	if (win_shit.build_num >= 18334)
 		LOAD_FUNC_ORD(IsDarkModeAllowedForApp, 139);
 	else
-		win_shit.IsDarkModeAllowedForApp = NULL;
+		win_shit.IsDarkModeAllowedForApp = nullptr;
 	// Let's begin our magic
-	if (win_shit.AllowDarkModeForApp != NULL)
+	if (win_shit.AllowDarkModeForApp != nullptr)
 		win_shit.AllowDarkModeForApp(true);
-	if (win_shit.SetPreferredAppMode != NULL)
+	if (win_shit.SetPreferredAppMode != nullptr)
 		win_shit.SetPreferredAppMode(WIN_APPMODE_ALLOW_DARK);
 	win_shit.RefreshImmersiveColorPolicyState();
 	win_shit.AllowDarkModeForWindow(hwnd, true);
@@ -173,7 +174,7 @@ bool fix_win32_theme() {
 	if (win_shit.build_num < 18362) {
 		SetPropW(hwnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(win_dark)));
 	}
-	else if (win_shit.SetWindowCompositionAttribute != NULL) {
+	else if (win_shit.SetWindowCompositionAttribute != nullptr) {
 		WINDOWCOMPOSITIONATTRIBDATA data = { WCA_USEDARKMODECOLORS, &win_dark, sizeof(win_dark) };
 		win_shit.SetWindowCompositionAttribute(hwnd, &data);
 	}
