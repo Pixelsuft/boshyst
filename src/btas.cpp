@@ -811,6 +811,9 @@ bool btas::on_before_update() {
 		return true;
 	}
 	pState.isPaused = false;
+	// Sync seed for sure
+	ushort temp_seed = (ushort)st.seed;
+	pState.RandomSeed = *(short*)&temp_seed;
 	if (is_replay) {
 		for (; repl_index < (int)st.ev.size(); repl_index++) {
 			BTasEvent& ev = st.ev[repl_index];
@@ -866,9 +869,6 @@ bool btas::on_before_update() {
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
-	ushort temp_seed = (ushort)st.seed;
-	// Sync seed for sure
-	pState.RandomSeed = *(short*)&temp_seed;
 	last_upd = true;
 	last_upd2 = true;
 	st.prev = is_replay ? repl_holding : holding;
