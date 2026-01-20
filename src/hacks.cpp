@@ -428,6 +428,45 @@ static BOOL __stdcall GetUserNameAHook(LPSTR lpBuffer, LPDWORD pcbBuffer) {
     return TRUE;
 }
 
+static int(__stdcall* GetSystemMetricsOrig)(int nIndex);
+static int __stdcall GetSystemMetricsHook(int nIndex) {
+    switch (nIndex) {
+        /*
+        case SM_CXSCREEN:
+        case SM_CXVIRTUALSCREEN:
+            return 1280;
+        case SM_CYSCREEN:
+        case SM_CYVIRTUALSCREEN:
+            return 1024;
+        */
+    case SM_CMONITORS:
+        return 1;
+    case SM_SAMEDISPLAYFORMAT:
+        return 1;
+    case SM_CXVSCROLL:
+    case SM_CYHSCROLL:
+    case SM_CYCAPTION:
+    case SM_CYSIZE:
+    case SM_CXFRAME:
+    case SM_CYFRAME:
+    case SM_CYVSCROLL:
+    case SM_CXHSCROLL:
+        return 0;
+    default:
+        return GetSystemMetricsOrig(nIndex);
+    }
+}
+
+static int (__fastcall* EnterFullscreenModeOrig)(void* pContext, void* edx, HWND targetHwnd, int width, int height, int colorDepth);
+static int __fastcall EnterFullscreenModeHook(void* pContext, void* edx, HWND targetHwnd, int width, int height, int colorDepth) {
+    if (1) {
+        // Native fullscreen
+        width = GetSystemMetricsOrig(0);
+        height = GetSystemMetricsOrig(1);
+    }
+    return EnterFullscreenModeOrig(pContext, edx, targetHwnd, width, height, colorDepth);
+}
+
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
@@ -445,8 +484,9 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
     DWORD bW;
     if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
-       //  hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
+        //  hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
         // TODO: hook mmfs2 dll funcs directly here
+        hook(mem::get_base("mmfs2.dll") + 0x287b0, EnterFullscreenModeHook, &EnterFullscreenModeOrig);
         audio_init();
         enable_hook();
     }
@@ -627,33 +667,6 @@ static DWORD __stdcall GetTempPathAHook(DWORD nBufferLength, LPSTR lpBuffer) {
 
 static void __stdcall DragAcceptFilesHook(HWND hWnd, BOOL fAccept) {
     // cout << "DragAcceptFilesHook\n";
-}
-
-static int (__stdcall* GetSystemMetricsOrig)(int nIndex);
-static int __stdcall GetSystemMetricsHook(int nIndex) {
-    switch (nIndex) {
-    //case SM_CXSCREEN:
-    //case SM_CXVIRTUALSCREEN:
-    //    return 3840;
-    //case SM_CYSCREEN:
-    //case SM_CYVIRTUALSCREEN:
-    //    return 2160;
-    case SM_CMONITORS:
-        return 1;
-    case SM_SAMEDISPLAYFORMAT:
-        return 1;
-    case SM_CXVSCROLL:
-    case SM_CYHSCROLL:
-    case SM_CYCAPTION:
-    case SM_CYSIZE:
-    case SM_CXFRAME:
-    case SM_CYFRAME:
-    case SM_CYVSCROLL:
-    case SM_CXHSCROLL:
-        return 0;
-    default:
-        return GetSystemMetricsOrig(nIndex);
-    }
 }
 
 static HWND (__stdcall* CreateWindowExAOrig)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);

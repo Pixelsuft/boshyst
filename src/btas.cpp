@@ -263,7 +263,10 @@ void btas::pre_init() {
 	WPM(mem::get_base() + 0x425a1, &temp, 1);
 	WPM(mem::get_base() + 0x436b4, &temp, 1);
 	// Disable some dialogs (WTF?)
-	WPM(mem::get_base() + 0x431a2, &temp, 1);
+	const uint8_t cent_patch[] = { 0x66, 0xe9, 0xca };
+	WPM(mem::get_base() + 0x431a2, cent_patch, 3);
+	// Disable window centering
+	// WPM(mem::get_base() + 0x330eb, &temp, 1);
 	// Patch save state bug in original code (rcBoundaryBottom instead of doubled rcBoundaryRight)
 	// TODO: move to hacks.cpp?
 	temp = 0x24;
