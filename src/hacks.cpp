@@ -125,7 +125,10 @@ CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, v
     ushort creationFlags, uint initialDir, int layerIndex) {
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
     // if (is_btas && objectInfoID == 106 && ret != -1)
-    //    btas::reg_obj(ret);
+    //    btas::reg_obj(ret);    //    btas::reg_obj(ret);
+    if (parentHandle == 28 && ret != -1) {
+        // cout << "player h " << ret << std::endl;
+    }
     return ret;
 }
 
@@ -662,8 +665,22 @@ static void (__cdecl* UpdateObjectSusOrig)(ObjectHeader* obj);
 static void __cdecl UpdateObjectSusHook(ObjectHeader* obj) {
     int mvtOffset = obj->hoAdpOffset;
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
-    if ((*statusFlags & 1) == 0 && obj == get_player_ptr(get_scene_id())) {
+    if ((*statusFlags & 1) == 0 && obj == get_player_ptr(get_scene_id()) && 0) {
         // TODO: block from hiding
+        *statusFlags |= 1;
+        RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+        for (int i = pState.activeObjectCount - 1; i > 20; i--) {
+            ObjectHeader* ptr = pState.objectList[i * 2];
+            if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) >= 10 || std::abs(obj->yPos - ptr->yPos) >= 10)
+                continue;
+            cout << obj->handle << " " << obj->oiHandle << "\n";
+            statusFlags = (ushort*)((int)&ptr->eventTriggerTable + mvtOffset);
+            cout << "hiding " << ptr->handle << " " << ptr->oiHandle << " " << ptr->parentID << '\n';
+            ptr->spriteHandle = nullptr;
+            *statusFlags &= ~1;
+            UpdateObjectSusOrig(ptr);
+            break;
+        }
     }
     UpdateObjectSusOrig(obj);
 }

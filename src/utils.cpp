@@ -177,6 +177,7 @@ static void* get_player_by_id(int idx) {
 
 static int get_player_handle(int s) {
 	switch (s) {
+	case 1: return 4;
 	case 2: return 28;
 	case 3: return 14;
 	case 4: return 331;
