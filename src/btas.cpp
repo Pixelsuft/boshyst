@@ -547,6 +547,7 @@ static void b_state_load(int slot, bool from_loop) {
 			// Delete temporary saves
 			init_temp_saves();
 		}
+		repl_index = 0;
 	}
 	else {
 		st.scene = scene_id;
@@ -1099,7 +1100,7 @@ void btas::draw_tab() {
 			else {
 				// Trim total to current
 				trim_current_state();
-				ASS((int)st.ev.size() == repl_index);
+				ASS(repl_index == 0 || (int)st.ev.size() == repl_index);
 				// st.ev.resize(repl_index);
 			}
 			repl_index = 0;
