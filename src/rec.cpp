@@ -238,7 +238,7 @@ void rec::rec_tick(void* dev) {
         int ret = GetWindowTextA(hwnd, buf, 32);
         ASS(ret > 0);
         buf[ret] = '\0';
-        if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing && (!is_btas || last_upd)) {
+        if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing && (!is_btas || last_upd2)) {
             capturing = true;
             rec::init(dev);
         }
@@ -252,13 +252,13 @@ void rec::rec_tick(void* dev) {
                 SetWindowTextAOrig(hwnd, "I Wanna Be The Boshy R");
                 next_white = conf::fix_white_render;
             }
-            if (!is_btas || last_upd)
+            if (!is_btas || last_upd2)
                 rec::cap(dev);
         }
         return;
     }
     // Legacy way
-    if (is_btas && !last_upd)
+    if (is_btas && !last_upd2)
         return;
     static int cur_total = 0;
     static int cur_cnt = 0;

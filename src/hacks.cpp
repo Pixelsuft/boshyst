@@ -288,6 +288,7 @@ static int __stdcall UpdateGameFrameHook() {
         btas::on_after_update();
         if (!conf::direct_render)
             rec::rec_tick(nullptr);
+        last_upd2 = false;
         return ret;
     }
 
@@ -347,6 +348,7 @@ static int __stdcall UpdateGameFrameHook() {
     if (!conf::direct_render)
         rec::rec_tick(nullptr);
 
+    last_upd2 = false;
     return ret;
 }
 

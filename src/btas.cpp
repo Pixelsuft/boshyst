@@ -162,6 +162,7 @@ static bool timers_fix = true;
 static bool next_step = false;
 static bool slowmo = false;
 bool last_upd = false;
+bool last_upd2 = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
 static char export_buf[MAX_PATH];
@@ -869,6 +870,7 @@ bool btas::on_before_update() {
 	// Sync seed for sure
 	pState.RandomSeed = *(short*)&temp_seed;
 	last_upd = true;
+	last_upd2 = true;
 	st.prev = is_replay ? repl_holding : holding;
 	next_step = false;
 

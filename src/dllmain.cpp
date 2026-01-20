@@ -96,6 +96,7 @@ void try_to_hook_graphics() {
     }
     gr_hooked = true;
     if (GetModuleHandleA("mmf2d3d9.dll") == nullptr) {
+        conf::direct_render = false;
         ass::show_err("Boshyst menu only supports Direct3D 9 mode, you are using a different one");
         show_menu = false;
         // ASS(false);
