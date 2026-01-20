@@ -22,6 +22,7 @@ namespace conf {
     string cap_cmd;
     int pos[2];
     int size[2];
+    int full_size[2];
     int cap_start;
     int cap_cnt;
     int rapid_bind;
@@ -153,6 +154,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("win_pos = 0, 0 // Info window position"));
     ASS(file.write_line("win_size = 200, 100 // Info window size"));
     ASS(file.write_line("menu_hotkey = 45 // Default menu toggle hotkey, VK_INSERT"));
+    ASS(file.write_line("fullscreen_size = 0, 0 // Leave defaults for fullscreen mode (also use -1, -1 for desktop resolution)"));
     ASS(file.write_line(""));
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
@@ -326,6 +328,8 @@ void conf::read() {
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
             read_vec2_int(line, "win_size=%i,%i", size);
+        else if (starts_with(line, "fullscreen_size"))
+            read_vec2_int(line, "fullscreen_size=%i,%i", full_size);
         else if (starts_with(line, "bind="))
             read_bind(line_orig, line);
         else if (starts_with(line, "btas="))

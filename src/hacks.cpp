@@ -460,8 +460,14 @@ static int __stdcall GetSystemMetricsHook(int nIndex) {
 static int (__stdcall* FindBestModeCallbackOrig)(int* candidate, DisplaySearchCriteria* best);
 static int __stdcall FindBestModeCallbackHook(int* candidate, DisplaySearchCriteria* best) {
     auto ret = FindBestModeCallbackOrig(candidate, best);
-    best->targetWidth = best->bestMatchedWidth = GetSystemMetricsOrig(0);
-    best->targetHeight = best->bestMatchedHeight = GetSystemMetricsOrig(1);
+    if (conf::full_size[0] < 0)
+        best->targetWidth = best->bestMatchedWidth = GetSystemMetricsOrig(0);
+    else if (conf::full_size[0] > 0)
+        best->targetWidth = best->bestMatchedWidth = conf::full_size[0];
+    if (conf::full_size[1] < 0)
+        best->targetHeight = best->bestMatchedHeight = GetSystemMetricsOrig(1);
+    else if (conf::full_size[1] > 0)
+        best->targetHeight = best->bestMatchedHeight = conf::full_size[1];
     return 0;
 }
 
