@@ -10336,3 +10336,19 @@ struct ObjectInfo {
     undefined field17_0x13;
     struct MovementController *pMovementBank;
 };
+
+struct DisplaySearchCriteria {
+    int targetWidth;
+    int targetHeight;
+    int minColorDepth;
+    int bestMatchedWidth;
+    int bestMatchedHeight;
+    int bestMatchedDepth;
+    int useAspectRatio;
+    undefined field7_0x1c;
+    undefined field8_0x1d;
+    undefined field9_0x1e;
+    undefined field10_0x1f;
+    double targetAspectRatio;
+    double aspectTolerance;
+};

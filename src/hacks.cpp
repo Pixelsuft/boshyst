@@ -457,14 +457,12 @@ static int __stdcall GetSystemMetricsHook(int nIndex) {
     }
 }
 
-static int (__fastcall* EnterFullscreenModeOrig)(void* pContext, void* edx, HWND targetHwnd, int width, int height, int colorDepth);
-static int __fastcall EnterFullscreenModeHook(void* pContext, void* edx, HWND targetHwnd, int width, int height, int colorDepth) {
-    if (1) {
-        // Native fullscreen
-        width = GetSystemMetricsOrig(0);
-        height = GetSystemMetricsOrig(1);
-    }
-    return EnterFullscreenModeOrig(pContext, edx, targetHwnd, width, height, colorDepth);
+static int (__stdcall* FindBestModeCallbackOrig)(int* candidate, DisplaySearchCriteria* best);
+static int __stdcall FindBestModeCallbackHook(int* candidate, DisplaySearchCriteria* best) {
+    auto ret = FindBestModeCallbackOrig(candidate, best);
+    best->targetWidth = best->bestMatchedWidth = GetSystemMetricsOrig(0);
+    best->targetHeight = best->bestMatchedHeight = GetSystemMetricsOrig(1);
+    return 0;
 }
 
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
@@ -486,7 +484,6 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
         //  hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
         // TODO: hook mmfs2 dll funcs directly here
-        hook(mem::get_base("mmfs2.dll") + 0x287b0, EnterFullscreenModeHook, &EnterFullscreenModeOrig);
         audio_init();
         enable_hook();
     }
@@ -815,5 +812,6 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
+    hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
     init_temp_saves();
 }
