@@ -71,6 +71,7 @@ std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
 	return ret;
 }
 
+/*
 static HMODULE GetSxSModuleHandle(const char* targetPart) {
 	// When GetModuleHandleA doesn't work this might help
 	HMODULE hMods[1024];
@@ -89,6 +90,7 @@ static HMODULE GetSxSModuleHandle(const char* targetPart) {
 	}
 	return NULL;
 }
+*/
 
 size_t mem::get_base() {
 	static auto def_ret = (size_t)GetModuleHandleW(nullptr);
@@ -103,7 +105,8 @@ size_t mem::get_base(const char* obj_name) {
 
 void* mem::addr(const char* func_name, const char* obj_name) {
 	// cout << "trying to load " << obj_name << std::endl;
-	auto obj = (strcmp(obj_name, "MSVCR90.dll") == 0) ? GetSxSModuleHandle(obj_name) : GetModuleHandleA(obj_name);
+	// auto obj = (strcmp(obj_name, "MSVCR90.dll") == 0) ? GetSxSModuleHandle(obj_name) : GetModuleHandleA(obj_name);
+	auto obj = GetModuleHandleA(obj_name);
 	if (!obj && 0) {
 		cout << "trying to fix " << obj_name << " for " << func_name << std::endl;
 		LoadLibraryA(obj_name);

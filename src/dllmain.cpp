@@ -9,6 +9,7 @@
 #include <d3d9.h>
 #include "conf.hpp"
 #include "ass.hpp"
+#include "mem.hpp"
 #include "init.hpp"
 #include "ui.hpp"
 #include "rec.hpp"
@@ -154,6 +155,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+        if (mem::get_base() != 0x400000) {
+            ass::show_err("Invalid process. You should inject Boshyst only in the IWBTB process!");
+            break;
+        }
         is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
         is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr;
         // Hacky if needed to work under hourglass
