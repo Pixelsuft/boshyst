@@ -339,8 +339,7 @@ void* get_player_ptr(int s) {
 }
 
 bool state_save(bfs::File* file) {
-	static bool(__cdecl* SaveFunc)(HANDLE);
-	SaveFunc = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
+	static bool(__cdecl* SaveFunc)(HANDLE) = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
 	if (file == nullptr) {
 		// TODO: actually make save/load dialog
 		SaveFunc(INVALID_HANDLE_VALUE);
@@ -352,8 +351,7 @@ bool state_save(bfs::File* file) {
 }
 
 bool state_load(bfs::File* file) {
-	static int(__cdecl* LoadFunc)(HANDLE, int*);
-	LoadFunc = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
+	static int(__cdecl* LoadFunc)(HANDLE, int*) = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
 	int outver = 0;
 	if (file == nullptr) {
 		LoadFunc(INVALID_HANDLE_VALUE, &outver);
