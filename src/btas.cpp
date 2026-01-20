@@ -333,7 +333,7 @@ void btas::init() {
 static void trim_current_state() {
 	st.total = st.frame;
 	// Hacky way to trim events from st.total to st.frame
-	while (!st.ev.empty() && (st.ev.end() - 1)->frame > st.frame)
+	while (!st.ev.empty() && (st.ev.end() - 1)->frame >= st.frame)
 		st.ev.erase(st.ev.end() - 1);
 }
 
@@ -905,7 +905,11 @@ void btas::on_after_update() {
 		if (is_replay && st.frame == st.total && st.frame > 0) {
 			is_replay = false;
 			is_paused = true;
+
 			repl_holding.clear();
+			ASS((int)st.ev.size() == repl_index);
+			trim_current_state();
+			repl_index = 0;
 			last_msg = "Switched to recording";
 		}
 	}
@@ -1095,7 +1099,8 @@ void btas::draw_tab() {
 			else {
 				// Trim total to current
 				trim_current_state();
-				st.ev.resize(repl_index);
+				ASS((int)st.ev.size() == repl_index);
+				// st.ev.resize(repl_index);
 			}
 			repl_index = 0;
 		}
