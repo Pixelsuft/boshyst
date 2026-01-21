@@ -129,14 +129,14 @@ bool fix_win32_theme() {
 	win_shit.build_num &= ~0xF0000000;
 	if (win_shit.build_num < 17763)
 		return true; // Lol ur windoes is too old;
-	win_shit.uxtheme_handle = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_IGNORE_CODE_AUTHZ_LEVEL | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	win_shit.uxtheme_handle = GetModuleHandleW(L"uxtheme.dll");
 	if (win_shit.uxtheme_handle == nullptr) {
 		ass::show_err("WTF failed to load uxtheme.dll");
 		return false;
 	};
-	win_shit.user32_handle = LoadLibraryExW(L"user32.dll", nullptr, LOAD_IGNORE_CODE_AUTHZ_LEVEL | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	win_shit.user32_handle = GetModuleHandleW(L"user32.dll");
 	if (win_shit.user32_handle == nullptr) {
-		FreeLibrary(win_shit.uxtheme_handle);
+		// FreeLibrary(win_shit.uxtheme_handle);
 		ass::show_err("WTF failed to load user32.dll");
 		return false;
 	};
@@ -178,8 +178,8 @@ bool fix_win32_theme() {
 		WINDOWCOMPOSITIONATTRIBDATA data = { WCA_USEDARKMODECOLORS, &win_dark, sizeof(win_dark) };
 		win_shit.SetWindowCompositionAttribute(hwnd, &data);
 	}
-	FreeLibrary(win_shit.user32_handle);
-	FreeLibrary(win_shit.uxtheme_handle);
+	// FreeLibrary(win_shit.user32_handle);
+	// FreeLibrary(win_shit.uxtheme_handle);
 	return true;
 }
 #endif

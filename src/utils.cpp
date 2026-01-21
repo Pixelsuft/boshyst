@@ -10,6 +10,7 @@
 #include "utils.hpp"
 #include "ghidra_headers.h"
 #include <vector>
+#include <algorithm>
 
 using std::cout;
 

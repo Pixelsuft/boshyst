@@ -18,9 +18,9 @@ struct IntPair {
 template<typename T>
 inline std::string to_str(T x) {
 #if _MSC_VER >= 1900
-    return std::to_string((long long)x);
-#else
     return std::to_string(x);
+#else
+    return std::to_string((long long)x);
 #endif
 }
 

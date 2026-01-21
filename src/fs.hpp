@@ -8,10 +8,10 @@
 #endif
 
 namespace bfs {
-	enum class SeekMode {
-		Begin = 0,
-		Current = 1,
-		End = 2
+	enum SeekMode {
+		SeekBegin = 0,
+		SeekCurrent = 1,
+		SeekEnd = 2
 	};
 
 	class File {
@@ -30,7 +30,7 @@ namespace bfs {
 		inline bool write_line(const std::string& line) {
 			return write((line + "\r\n").c_str(), line.size() + 2);
 		}
-		bool seek(long long offset, SeekMode mode = SeekMode::Begin);
+		bool seek(long long offset, SeekMode mode);
 		long long tell();
 		inline void* get_handle() {
 			return handle;

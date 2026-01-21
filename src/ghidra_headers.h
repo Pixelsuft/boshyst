@@ -1,3 +1,5 @@
+#include <cstdint>
+
 typedef unsigned char   undefined;
 
 typedef unsigned char    byte;

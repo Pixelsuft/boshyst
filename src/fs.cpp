@@ -73,7 +73,7 @@ bool File::write(const void* buf, size_t size) {
     return WriteFile(handle, buf, (DWORD)size, &bytesWritten, nullptr) && (DWORD)size == bytesWritten;
 }
 
-bool File::seek(long long offset, SeekMode mode) {
+bool File::seek(long long offset, bfs::SeekMode mode) {
     ASS(is_open());
 
     LARGE_INTEGER liOffset;
@@ -81,9 +81,9 @@ bool File::seek(long long offset, SeekMode mode) {
 
     DWORD moveMethod;
     switch (mode) {
-    case SeekMode::Current: moveMethod = FILE_CURRENT; break;
-    case SeekMode::End:     moveMethod = FILE_END;     break;
-    default:                moveMethod = FILE_BEGIN;   break;
+    case SeekCurrent: moveMethod = FILE_CURRENT; break;
+    case SeekEnd:     moveMethod = FILE_END;     break;
+    default:          moveMethod = FILE_BEGIN;   break;
     }
 
     return SetFilePointerEx(handle, liOffset, nullptr, moveMethod) != 0;

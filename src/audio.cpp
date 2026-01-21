@@ -10,12 +10,18 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <mutex>
 #include <vector>
 #include <cstdint>
 
 using std::cout;
 using std::string;
+
+class CriticalSectionLock {
+    CRITICAL_SECTION* m_cs;
+public:
+    CriticalSectionLock(CRITICAL_SECTION& cs) : m_cs(&cs) { EnterCriticalSection(m_cs); }
+    ~CriticalSectionLock() { LeaveCriticalSection(m_cs); }
+};
 
 #pragma pack(push, 1)
 struct WavHeader {
@@ -69,7 +75,8 @@ struct AudioCapture {
 };
 
 static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
-static std::mutex g_audioMutex;
+static CRITICAL_SECTION g_audioCS;
+static bool g_csInitialized = false;
 
 typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
@@ -113,13 +120,13 @@ static void finalize_wav(AudioCapture& cap) {
         }
         // Finalize headers and physically truncate the file
         uint32_t finalFileSize = cap.bytesWritten + 36;
-        cap.file.seek(4);
+        cap.file.seek(4, bfs::SeekBegin);
         cap.file.write((char*)&finalFileSize, 4);
-        cap.file.seek(24);
+        cap.file.seek(24, bfs::SeekBegin);
         cap.file.write((char*)&cap.h.sampleRate, 4);
-        cap.file.seek(28);
+        cap.file.seek(28, bfs::SeekBegin);
         cap.file.write((char*)&cap.h.byteRate, 4);
-        cap.file.seek(40);
+        cap.file.seek(40, bfs::SeekBegin);
         cap.file.write((char*)&cap.bytesWritten, 4);
         cap.file.close();
     }
@@ -128,16 +135,15 @@ static void finalize_wav(AudioCapture& cap) {
 void audio_stop() {
     if (!conf::cap_au)
         return;
-    std::lock_guard<std::mutex> lock(g_audioMutex);
-    for (auto& pair : g_captures) {
-        finalize_wav(pair.second);
-    }
+    CriticalSectionLock lock(g_audioCS);
+    for (auto it = g_captures.begin(); it != g_captures.end(); it++)
+        finalize_wav(it->second);
     g_captures.clear();
 }
 
 static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void* edx, DWORD freq) {
     // IDK but hooking dsound directly doesnt work
-    std::lock_guard<std::mutex> lock(g_audioMutex);
+    CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end() && freq != 0 && freq != it->second.h.sampleRate) {
         // std::cout << "Freq hook: " << it->second.h.sampleRate << " -> " << freq << std::endl;
@@ -149,7 +155,7 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
 }
 
 static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
-    std::lock_guard<std::mutex> lock(g_audioMutex);
+    CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
         // cout << "hkStopHardwareBuffer\n";
@@ -159,7 +165,7 @@ static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx
 }
 
 static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
-    std::lock_guard<std::mutex> lock(g_audioMutex);
+    CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
         finalize_wav(it->second);
@@ -171,7 +177,7 @@ static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void*
 static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* edx) {
     // return fpResetBufferPosition(pThis, edx);
     // FIXME
-    std::lock_guard<std::mutex> lock(g_audioMutex);
+    CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     auto cur_time = btas::get_time();
     if (it != g_captures.end() && it->second.bytesWritten > 0 && it->second.startTime < cur_time) {
@@ -187,7 +193,7 @@ static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* ed
 }
 
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
-    std::lock_guard<std::mutex> lock(g_audioMutex);
+    CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(pThis);
     if (it != g_captures.end() && it->second.file.is_open()) {
         if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
@@ -199,7 +205,7 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
 static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LPCDSBUFFERDESC desc, LPDIRECTSOUNDBUFFER* buffer, LPUNKNOWN unk) {
     HRESULT hr = fpCreateSoundBuffer(pThis, desc, buffer, unk);
     if (SUCCEEDED(hr) && buffer && *buffer && desc->lpwfxFormat) {
-        std::lock_guard<std::mutex> lock(g_audioMutex);
+        CriticalSectionLock lock(g_audioCS);
         unsigned long timestamp = btas::get_time();
         // create wav file for each sound to be joined later via script
         string filename = "audio_" + to_str(timestamp) + "_" + to_str((size_t)*buffer) + ".wav";
@@ -255,5 +261,9 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
 void audio_init() {
     if (!conf::cap_au && !conf::no_au)
         return;
+    if (!g_csInitialized) {
+        InitializeCriticalSection(&g_audioCS);
+        g_csInitialized = true;
+    }
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
 }
