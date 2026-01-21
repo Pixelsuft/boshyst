@@ -1,6 +1,7 @@
 #pragma once
 
 namespace conf {
+	extern float font_scale;
 	extern int pos[2];
 	extern int size[2];
 	extern int full_size[2];

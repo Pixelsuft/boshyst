@@ -155,6 +155,8 @@ static void ui_menu_draw() {
 			draw_basic_text();
 		}
 		if (ImGui::CollapsingHeader("Visual")) {
+			if (ImGui::SliderFloat("Font scale", &conf::font_scale, 0.01f, 10.f))
+				conf::font_scale = mclamp(conf::font_scale, 0.01f, 10.f);
 			ImGui::Checkbox("Pixel filter", &conf::pixel_filter);
 			ImGui::Checkbox("No viewport", &conf::no_vp);
 			ImGui::Checkbox("No perspective", &conf::no_ps);
@@ -283,6 +285,8 @@ void ui::draw() {
 		last_reset = false;
 		return;
 	}
+	ImGuiIO& io = ImGui::GetIO();
+	io.FontGlobalScale = conf::font_scale;
 	if (is_btas)
 		ui_menu_draw();
 	else {

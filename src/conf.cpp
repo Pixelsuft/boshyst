@@ -28,6 +28,7 @@ namespace conf {
     int rapid_bind;
     int menu_hotkey;
     int hitbox_level;
+    float font_scale;
     bool old_rec;
     bool no_vp;
     bool no_ps;
@@ -92,6 +93,14 @@ static int read_int(const string& line) {
             return 0;
     }
     return ret;
+}
+
+static float read_float(const string& line) {
+    for (int i = 0; i < (int)line.size(); i++) {
+        if (line[i] == '=')
+            return (float)atof(line.substr(i + 1).c_str());
+    }
+    return 1.f;
 }
 
 static void read_vec2_int(const string& line, const char* patt, int* buf) {
@@ -162,6 +171,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
     ASS(file.write_line("hitbox_level = 0 // Can be changed to 1 or 2 to show default player"));
     ASS(file.write_line("pixel_filter = 0 // Make textures look pixelated instead of blurry"));
+    ASS(file.write_line("font_scale = 1.0 // Here you can make UI bigger"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
     ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
@@ -254,6 +264,7 @@ void conf::read() {
     direct_render = fix_white_render = true;
 	cur_mouse_checked = false;
     tp_on_click = input_in_menu = false;
+    font_scale = 1.f;
     menu_hotkey = 45;
     menu = true;
     pos[0] = pos[1] = 0;
@@ -334,6 +345,8 @@ void conf::read() {
             cap_cnt = read_int(line);
         else if (starts_with(line, "render_end="))
             cap_end = read_int(line);
+        else if (starts_with(line, "font_scale="))
+            font_scale = read_float(line);
         else if (starts_with(line, "win_pos="))
             read_vec2_int(line, "win_pos=%i,%i", pos);
         else if (starts_with(line, "win_size"))
@@ -354,6 +367,8 @@ void conf::read() {
             ASS(false);
         }
     }
+    if (font_scale <= 0.f)
+        font_scale = 1.f;
     if (cap_end > 0)
         cap_cnt = cap_end - cap_start;
 }
