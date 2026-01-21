@@ -1,5 +1,8 @@
 # Boshyst
 IWBTB mod with hacks and tools to help speedrunning and creating TAS
+## Screenshots
+![Screenshot1](images/Screenshot1.png)
+![Screenshot2](images/Screenshot2.png)
 ## Cold start (mod menu)
 Put [Boshyst DLL](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll) and [DLL Injector](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/Inject-x86.exe) into the game folder. <br />
 Launch the game, open command prompt in the game folder and type:
