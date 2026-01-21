@@ -1,5 +1,15 @@
 # Boshyst
 IWBTB mod with hacks and tools to help speedrunning and creating TAS
+## Cold start (mod menu)
+Put [Boshyst DLL](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll) and [DLL Injector](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/Inject-x86.exe) into the game folder <br />
+Launch the game, open command prompt in game folder and type:
+```sh
+Inject-x86 boshyst.dll "I Wanna Be The Boshy.exe"
+```
+Menu should be openeded (toggled on Insert key by default).
+## Cold start (BTAS) (experimental)
+Just also put [BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/btas.exe) into the game folder and launch the game via it. <br />
+Open the config to see binds.
 ## Building and running
 For testing, just build the DLL using Visual Studio and inject it into the game process (`boshyst.conf` config will be created is in the game dir). <br />
 For hourglass (Windows XP compatible), build the DLL using Visual Studio 2010 (manually create a project and add all the C++ files, configure includes), put it into the game folder (with config file, also set `tas_mode` to 1 in config), replace `wintasee.dll` with [modified version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) to automatically inject the mod when launching the game through the hourglass. Allow normal thread creation. <br />
