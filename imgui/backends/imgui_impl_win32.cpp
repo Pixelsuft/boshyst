@@ -115,6 +115,9 @@ static ImGui_ImplWin32_Data* ImGui_ImplWin32_GetBackendData()
     return ImGui::GetCurrentContext() ? (ImGui_ImplWin32_Data*)ImGui::GetIO().BackendPlatformUserData : nullptr;
 }
 
+extern BOOL(__stdcall* QueryPerformanceFrequencyOrig)(LARGE_INTEGER* ret);
+extern BOOL(__stdcall* QueryPerformanceCounterOrig)(LARGE_INTEGER* ret);
+
 // Functions
 static bool ImGui_ImplWin32_InitEx(void* hwnd, bool platform_has_own_dc)
 {
@@ -122,9 +125,9 @@ static bool ImGui_ImplWin32_InitEx(void* hwnd, bool platform_has_own_dc)
     IM_ASSERT(io.BackendPlatformUserData == nullptr && "Already initialized a platform backend!");
 
     INT64 perf_frequency, perf_counter;
-    if (!::QueryPerformanceFrequency((LARGE_INTEGER*)&perf_frequency))
+    if (!::QueryPerformanceFrequencyOrig((LARGE_INTEGER*)&perf_frequency))
         return false;
-    if (!::QueryPerformanceCounter((LARGE_INTEGER*)&perf_counter))
+    if (!::QueryPerformanceCounterOrig((LARGE_INTEGER*)&perf_counter))
         return false;
 
     // Setup backend capabilities flags
@@ -229,9 +232,10 @@ static bool ImGui_ImplWin32_UpdateMouseCursor()
     return true;
 }
 
+extern SHORT(__stdcall* GetKeyStateOrig)(int k);
 static bool IsVkDown(int vk)
 {
-    return (::GetKeyState(vk) & 0x8000) != 0;
+    return (::GetKeyStateOrig(vk) & 0x8000) != 0;
 }
 
 static void ImGui_ImplWin32_AddKeyEvent(ImGuiKey key, bool down, int native_keycode, int native_scancode = -1)
@@ -266,6 +270,7 @@ static void ImGui_ImplWin32_UpdateKeyModifiers()
     io.AddKeyEvent(ImGuiMod_Super, IsVkDown(VK_APPS));
 }
 
+extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static void ImGui_ImplWin32_UpdateMouseData()
 {
     ImGui_ImplWin32_Data* bd = ImGui_ImplWin32_GetBackendData();
@@ -289,7 +294,7 @@ static void ImGui_ImplWin32_UpdateMouseData()
         if (!io.WantSetMousePos && bd->MouseTrackedArea == 0)
         {
             POINT pos;
-            if (::GetCursorPos(&pos) && ::ScreenToClient(bd->hWnd, &pos))
+            if (::GetCursorPosOrig(&pos) && ::ScreenToClient(bd->hWnd, &pos))
                 io.AddMousePosEvent((float)pos.x, (float)pos.y);
         }
     }
@@ -365,7 +370,7 @@ void    ImGui_ImplWin32_NewFrame()
 
     // Setup time step
     INT64 current_time = 0;
-    ::QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
+    ::QueryPerformanceCounterOrig((LARGE_INTEGER*)&current_time);
     io.DeltaTime = (float)(current_time - bd->Time) / bd->TicksPerSecond;
     bd->Time = current_time;
 
