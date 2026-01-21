@@ -155,6 +155,7 @@ static void ui_menu_draw() {
 			draw_basic_text();
 		}
 		if (ImGui::CollapsingHeader("Visual")) {
+			ImGui::Checkbox("Pixel filter", &conf::pixel_filter);
 			ImGui::Checkbox("No viewport", &conf::no_vp);
 			ImGui::Checkbox("No perspective", &conf::no_ps);
 			ImGui::Checkbox("No shaders", &conf::no_sh);
