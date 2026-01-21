@@ -788,11 +788,11 @@ void init_game_loop() {
         strcpy(temp_path + cwd_len, "\\temp");
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         btas::pre_init();
-        if (conf::force_gdi) {
-            // Force software renderer if needed somewhy
-            *(short*)(mem::get_base() + 0x59a28) = 1;
-            *(short*)(mem::get_base() + 0x59a2a) = 8;
-        }
+    }
+    if (conf::force_gdi) {
+        // Force software renderer if needed somewhy
+        *(short*)(mem::get_base() + 0x59a28) = 1;
+        *(short*)(mem::get_base() + 0x59a2a) = 8;
     }
     if ((conf::tas_mode || is_btas) && conf::au_mth) {
         hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
