@@ -53,6 +53,7 @@ namespace conf {
     bool no_trans;
     bool force_gdi;
     bool pixel_filter;
+    bool hg_instant;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -150,6 +151,7 @@ static void create_default_config(const string& path) {
     bfs::File file(path, 1);
     ASS(file.is_open());
     ASS(file.write_line("menu = 1 // Show menu window"));
+    ASS(file.write_line("hourglass_instant = 0 // Instant mod load in hourglass, may cause softlock"));
     ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing (automatically enabled when using Hourglass or BTAS)"));
     ASS(file.write_line("win_pos = 0, 0 // Info window position"));
     ASS(file.write_line("win_size = 200, 100 // Info window size"));
@@ -248,7 +250,7 @@ void conf::read() {
     first_run = false;
     tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi =
         no_sh = keep_save = no_trans = no_ps = au_mth = cap_au =
-        no_cmove = draw_cursor = emu_mouse = allow_render = false;
+        no_cmove = draw_cursor = emu_mouse = allow_render = hg_instant = false;
     direct_render = fix_white_render = true;
 	cur_mouse_checked = false;
     tp_on_click = input_in_menu = false;
@@ -280,6 +282,8 @@ void conf::read() {
             tp_on_click = read_int(line) != 0;
         else if (starts_with(line, "tas_mode="))
             tas_mode = read_int(line) != 0;
+        else if (starts_with(line, "hourglass_instant="))
+            hg_instant = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport="))
             no_vp = read_int(line) != 0;
         else if (starts_with(line, "disable_shaders="))

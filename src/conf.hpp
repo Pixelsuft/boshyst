@@ -32,6 +32,7 @@ namespace conf {
 	extern bool no_trans;
 	extern bool pixel_filter;
 	extern bool force_gdi;
+	extern bool hg_instant;
 
 	void read();
 }

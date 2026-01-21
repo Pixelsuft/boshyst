@@ -105,7 +105,7 @@ static long __stdcall hkStretchRect(LPDIRECT3DDEVICE9 pDevice, IDirect3DSurface9
 void try_to_hook_graphics() {
     if (gr_hooked)
         return;
-    if (is_hourglass) {
+    if (is_hourglass && !conf::hg_instant) {
         // Somewhy hourglass freezes after logo when initing during logo scene
         int cur_scene = get_scene_id();
         if (cur_scene < 1 || cur_scene > 59)
