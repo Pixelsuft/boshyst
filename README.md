@@ -28,7 +28,7 @@ Warning: game window should **not** be resized while recording.
 ## Useful links
 *Latest Boshyst DLL is not available yet, build it yourself!
 [Boshyst DLL (Windows 8+)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll)<br />
-Boshyst DLL (Windows XP compatible) (not available yet, build it yourself!)<br />
+[Boshyst DLL (Windows XP compatible)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/xp/boshyst.dll)<br />
 [Modified wintasee.dll for hourglass r90](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) <br />
 [Modified wintasee.dll for hourglass r78](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee%20r78.dll) <br />
 Capture [start](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/start_cap.exe) and [end](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/end_cap.exe) scripts <br />

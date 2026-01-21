@@ -76,7 +76,6 @@ struct AudioCapture {
 
 static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
 static CRITICAL_SECTION g_audioCS;
-static bool g_csInitialized = false;
 
 typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
@@ -85,6 +84,7 @@ typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DW
 typedef int(__fastcall* tStopHardwareBuffer)(IDirectSoundBuffer**, void*);
 typedef int(__fastcall* tResetBufferPosition)(IDirectSoundBuffer**, void*);
 
+static BOOL (__stdcall* SetFileInformationByHandlePtr)(HANDLE, FILE_INFO_BY_HANDLE_CLASS, LPVOID, DWORD);
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
 static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
@@ -101,7 +101,9 @@ static void finalize_wav(AudioCapture& cap) {
             FILE_DISPOSITION_INFO disInfo;
             ZeroMemory(&disInfo, sizeof(FILE_DISPOSITION_INFO));
             disInfo.DeleteFile = TRUE;
-            ASS(SetFileInformationByHandle((HANDLE)cap.file.get_handle(), FileDispositionInfo, &disInfo, sizeof(disInfo)));
+            // TODO: better way maybe?
+            if (SetFileInformationByHandlePtr)
+                ASS(SetFileInformationByHandlePtr((HANDLE)cap.file.get_handle(), FileDispositionInfo, &disInfo, sizeof(disInfo)));
             cap.file.close();
             return;
         }
@@ -261,9 +263,11 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
 void audio_init() {
     if (!conf::cap_au && !conf::no_au)
         return;
-    if (!g_csInitialized) {
-        InitializeCriticalSection(&g_audioCS);
-        g_csInitialized = true;
-    }
+    InitializeCriticalSection(&g_audioCS);
+    auto handle = GetModuleHandleW(L"kernel32.dll");
+    if (handle)
+        SetFileInformationByHandlePtr = (decltype(SetFileInformationByHandlePtr))GetProcAddress(handle, "SetFileInformationByHandle");
+    else
+        SetFileInformationByHandlePtr = nullptr;
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
 }
