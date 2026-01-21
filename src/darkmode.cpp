@@ -2,9 +2,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include "ass.hpp"
-#ifdef _MSC_VER
-#pragma comment(lib, "ntdll.lib")
-#endif
 
 #ifndef NTAPI
 #define NTAPI __stdcall
@@ -95,9 +92,12 @@ typedef bool (WINAPI* IsDarkModeAllowedForApp_t)(void);
 
 typedef BOOL(WINAPI* SetWindowCompositionAttribute_t)(HWND, const WINDOWCOMPOSITIONATTRIBDATA*);
 
+typedef WIN_NTDLL_NTSTATUS (NTAPI* RtlGetVersion_t)(WIN_NTDLL_OSVERSIONINFOEXW*);
+
 typedef struct {
 	HMODULE uxtheme_handle;
 	HMODULE user32_handle;
+	HMODULE ntdll_handle;
 	ShouldAppsUseDarkMode_t ShouldAppsUseDarkMode;
 	AllowDarkModeForWindow_t AllowDarkModeForWindow;
 	AllowDarkModeForApp_t AllowDarkModeForApp;
@@ -108,23 +108,31 @@ typedef struct {
 	SetPreferredAppMode_t SetPreferredAppMode;
 	IsDarkModeAllowedForApp_t IsDarkModeAllowedForApp;
 	SetWindowCompositionAttribute_t SetWindowCompositionAttribute;
+	RtlGetVersion_t RtlGetVersion;
 	DWORD build_num;
 } win_shit_type;
 
 extern HWND hwnd;
 extern HWND mhwnd;
-static win_shit_type win_shit;
-
-// Fuck you, Microshit!!!
-extern "C" NTSYSAPI WIN_NTDLL_NTSTATUS NTAPI RtlGetVersion(WIN_NTDLL_OSVERSIONINFOEXW* ver_info);
 
 bool fix_win32_theme() {
 	// Just copy-pasted code from my game
+	win_shit_type win_shit;
 	win_shit.uxtheme_handle = nullptr;
 	win_shit.user32_handle = nullptr;
+	win_shit.ntdll_handle = GetModuleHandleW(L"ntdll.dll");
+	if (!win_shit.ntdll_handle) {
+		ass::show_err("WTF failed to load ntdll.dll");
+		return false;
+	}
+	win_shit.RtlGetVersion = (RtlGetVersion_t)GetProcAddress(win_shit.ntdll_handle, "RtlGetVersion");
+	if (!win_shit.RtlGetVersion) {
+		ass::show_err("WTF failed to load RtlGetVersion");
+		return false;
+	}
 	WIN_NTDLL_OSVERSIONINFOEXW os_ver;
 	os_ver.dwOSVersionInfoSize = sizeof(WIN_NTDLL_OSVERSIONINFOEXW);
-	RtlGetVersion(&os_ver);
+	win_shit.RtlGetVersion(&os_ver);
 	win_shit.build_num = os_ver.dwBuildNumber;
 	win_shit.build_num &= ~0xF0000000;
 	if (win_shit.build_num < 17763)

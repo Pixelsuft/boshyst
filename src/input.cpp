@@ -83,12 +83,12 @@ void input_tick() {
                     SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
                 }
                 else if (eit->type == eit->SAVE) {
-                    bfs::File file(eit->state.fn, 1);
+                    bfs::File file(*eit->state.fn, 1);
                     if (file.is_open())
                         state_save(&file);
                 }
                 else if (eit->type == eit->LOAD) {
-                    bfs::File file(eit->state.fn, 0);
+                    bfs::File file(*eit->state.fn, 0);
                     if (file.is_open())
                         state_load(&file);
                 }
