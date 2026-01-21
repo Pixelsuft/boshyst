@@ -52,6 +52,7 @@ namespace conf {
     bool input_in_menu;
     bool no_trans;
     bool force_gdi;
+    bool pixel_filter;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -158,6 +159,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
     ASS(file.write_line("hitbox_level = 0 // Can be changed to 1 or 2 to show default player"));
+    ASS(file.write_line("pixel_filter = 0 // Make textures look pixelated instead of blurry"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
     ASS(file.write_line("disable_shaders = 0 // Disable shaders"));
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
@@ -286,6 +288,8 @@ void conf::read() {
             no_trans = read_int(line) != 0;
         else if (starts_with(line, "disable_perspective="))
             no_ps = read_int(line) != 0;
+        else if (starts_with(line, "pixel_filter="))
+            pixel_filter = read_int(line) != 0;
         else if (starts_with(line, "skip_messageboxes="))
             skip_msg = read_int(line) != 0;
         else if (starts_with(line, "hitbox_level="))
