@@ -25,7 +25,7 @@ gcc end_cap.c -o end_cap.exe -mwindows
 ## Configuring
 See `boshyst.conf` in the game folder
 ## Recording
-Use special [modified hourglass r90 version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe). <br />
+For hourglass, use special [modified hourglass r90 version](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/hourglass%20render.exe). <br />
 Set `allow_render` to `1`. <br />
 FFmpeg is required to be in `PATH` variable. <br />
 * [FFmpeg for modern Windows](https://www.gyan.dev/ffmpeg/builds/)
