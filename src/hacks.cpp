@@ -66,7 +66,7 @@ static short __stdcall DisplayRunObjectPHook(void* pthis) {
     // Perspective.mfx display hook
     if (conf::no_ps)
         return 0;
-    auto ret = DisplayRunObjectVPOrig(pthis);
+    auto ret = DisplayRunObjectPOrig(pthis);
     return ret;
 }
 

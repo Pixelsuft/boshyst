@@ -86,6 +86,32 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
     return ret;
 }
 
+typedef long(__stdcall* SetSamplerState)(LPDIRECT3DDEVICE9, DWORD, D3DSAMPLERSTATETYPE, DWORD);
+static SetSamplerState oSetSamplerState = nullptr;
+
+typedef long(__stdcall* StretchRect)(LPDIRECT3DDEVICE9, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
+static StretchRect oStretchRect = nullptr;
+
+static long __stdcall hkSetSamplerState(LPDIRECT3DDEVICE9 pDevice, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value) {
+    if (Sampler == 0 && (Type == D3DSAMP_MAGFILTER || Type == D3DSAMP_MINFILTER)) {
+        return oSetSamplerState(pDevice, Sampler, Type, D3DTEXF_POINT);
+    }
+    return oSetSamplerState(pDevice, Sampler, Type, Value);
+}
+
+static long __stdcall hkStretchRect(LPDIRECT3DDEVICE9 pDevice, IDirect3DSurface9* pSrc, const RECT* pSrcR, IDirect3DSurface9* pDst, const RECT* pDstR, D3DTEXTUREFILTERTYPE Filter) {
+    return oStretchRect(pDevice, pSrc, pSrcR, pDst, pDstR, D3DTEXF_POINT);
+}
+
+typedef long(__stdcall* Present)(LPDIRECT3DDEVICE9, const RECT*, const RECT*, HWND, const RGNDATA*);
+static Present oPresent = nullptr;
+
+static long __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSrc, const RECT* pDst, HWND hWnd, const RGNDATA* pRgn) {
+    pDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+    pDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+    return oPresent(pDevice, pSrc, pDst, hWnd, pRgn);
+}
+
 void try_to_hook_graphics() {
     if (gr_hooked)
         return;
@@ -115,6 +141,9 @@ void try_to_hook_graphics() {
     cout << "graphics hooking 5\n";
 #endif
     ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
+    //ASS(kiero::bind(69, (void**)&oSetSamplerState, hkSetSamplerState) == kiero::Status::Success);
+    //ASS(kiero::bind(34, (void**)&oStretchRect, hkStretchRect) == kiero::Status::Success);
+    //ASS(kiero::bind(17, (void**)&oPresent, hkPresent) == kiero::Status::Success);
 #if SHOW_STAGES
     cout << "graphics hooking 6\n";
 #endif
@@ -167,7 +196,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #if defined(_DEBUG)
         if (true) {
 #else
-        if (is_btas || is_hourglass) {
+        if ((is_btas || is_hourglass) && 0) {
 #endif
             // Alloc console as early as possible
             AllocConsole();
