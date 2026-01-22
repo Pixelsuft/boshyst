@@ -13,6 +13,8 @@
 #include <vector>
 #include <cstdint>
 
+// TODO: volume, set pos
+
 using std::cout;
 using std::string;
 
@@ -134,6 +136,16 @@ static void finalize_wav(AudioCapture& cap) {
     }
 }
 
+static void reinit_wav(AudioCapture& cap, IDirectSoundBuffer* buf) {
+    // cout << "reinit\n";
+    auto cur_time = btas::get_time();
+    string filename = "audio_" + to_str(cur_time) + "_" + to_str((size_t)buf) + ".wav";
+    cap.file = bfs::File(filename, 1);
+    cap.file.write((char*)&cap.h, sizeof(WavHeader));
+    cap.bytesWritten = 0;
+    cap.startTime = cur_time;
+}
+
 void audio_stop() {
     if (!conf::cap_au)
         return;
@@ -162,6 +174,7 @@ static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx
     if (it != g_captures.end()) {
         // cout << "hkStopHardwareBuffer\n";
         finalize_wav(it->second);
+        // cout << "stop\n";
     }
     return fpStopHardwareBuffer(pThis, edx);
 }
@@ -171,6 +184,7 @@ static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void*
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
         finalize_wav(it->second);
+        // cout << "release\n";
         g_captures.erase(it);
     }
     *pThis = nullptr;
@@ -183,13 +197,9 @@ static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* ed
     auto it = g_captures.find(*pThis);
     auto cur_time = btas::get_time();
     if (it != g_captures.end() && it->second.bytesWritten > 0 && it->second.startTime < cur_time) {
-        cout << "hkResetBufferPosition " << it->second.bytesWritten << "\n";
+        // cout << "hkResetBufferPosition " << it->second.bytesWritten << "\n";
         finalize_wav(it->second);
-        string filename = "audio_" + to_str(cur_time) + "_" + to_str((size_t)*pThis) + ".wav";
-        it->second.file = bfs::File(filename, 1);
-        it->second.file.write((char*)&it->second.h, sizeof(WavHeader));
-        it->second.bytesWritten = 0;
-        it->second.startTime = cur_time;
+        reinit_wav(it->second, *pThis);
     }
     return fpResetBufferPosition(pThis, edx);
 }
@@ -197,7 +207,9 @@ static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* ed
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(pThis);
-    if (it != g_captures.end() && it->second.file.is_open()) {
+    if (it != g_captures.end()) {
+        if (!it->second.file.is_open())
+            reinit_wav(it->second, nullptr); // TODO: gen id
         if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
         if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
     }
