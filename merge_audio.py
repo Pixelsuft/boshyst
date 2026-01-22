@@ -1,15 +1,21 @@
 import os
 import subprocess
+import tempfile
 
 data = []
 for i in os.listdir():
     if (i.startswith('cap_') or i.startswith('audio_')) and i.endswith('.wav'):
-        offset = int(i.split('_')[1].replace('.wav', ''))
-        data.append((i, offset))
+        try:
+            offset = int(i.split('_')[1].split('.')[0])
+            data.append((i, offset))
+        except (IndexError, ValueError):
+            continue
 
 if not data:
     print("No audio files found.")
     exit()
+
+data.sort(key=lambda x: x[1])
 
 inputs = []
 filter_parts = []
@@ -19,24 +25,30 @@ for idx, (filename, offset_ms) in enumerate(data):
     filter_parts.append(f"[{idx}:a]adelay={offset_ms}:all=1[a{idx}]")
 
 mix_inputs = "".join(f"[a{i}]" for i in range(len(data)))
-filter_complex = (
+
+filter_complex_string = (
     f"{';'.join(filter_parts)};"
-    f"{mix_inputs}amix=inputs={len(data)}[mixed];"
-    f"[mixed]aformat=sample_rates=48000:channel_layouts=stereo[out]"
+    f"{mix_inputs}amix=inputs={len(data)}:normalize=0:dropout_transition=0[mixed];"
+    f"[mixed]dynaudnorm,aformat=sample_rates=48000:channel_layouts=stereo[out]"
 )
+
+with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tf:
+    tf.write(filter_complex_string)
+    filter_script_path = tf.name
 
 command = [
     'ffmpeg', '-y',
     *inputs,
-    '-filter_complex', filter_complex,
+    '-filter_complex_script', filter_script_path,
     '-map', '[out]',
-    '-ac', '2',       # Force 2 channels (stereo)
-    '-ar', '48000',   # Force 48kHz sample rate
+    '-ac', '2',
+    '-ar', '48000',
     'output.wav'
 ]
 
 try:
     subprocess.run(command, check=True)
-    print("Successfully created output.wav (2 channels, 48kHz)")
-except subprocess.CalledProcessError as e:
-    print(f"Error calling FFmpeg: {e}")
+    print(f"Successfully joined {len(data)} files into output.wav.")
+finally:
+    if os.path.exists(filter_script_path):
+        os.remove(filter_script_path)
