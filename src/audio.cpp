@@ -93,6 +93,16 @@ static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
 static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
 static tResetBufferPosition fpResetBufferPosition = nullptr;
+static int last_uid = 0;
+static unsigned long last_time = 0;
+
+static int gen_uid(unsigned long mytime) {
+    if (mytime != last_time) {
+        last_time = mytime;
+        last_uid = 0;
+    }
+    return last_uid++;
+}
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
@@ -136,10 +146,10 @@ static void finalize_wav(AudioCapture& cap) {
     }
 }
 
-static void reinit_wav(AudioCapture& cap, IDirectSoundBuffer* buf) {
+static void reinit_wav(AudioCapture& cap) {
     // cout << "reinit\n";
     auto cur_time = btas::get_time();
-    string filename = "audio_" + to_str(cur_time) + "_" + to_str((size_t)buf) + ".wav";
+    string filename = "audio_" + to_str(cur_time) + "_" + to_str(gen_uid(cur_time)) + ".wav";
     cap.file = bfs::File(filename, 1);
     cap.file.write((char*)&cap.h, sizeof(WavHeader));
     cap.bytesWritten = 0;
@@ -199,7 +209,7 @@ static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* ed
     if (it != g_captures.end() && it->second.bytesWritten > 0 && it->second.startTime < cur_time) {
         // cout << "hkResetBufferPosition " << it->second.bytesWritten << "\n";
         finalize_wav(it->second);
-        reinit_wav(it->second, *pThis);
+        reinit_wav(it->second);
     }
     return fpResetBufferPosition(pThis, edx);
 }
@@ -209,7 +219,7 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
     auto it = g_captures.find(pThis);
     if (it != g_captures.end()) {
         if (!it->second.file.is_open())
-            reinit_wav(it->second, nullptr); // TODO: gen id
+            reinit_wav(it->second);
         if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
         if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
     }
@@ -222,7 +232,7 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
         CriticalSectionLock lock(g_audioCS);
         unsigned long timestamp = btas::get_time();
         // create wav file for each sound to be joined later via script
-        string filename = "audio_" + to_str(timestamp) + "_" + to_str((size_t)*buffer) + ".wav";
+        string filename = "audio_" + to_str(timestamp) + "_" + to_str(gen_uid(timestamp)) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
             cap.h.channels = desc->lpwfxFormat->nChannels;
