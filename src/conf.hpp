@@ -34,6 +34,7 @@ namespace conf {
 	extern bool pixel_filter;
 	extern bool force_gdi;
 	extern bool hg_instant;
+	extern bool tas_no_info;
 
 	void read();
 }

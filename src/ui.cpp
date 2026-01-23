@@ -309,6 +309,8 @@ void ui::draw() {
 			return;
 		}
 	}
+	if (conf::tas_no_info)
+		return;
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]), ImGuiCond_Once);

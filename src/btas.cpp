@@ -1106,6 +1106,7 @@ void btas::draw_tab() {
 			repl_index = 0;
 		}
 		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
+		ImGui::Checkbox("God mode", &conf::god);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
 		ImGui::Checkbox("Export hash checks", &export_hash);
 		if (ImGui::Button("Export"))

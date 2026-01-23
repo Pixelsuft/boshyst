@@ -32,7 +32,7 @@ int main() {
     }
 	WaitForSingleObject(hThread, INFINITE);
 	CloseHandle(hThread);
-	VirtualFreeEx(pi.hProcess, remoteBuf, pathLen, 0x00004000); // Does this crash or not?
+	VirtualFreeEx(pi.hProcess, remoteBuf, pathLen, 0x00004000);
 
     ResumeThread(pi.hThread);
 

@@ -91,6 +91,7 @@ static int __cdecl randHook() {
 
 static int(__cdecl* _stricmpOrig)(const char* s1, const char* s2) = nullptr;
 static int __cdecl _stricmpHook(const char* s1, const char* s2) {
+    // DirBlur x3.fx fucks up collision for some reason
     if (conf::no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 || strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 || strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 || strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
         // shaders
         // Extra: Add, Invert, Sub, Mono, Blend, XOR, OR, AND
@@ -224,10 +225,13 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     if (hwnd != ::hwnd)
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
-    if (capturing && strcmp(cap, "I Wanna Be The Boshy") == 0) {
+    if (strcmp(cap, "I Wanna Be The Boshy") == 0) {
         // This happens only when chaning/resetting scene lul
-        next_white = true;
-        return FALSE;
+        audio_stop(); // Yeah it's hacky (for performance)
+        if (capturing) {
+            next_white = true;
+            return FALSE;
+        }
     }
     return SetWindowTextAOrig(hwnd, cap);
 }
@@ -715,8 +719,8 @@ static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, L
         ::mhwnd = ret;
         return ret;
     }
-    else if (lpClassName && (strcmp(lpClassName, "EDIT") == 0 || strcmp(lpClassName, "COMBOBOX") == 0 ||
-        strcmp(lpClassName, "LISTBOX") == 0 ||
+    else if (!is_replay && lpClassName && (strcmp(lpClassName, "EDIT") == 0 ||
+        strcmp(lpClassName, "COMBOBOX") == 0 || strcmp(lpClassName, "LISTBOX") == 0 ||
         strcmp(lpClassName, "omgwtfbbqColorButton") == 0 || strcmp(lpClassName, "omgwtfbbqColorSelector") == 0)) {
         // cout << "CreateWindowExAHook " << lpClassName << " -> STATIC\n";
         lpClassName = "STATIC";

@@ -55,6 +55,7 @@ namespace conf {
     bool force_gdi;
     bool pixel_filter;
     bool hg_instant;
+    bool tas_no_info;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -259,7 +260,7 @@ void conf::read() {
     rapid_bind = -1;
     first_run = false;
     tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi =
-        no_sh = keep_save = no_trans = no_ps = au_mth = cap_au =
+        no_sh = keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info =
         no_cmove = draw_cursor = emu_mouse = allow_render = hg_instant = false;
     direct_render = fix_white_render = true;
 	cur_mouse_checked = false;
@@ -331,6 +332,8 @@ void conf::read() {
             au_mth = read_int(line) != 0;
         else if (starts_with(line, "tas_replay_mode="))
             is_replay = read_int(line) != 0;
+        else if (starts_with(line, "tas_no_info="))
+            tas_no_info = read_int(line) != 0;
         else if (starts_with(line, "allow_render="))
             allow_render = read_int(line) != 0;
         else if (starts_with(line, "direct_render="))

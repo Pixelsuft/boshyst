@@ -13,7 +13,7 @@
 #include <vector>
 #include <cstdint>
 
-// TODO: volume, set pos
+// TODO: volume
 
 using std::cout;
 using std::string;
@@ -218,10 +218,16 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(pThis);
     if (it != g_captures.end()) {
-        if (!it->second.file.is_open())
+        if (!it->second.file.is_open()) {
             reinit_wav(it->second);
-        if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
-        if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
+            // cout << "skip\n";
+            // if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
+            // if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
+        }
+        else {
+            if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
+            if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
+        }
     }
     return fpUnlock(pThis, pv1, db1, pv2, db2);
 }
