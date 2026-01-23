@@ -395,6 +395,7 @@ void btas::init() {
 		import_replay(need_replay_load);
 		need_replay_load.clear();
 	}
+	is_paused = !is_hourglass;
 	last_time = now = timeGetTimeOrig();
 }
 

@@ -765,9 +765,14 @@ void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
-        hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
-        hook(mem::addr("time", "msvcrt.dll"), timeHook);
-        hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
+        if (is_hourglass)
+            timeGetTimeOrig = (decltype(timeGetTimeOrig))mem::addr("timeGetTime", "winmm.dll");
+        else {
+            hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
+            hook(mem::addr("time", "msvcrt.dll"), timeHook);
+            hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
+            hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
+        }
         hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         hook(mem::addr("SetFocus", "user32.dll"), SetFocusHook);
@@ -775,7 +780,6 @@ void init_game_loop() {
         hook(mem::addr("GetFocus", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("CreateWindowExA", "user32.dll"), CreateWindowExAHook, &CreateWindowExAOrig);
         hook(mem::addr("GetSystemMetrics", "user32.dll"), GetSystemMetricsHook, &GetSystemMetricsOrig);
-        hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
         // Ok this might be overkill
         // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
         // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
@@ -837,7 +841,7 @@ void init_simple_hacks() {
         MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
         EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
-    if (is_btas) {
+    if (is_btas && !is_hourglass) {
         hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
         hook(mem::addr("GetProcessTimes", "kernel32.dll"), GetProcessTimesHook);
     }
