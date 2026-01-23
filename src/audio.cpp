@@ -129,10 +129,8 @@ static void record_event(AudioCapture& cap, DWORD freq, long vol) {
 }
 
 static void write_original_raw(AudioCapture& cap, const char* data, uint32_t len) {
-    if (cap.file.is_open()) {
-        cap.file.write(data, len);
-        cap.bytesWritten += len;
-    }
+    cap.file.write(data, len);
+    cap.bytesWritten += len;
 }
 
 static void finalize_wav(AudioCapture& cap) {
@@ -162,49 +160,67 @@ void on_audio_destroy() {
     if (g_history.empty()) return;
 
     bfs::File filterFile("temp_filters.txt", 1);
-    bfs::File batFile("amrge.bat", 1);
+    bfs::File batFile("amerge.bat", 1);
 
-    std::string batContent = "ffmpeg -y ";
     std::string filters = "";
     std::string mix = "";
 
     for (size_t i = 0; i < g_history.size(); ++i) {
         auto& c = g_history[i];
-        batContent += "-i audio_" + to_str(c.startTime) + "_" + to_str(c.idx) + ".wav ";
-
+        std::string fn = "audio_" + to_str(c.startTime) + "_" + to_str(c.idx) + ".wav";
         std::string finalLabel = "[final" + to_str(i) + "]";
         double totalDuration = (c.endTime > c.startTime) ? (double)(c.endTime - c.startTime) / 1000.0 : 0.0;
 
         if (c.events.empty()) {
-            // No changes: Simple trim and resample
-            filters += "[" + to_str(i) + ":a]atrim=duration=" + to_str(totalDuration) + ",aresample=48000,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
+            // Case 1: Simple file
+            filters += "amovie=" + fn + ",atrim=duration=" + to_str(totalDuration) +
+                ",aresample=48000,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
         }
         else {
-            // Frequency changes exist: Split into segments
+            // Case 2: Frequency segments
+            int numSegs = (int)c.events.size();
+
+            // 1. Load and split source
+            filters += "amovie=" + fn + ",asplit=" + to_str(numSegs);
+            for (int e = 0; e < numSegs; ++e) {
+                filters += "[b" + to_str(i) + "s" + to_str(e) + "]";
+            }
+            filters += ";\n";
+
+            // 2. Process each split branch
             std::string segmentLabels = "";
             for (size_t e = 0; e < c.events.size(); ++e) {
+                std::string branchIn = "[b" + to_str(i) + "s" + to_str(e) + "]";
+                std::string branchOut = "[p" + to_str(i) + "s" + to_str(e) + "]";
+
                 double start = (double)c.events[e].timeOffset / 1000.0;
                 double end = (e + 1 < c.events.size()) ? (double)c.events[e + 1].timeOffset / 1000.0 : totalDuration;
-                if (start >= totalDuration) break;
-
-                std::string segLabel = "[s" + to_str(i) + "e" + to_str(e) + "]";
                 double volLinear = pow(10.0, (double)c.events[e].volume / 2000.0);
 
-                // asetrate is safe here because we are applying it to a static-length segment
-                filters += "[" + to_str(i) + ":a]atrim=start=" + to_str(start) + ":end=" + to_str(end) + ",asetrate=" + to_str(c.events[e].frequency) + ",volume=" + to_str(volLinear) + ",aresample=48000" + segLabel + ";\n";
-                segmentLabels += segLabel;
+                filters += branchIn + "atrim=start=" + to_str(start) + ":end=" + to_str(end) +
+                    ",asetrate=" + to_str(c.events[e].frequency) +
+                    ",volume=" + to_str(volLinear) +
+                    ",aresample=48000" + branchOut + ";\n";
+
+                segmentLabels += branchOut;
             }
-            // Concatenate segments and then apply delay
-            filters += segmentLabels + "concat=n=" + to_str(c.events.size()) + ":v=0:a=1,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
+
+            // 3. Concat branches and apply delay
+            filters += segmentLabels + "concat=n=" + to_str(numSegs) + ":v=0:a=1,adelay=" +
+                to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
         }
         mix += finalLabel;
     }
 
     filters += mix + "amix=inputs=" + to_str(g_history.size()) + ":normalize=0[out]";
-    batContent += "-filter_complex_script \"temp_filters.txt\" -map \"[out]\" -ar 48000 output.wav\npause";
+
+    // FFmpeg 2026 syntax: -/filter_complex reads from file
+    std::string batContent = "@echo off\nffmpeg -y -/filter_complex temp_filters.txt -map \"[out]\" -ar 48000 output.wav\npause";
 
     filterFile.write(filters.c_str(), filters.size());
     batFile.write(batContent.c_str(), batContent.size());
+
+    g_history.clear();
 }
 
 static void reinit_wav(AudioCapture& cap) {
