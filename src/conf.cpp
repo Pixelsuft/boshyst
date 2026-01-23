@@ -185,6 +185,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("tas_audio_capture = 0 // Capture audio in tas mode"));
     ASS(file.write_line("tas_audio_main_thread = 0 // Force audio processing on main thread for stability"));
     ASS(file.write_line("tas_replay_mode = 0 // Replay mode by default"));
+    ASS(file.write_line("tas_no_info = 0 // Hide info window"));
     ASS(file.write_line(""));
     ASS(file.write_line("allow_render = 0 // Allow video capturing"));
     ASS(file.write_line("direct_render = 1 // Capture video directly using Direct3D 9 instead of making screenshots of the window using Win32 API"));

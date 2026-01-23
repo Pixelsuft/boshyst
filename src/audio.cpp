@@ -13,6 +13,8 @@
 #include <vector>
 #include <cstdint>
 
+// TODO: fix frequency set
+
 using std::cout;
 using std::string;
 
@@ -170,9 +172,11 @@ static void reinit_wav(AudioCapture& cap) {
     cap.bytesWritten = 0;
     cap.startTime = cur_time;
     cap.idx = idx;
+    // cout << "reinit " << cap.h.byteRate << "\n";
 }
 
 void audio_stop() {
+    // User stops audio or scene changes/reset
     if (!conf::cap_au)
         return;
     CriticalSectionLock lock(g_audioCS);
@@ -185,9 +189,13 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
     // IDK but hooking dsound directly doesnt work
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
-    if (it != g_captures.end() && freq != 0 && freq != it->second.h.sampleRate) {
-        // std::cout << "Freq hook: " << it->second.h.sampleRate << " -> " << freq << std::endl;
+    if (it != g_captures.end() && freq != 0 && freq != it->second.h.sampleRate && it->second.file.is_open()) {
         // We dont support dynamic freq but just remember last
+        // cout << "freq set " << freq << "\n";
+
+        // Let's re-init
+        finalize_wav(it->second);
+        reinit_wav(it->second);
         it->second.h.sampleRate = freq;
     }
 
@@ -199,6 +207,7 @@ static int __fastcall hkApplyVolumeToBuffer(IDirectSoundBuffer** pThis, void* ed
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
         // cout << "set volume: " << (long)volume << "\n";
+        // Only remember last volume
         it->second.volume = volume;
     }
     return fpApplyVolumeToBuffer(pThis, edx, volume);

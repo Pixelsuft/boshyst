@@ -154,6 +154,7 @@ static std::vector<int> holding;
 // Same but for replay to not cause problems when pressing real keys
 static std::vector<int> repl_holding;
 static string last_msg;
+static string need_replay_load = "";
 static BTasState st;
 static DWORD last_time = 0;
 static DWORD now = 0;
@@ -181,6 +182,62 @@ static RunHeader& get_state() {
 
 static GlobalStats& get_stats() {
 	return **(GlobalStats**)(mem::get_base() + 0x59a98);
+}
+
+static void import_replay(const std::string& path) {
+	// Import it
+	bfs::File f(path, 0);
+	if (!f.is_open()) {
+		last_msg = "Failed to open file for reading replay";
+		return;
+	}
+	string line;
+	ASS(f.read_line(line) && line == "brep");
+	st.clear_arr();
+	st.clear();
+	while (f.read_line(line)) {
+		if (starts_with(line, "total: "))
+			st.total = std::atoi(line.substr(7).c_str());
+		else if (starts_with(line, "data: "))
+			break;
+	}
+	while (f.read_line(line)) {
+		int idx = atoi(line.c_str());
+		BTasEvent ev;
+		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7 || idx == 8 || idx == 9)
+			ASS(sscanf(line.c_str(), "%i,%i,%i", &idx, &ev.frame, &ev.click.x) == 3);
+		else
+			ASS(sscanf(line.c_str(), "%i,%i,%i,%i", &idx, &ev.frame, &ev.click.x, &ev.click.y) == 4);
+		ev.idx = (uint8_t)idx;
+		// cout << idx << ' ' << ev.frame << ' ' << ev.click.x << ' ' << ev.click.y << std::endl;
+		st.ev.push_back(ev);
+	}
+	is_replay = true;
+	last_msg = "Replay imported";
+}
+
+static void export_replay(const std::string& path) {
+	// Export replay (only replay) in easy-to-edit text format  compatible between versions
+	bfs::File f(path, 1);
+	if (!f.is_open()) {
+		last_msg = "Failed to open file for writing replay";
+		return;
+	}
+	ASS(f.write_line("brep"));
+	ASS(f.write_line(string("total: ") + to_str(st.total)));
+	ASS(f.write_line("data: "));
+	for (auto it = st.ev.begin(); it != st.ev.end(); it++) {
+		BTasEvent& ev = *it;
+		if (!export_hash && (ev.idx == 3 || ev.idx == 4))
+			continue;
+		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7 || ev.idx == 8 || ev.idx == 9) {
+			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x)));
+		}
+		else {
+			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x) + "," + to_str(ev.click.y)));
+		}
+	}
+	last_msg = "Replay exported";
 }
 
 void btas::read_setting(const string& line, const string& line_orig) {
@@ -224,6 +281,13 @@ void btas::read_setting(const string& line, const string& line_orig) {
 	else if (starts_with(line, "btas=fastforward_skip,")) {
 		bind.idx = 9;
 		ASS(sscanf(line.substr(22).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
+	}
+	else if (starts_with(line, "btas=replay,")) {
+		need_replay_load = line_orig;
+		while (!need_replay_load.empty() && need_replay_load[0] != ',')
+			need_replay_load = need_replay_load.substr(1);
+		while (!need_replay_load.empty() && (isspace(need_replay_load[0]) || need_replay_load[0] == ','))
+			need_replay_load = need_replay_load.substr(1);
 	}
 	else {
 		ass::show_err((string("Unknown BTAS setting: ") + line_orig).c_str());
@@ -327,6 +391,10 @@ void btas::init() {
 	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	st.clear();
 	st.clear_arr();
+	if (!need_replay_load.empty()) {
+		import_replay(need_replay_load);
+		need_replay_load.clear();
+	}
 	last_time = now = timeGetTimeOrig();
 }
 
@@ -595,62 +663,6 @@ static void b_state_load(int slot, bool from_loop) {
 		last_msg = string("State ") + to_str(slot) + " loaded";
 	else
 		last_msg = string("State ") + to_str(slot) + " loaded (" + last_msg + ")";
-}
-
-static void export_replay(const std::string& path) {
-	// Export replay (only replay) in easy-to-edit text format  compatible between versions
-	bfs::File f(path, 1);
-	if (!f.is_open()) {
-		last_msg = "Failed to open file for writing replay";
-		return;
-	}
-	ASS(f.write_line("brep"));
-	ASS(f.write_line(string("total: ") + to_str(st.total)));
-	ASS(f.write_line("data: "));
-	for (auto it = st.ev.begin(); it != st.ev.end(); it++) {
-		BTasEvent& ev = *it;
-		if (!export_hash && (ev.idx == 3 || ev.idx == 4))
-			continue;
-		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7 || ev.idx == 8 || ev.idx == 9) {
-			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x)));
-		}
-		else {
-			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x) + "," + to_str(ev.click.y)));
-		}
-	}
-	last_msg = "Replay exported";
-}
-
-static void import_replay(const std::string& path) {
-	// Import it
-	bfs::File f(path, 0);
-	if (!f.is_open()) {
-		last_msg = "Failed to open file for reading replay";
-		return;
-	}
-	string line;
-	ASS(f.read_line(line) && line == "brep");
-	st.clear_arr();
-	st.clear();
-	while (f.read_line(line)) {
-		if (starts_with(line, "total: "))
-			st.total = std::atoi(line.substr(7).c_str());
-		else if (starts_with(line, "data: "))
-			break;
-	}
-	while (f.read_line(line)) {
-		int idx = atoi(line.c_str());
-		BTasEvent ev;
-		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7 || idx == 8 || idx == 9)
-			ASS(sscanf(line.c_str(), "%i,%i,%i", &idx, &ev.frame, &ev.click.x) == 3);
-		else
-			ASS(sscanf(line.c_str(), "%i,%i,%i,%i", &idx, &ev.frame, &ev.click.x, &ev.click.y) == 4);
-		ev.idx = (uint8_t)idx;
-		// cout << idx << ' ' << ev.frame << ' ' << ev.click.x << ' ' << ev.click.y << std::endl;
-		st.ev.push_back(ev);
-	}
-	is_replay = true;
-	last_msg = "Replay imported";
 }
 
 void btas::reg_obj(int handle) {
@@ -1112,6 +1124,7 @@ void btas::draw_tab() {
 		}
 		ImGui::Checkbox("Reset game on replay", &reset_on_replay);
 		ImGui::Checkbox("God mode", &conf::god);
+		ImGui::Checkbox("Hide info window", &conf::tas_no_info);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
 		ImGui::Checkbox("Export hash checks", &export_hash);
 		if (ImGui::Button("Export"))
