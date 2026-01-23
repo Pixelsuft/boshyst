@@ -11,3 +11,4 @@ void try_to_init();
 void init_temp_saves();
 void try_to_hook_graphics();
 void init_simple_hacks();
+void on_audio_destroy();

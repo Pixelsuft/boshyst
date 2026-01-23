@@ -59,42 +59,30 @@ struct WavHeader {
 };
 #pragma pack(pop)
 
+struct AudioEvent {
+    unsigned long timeOffset; // Relative to cap.startTime
+    DWORD frequency;
+    long volume;
+};
+
 struct AudioCapture {
     bfs::File file;
     WavHeader h;
-    double resampleRatio;
-    double sampleAcc;
     unsigned long startTime;
-    long volume;
+    unsigned long endTime;
     uint32_t bytesWritten;
-    DWORD currentSrcFreq;
-    uint32_t sampleRateOrig;
     int idx;
-    
-    AudioCapture() {
-        resampleRatio = 1.0;
-        sampleAcc = 0.0;
-        currentSrcFreq = 0;
-        bytesWritten = 0;
-        startTime = 0;
-        idx = 0;
-        volume = 0;
-        sampleRateOrig = 0;
-    }
+    std::vector<AudioEvent> events;
+    DWORD lastFreq;
+    DWORD sampleRateOrig;
+    long lastVol;
 
-    AudioCapture(string fn) : file(fn, 1) {
-        resampleRatio = 1.0;
-        sampleAcc = 0.0;
-        currentSrcFreq = 0;
-        bytesWritten = 0;
-        startTime = 0;
-        idx = 0;
-        volume = 0;
-        sampleRateOrig = 0;
-    }
+    AudioCapture() : startTime(0), endTime(0), bytesWritten(0), idx(0), lastFreq(0), lastVol(0), sampleRateOrig(0) {}
+    AudioCapture(string fn) : file(fn, 1), startTime(0), endTime(0), bytesWritten(0), idx(0), lastFreq(0), lastVol(0), sampleRateOrig(0) {}
 };
 
 static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
+static std::vector<AudioCapture> g_history; // History for on_audio_destroy
 static CRITICAL_SECTION g_audioCS;
 
 typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN);
@@ -130,95 +118,106 @@ static void setup_fixed_header(WavHeader& h, uint16_t channels, uint16_t bits) {
     h.byteRate = h.sampleRate * h.blockAlign;
 }
 
-static void write_resampled(AudioCapture& cap, const char* data, uint32_t len) {
-    if (cap.h.bitsPerSample != 16) {
+static void record_event(AudioCapture& cap, DWORD freq, long vol) {
+    unsigned long cur = btas::get_time();
+    unsigned long offset = (cur > cap.startTime) ? (cur - cap.startTime) : 0;
+    if (freq != cap.lastFreq || vol != cap.lastVol) {
+        cap.events.push_back({ offset, freq, vol });
+        cap.lastFreq = freq;
+        cap.lastVol = vol;
+    }
+}
+
+static void write_original_raw(AudioCapture& cap, const char* data, uint32_t len) {
+    if (cap.file.is_open()) {
         cap.file.write(data, len);
         cap.bytesWritten += len;
-        return;
-    }
-    int16_t* src = (int16_t*)data;
-    int numSamples = len / cap.h.blockAlign;
-    int chans = cap.h.channels;
-
-    std::vector<int16_t> outputBuffer;
-    outputBuffer.reserve((int)(numSamples * cap.resampleRatio) * chans);
-
-    while (cap.sampleAcc < numSamples) {
-        int srcIdx = (int)cap.sampleAcc;
-        for (int c = 0; c < chans; c++) {
-            outputBuffer.push_back(src[srcIdx * chans + c]);
-        }
-        cap.sampleAcc += (1.0 / cap.resampleRatio);
-    }
-    cap.sampleAcc -= numSamples;
-    if (!outputBuffer.empty()) {
-        uint32_t outSize = outputBuffer.size() * sizeof(int16_t);
-        cap.file.write((char*)outputBuffer.data(), outSize);
-        cap.bytesWritten += outSize;
     }
 }
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
-        unsigned long currentTime = btas::get_time();
-        unsigned long elapsedMs = (currentTime > cap.startTime) ? (currentTime - cap.startTime) : 0;
-        if (cap.bytesWritten == 0 || elapsedMs == 0) {
-            // Delete empty file
-            string old_filename = "audio_" + to_str(cap.startTime) + "_0_" + to_str(cap.idx) + ".wav";
-            /*
-            FILE_DISPOSITION_INFO disInfo;
-            ZeroMemory(&disInfo, sizeof(FILE_DISPOSITION_INFO));
-            disInfo.DeleteFile = TRUE;
-            if (SetFileInformationByHandlePtr)
-                ASS(SetFileInformationByHandlePtr((HANDLE)cap.file.get_handle(), FileDispositionInfo, &disInfo, sizeof(disInfo)));
-            */
-            cap.file.close();
-            ASS(DeleteFileA(old_filename.c_str()));
-            return;
-        }
-        // Exact byte count required for this duration
-        uint32_t targetBytes = (uint32_t)((uint64_t)elapsedMs * cap.h.byteRate / 1000);
-        if (cap.bytesWritten > targetBytes) {
-            // TRIM: The game produced too much audio (ahead of TAS time)
-            cap.bytesWritten = targetBytes;
-        }
-        else if (cap.bytesWritten < targetBytes) {
-            // PAD: The game lagged/produced too little audio (behind TAS time)
-            uint32_t padding = targetBytes - cap.bytesWritten;
-            std::vector<char> silence(padding, 0);
-            cap.file.write(silence.data(), padding);
-            cap.bytesWritten += padding;
-        }
-        // Finalize headers and physically truncate the file
+        cap.endTime = btas::get_time();
         uint32_t finalFileSize = cap.bytesWritten + 36;
+
         cap.file.seek(4, bfs::SeekBegin);
         cap.file.write((char*)&finalFileSize, 4);
         cap.file.seek(24, bfs::SeekBegin);
-        cap.file.write((char*)&cap.h.sampleRate, 4);
+        cap.file.write((char*)&cap.h.sampleRate, 4); // Write ORIGINAL rate
         cap.file.seek(28, bfs::SeekBegin);
-        cap.file.write((char*)&cap.h.byteRate, 4);
+        cap.file.write((char*)&cap.h.byteRate, 4);   // Write ORIGINAL byte rate
         cap.file.seek(40, bfs::SeekBegin);
         cap.file.write((char*)&cap.bytesWritten, 4);
         cap.file.close();
-        if (cap.volume == 0)
-            return;
-        string old_filename = "audio_" + to_str(cap.startTime) + "_0_" + to_str(cap.idx) + ".wav";
-        string new_filename = "audio_" + to_str(cap.startTime) + "_" + to_str(cap.volume) + "_" + to_str(cap.idx) + ".wav";
-        ASS(MoveFileA(old_filename.c_str(), new_filename.c_str())); // No UNICODE anyway
+
+        g_history.push_back(std::move(cap));
     }
 }
 
+void on_audio_destroy() {
+    CriticalSectionLock lock(g_audioCS);
+    for (auto& pair : g_captures) finalize_wav(pair.second);
+    g_captures.clear();
+
+    if (g_history.empty()) return;
+
+    bfs::File filterFile("temp_filters.txt", 1);
+    bfs::File batFile("amrge.bat", 1);
+
+    std::string batContent = "ffmpeg -y ";
+    std::string filters = "";
+    std::string mix = "";
+
+    for (size_t i = 0; i < g_history.size(); ++i) {
+        auto& c = g_history[i];
+        batContent += "-i audio_" + to_str(c.startTime) + "_" + to_str(c.idx) + ".wav ";
+
+        std::string finalLabel = "[final" + to_str(i) + "]";
+        double totalDuration = (c.endTime > c.startTime) ? (double)(c.endTime - c.startTime) / 1000.0 : 0.0;
+
+        if (c.events.empty()) {
+            // No changes: Simple trim and resample
+            filters += "[" + to_str(i) + ":a]atrim=duration=" + to_str(totalDuration) + ",aresample=48000,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
+        }
+        else {
+            // Frequency changes exist: Split into segments
+            std::string segmentLabels = "";
+            for (size_t e = 0; e < c.events.size(); ++e) {
+                double start = (double)c.events[e].timeOffset / 1000.0;
+                double end = (e + 1 < c.events.size()) ? (double)c.events[e + 1].timeOffset / 1000.0 : totalDuration;
+                if (start >= totalDuration) break;
+
+                std::string segLabel = "[s" + to_str(i) + "e" + to_str(e) + "]";
+                double volLinear = pow(10.0, (double)c.events[e].volume / 2000.0);
+
+                // asetrate is safe here because we are applying it to a static-length segment
+                filters += "[" + to_str(i) + ":a]atrim=start=" + to_str(start) + ":end=" + to_str(end) + ",asetrate=" + to_str(c.events[e].frequency) + ",volume=" + to_str(volLinear) + ",aresample=48000" + segLabel + ";\n";
+                segmentLabels += segLabel;
+            }
+            // Concatenate segments and then apply delay
+            filters += segmentLabels + "concat=n=" + to_str(c.events.size()) + ":v=0:a=1,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
+        }
+        mix += finalLabel;
+    }
+
+    filters += mix + "amix=inputs=" + to_str(g_history.size()) + ":normalize=0[out]";
+    batContent += "-filter_complex_script \"temp_filters.txt\" -map \"[out]\" -ar 48000 output.wav\npause";
+
+    filterFile.write(filters.c_str(), filters.size());
+    batFile.write(batContent.c_str(), batContent.size());
+}
+
 static void reinit_wav(AudioCapture& cap) {
-    // cout << "reinit\n";
     auto cur_time = btas::get_time();
     auto idx = gen_uid(cur_time);
-    string filename = "audio_" + to_str(cur_time) + "_0_" + to_str(idx) + ".wav";
-    cap.file = bfs::File(filename, 1);
+    string fn = "audio_" + to_str(cur_time) + "_" + to_str(idx) + ".wav";
+    cap.file = bfs::File(fn, 1);
     cap.file.write((char*)&cap.h, sizeof(WavHeader));
     cap.bytesWritten = 0;
     cap.startTime = cur_time;
     cap.idx = idx;
-    // cout << "reinit " << cap.h.byteRate << "\n";
+    // Log initial state
+    record_event(cap, cap.h.sampleRate, cap.lastVol);
 }
 
 void audio_stop() {
@@ -242,8 +241,7 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
             // cout << "reset to " << targetFreq << "\n";
         }
         if (targetFreq >= 100 && targetFreq <= 100000) {
-            it->second.currentSrcFreq = targetFreq;
-            it->second.resampleRatio = 48000.0 / (double)targetFreq;
+            record_event(it->second, targetFreq, it->second.lastVol);
         }
     }
 
@@ -254,9 +252,7 @@ static int __fastcall hkApplyVolumeToBuffer(IDirectSoundBuffer** pThis, void* ed
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
-        // cout << "set volume: " << (long)volume << "\n";
-        // Only remember last volume
-        it->second.volume = volume;
+        record_event(it->second, it->second.lastFreq, volume);
     }
     return fpApplyVolumeToBuffer(pThis, edx, volume);
 }
@@ -291,8 +287,8 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
             reinit_wav(it->second);
             return fpUnlock(pThis, pv1, db1, pv2, db2);
         }
-        if (pv1 && db1 > 0) write_resampled(it->second, (char*)pv1, db1);
-        if (pv2 && db2 > 0) write_resampled(it->second, (char*)pv2, db2);
+        if (pv1 && db1 > 0) write_original_raw(it->second, (char*)pv1, db1);
+        if (pv2 && db2 > 0) write_original_raw(it->second, (char*)pv2, db2);
     }
     return fpUnlock(pThis, pv1, db1, pv2, db2);
 }
@@ -301,21 +297,16 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
     HRESULT hr = fpCreateSoundBuffer(pThis, desc, buffer, unk);
     if (SUCCEEDED(hr) && buffer && *buffer && desc->lpwfxFormat) {
         CriticalSectionLock lock(g_audioCS);
-        unsigned long timestamp = btas::get_time();
-        // create wav file for each sound to be joined later via script
-        auto idx = gen_uid(timestamp);
-        string filename = "audio_" + to_str(timestamp) + "_0_" + to_str(idx) + ".wav";
-        AudioCapture cap(filename);
-        if (cap.file.is_open()) {
-            cap.sampleRateOrig = desc->lpwfxFormat->nSamplesPerSec;
-            setup_fixed_header(cap.h, desc->lpwfxFormat->nChannels, desc->lpwfxFormat->wBitsPerSample);
-            cap.currentSrcFreq = desc->lpwfxFormat->nSamplesPerSec;
-            cap.resampleRatio = 48000.0 / (double)cap.currentSrcFreq;
-            cap.file.write((char*)&cap.h, sizeof(WavHeader));
-            cap.startTime = timestamp;
-            cap.idx = idx;
-            g_captures[*buffer] = std::move(cap);
-        }
+        AudioCapture cap;
+        cap.sampleRateOrig = desc->lpwfxFormat->nSamplesPerSec;
+        cap.h.sampleRate = desc->lpwfxFormat->nSamplesPerSec;
+        cap.h.channels = desc->lpwfxFormat->nChannels;
+        cap.h.bitsPerSample = desc->lpwfxFormat->wBitsPerSample;
+        cap.h.blockAlign = desc->lpwfxFormat->nBlockAlign;
+        cap.h.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
+        cap.lastFreq = cap.h.sampleRate;
+        reinit_wav(cap);
+        g_captures[*buffer] = std::move(cap);
         if (fpUnlock == nullptr) {
             cout << "audio enabling hooks 2\n";
             void* target = (*(void***)*buffer)[19]; // Unlock

@@ -267,7 +267,7 @@ static void ui_menu_draw() {
 				SetWindowTextA(hwnd, "I Wanna Be The Boshy S");
 			}
 			if (conf::cap_au && ImGui::Button("Flush audio capture")) {
-				audio_stop();
+				on_audio_destroy();
 			}
 		}
 		if (ImGui::CollapsingHeader("Info")) {
