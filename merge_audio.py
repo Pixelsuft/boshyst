@@ -1,4 +1,5 @@
 import os
+import math
 import subprocess
 import tempfile
 
@@ -6,8 +7,9 @@ data = []
 for i in os.listdir():
     if (i.startswith('cap_') or i.startswith('audio_')) and i.endswith('.wav'):
         try:
-            offset = int(i.split('_')[1].split('.')[0])
-            data.append((i, offset))
+            offset = int(i.split('_')[1])
+            volume = int(i.split('_')[2])
+            data.append((i, offset, volume))
         except (IndexError, ValueError):
             continue
 
@@ -20,9 +22,13 @@ data.sort(key=lambda x: x[1])
 inputs = []
 filter_parts = []
 
-for idx, (filename, offset_ms) in enumerate(data):
+for idx, (filename, offset_ms, volume_mb) in enumerate(data):
     inputs.extend(['-i', filename])
-    filter_parts.append(f"[{idx}:a]adelay={offset_ms}:all=1[a{idx}]")
+    if volume_mb == 0:
+        filter_parts.append(f"[{idx}:a]adelay={offset_ms}:all=1[a{idx}]")
+    else:
+        volume_linear = math.pow(10, volume_mb / 2000.0)
+        filter_parts.append(f"[{idx}:a]adelay={offset_ms}:all=1,volume={volume_linear:.8f}[a{idx}]")
 
 mix_inputs = "".join(f"[a{i}]" for i in range(len(data)))
 

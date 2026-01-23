@@ -13,8 +13,6 @@
 #include <vector>
 #include <cstdint>
 
-// TODO: volume
-
 using std::cout;
 using std::string;
 
@@ -62,17 +60,23 @@ struct WavHeader {
 struct AudioCapture {
     bfs::File file;
     WavHeader h;
-    uint32_t bytesWritten;
     unsigned long startTime;
+    long volume;
+    uint32_t bytesWritten;
+    int idx;
     
     AudioCapture() {
         bytesWritten = 0;
         startTime = 0;
+        idx = 0;
+        volume = 0;
     }
 
     AudioCapture(string fn) : file(fn, 1) {
         bytesWritten = 0;
         startTime = 0;
+        idx = 0;
+        volume = 0;
     }
 };
 
@@ -83,13 +87,15 @@ typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN)
 typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
 typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD, LPVOID, DWORD);
 typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DWORD);
+typedef int(__fastcall* tApplyVolumeToBuffer)(IDirectSoundBuffer**, void*, long);
 typedef int(__fastcall* tStopHardwareBuffer)(IDirectSoundBuffer**, void*);
 typedef int(__fastcall* tResetBufferPosition)(IDirectSoundBuffer**, void*);
 
-static BOOL (__stdcall* SetFileInformationByHandlePtr)(HANDLE, FILE_INFO_BY_HANDLE_CLASS, LPVOID, DWORD);
+// static BOOL (__stdcall* SetFileInformationByHandlePtr)(HANDLE, FILE_INFO_BY_HANDLE_CLASS, LPVOID, DWORD);
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
 static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
 static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
+static tApplyVolumeToBuffer fpApplyVolumeToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
 static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
 static tResetBufferPosition fpResetBufferPosition = nullptr;
@@ -110,13 +116,16 @@ static void finalize_wav(AudioCapture& cap) {
         unsigned long elapsedMs = (currentTime > cap.startTime) ? (currentTime - cap.startTime) : 0;
         if (cap.bytesWritten == 0 || elapsedMs == 0) {
             // Delete empty file
+            string old_filename = "audio_" + to_str(cap.startTime) + "_0_" + to_str(cap.idx) + ".wav";
+            /*
             FILE_DISPOSITION_INFO disInfo;
             ZeroMemory(&disInfo, sizeof(FILE_DISPOSITION_INFO));
             disInfo.DeleteFile = TRUE;
-            // TODO: better way maybe?
             if (SetFileInformationByHandlePtr)
                 ASS(SetFileInformationByHandlePtr((HANDLE)cap.file.get_handle(), FileDispositionInfo, &disInfo, sizeof(disInfo)));
+            */
             cap.file.close();
+            ASS(DeleteFileA(old_filename.c_str()));
             return;
         }
         // Exact byte count required for this duration
@@ -143,17 +152,24 @@ static void finalize_wav(AudioCapture& cap) {
         cap.file.seek(40, bfs::SeekBegin);
         cap.file.write((char*)&cap.bytesWritten, 4);
         cap.file.close();
+        if (cap.volume == 0)
+            return;
+        string old_filename = "audio_" + to_str(cap.startTime) + "_0_" + to_str(cap.idx) + ".wav";
+        string new_filename = "audio_" + to_str(cap.startTime) + "_" + to_str(cap.volume) + "_" + to_str(cap.idx) + ".wav";
+        ASS(MoveFileA(old_filename.c_str(), new_filename.c_str())); // No UNICODE anyway
     }
 }
 
 static void reinit_wav(AudioCapture& cap) {
     // cout << "reinit\n";
     auto cur_time = btas::get_time();
-    string filename = "audio_" + to_str(cur_time) + "_" + to_str(gen_uid(cur_time)) + ".wav";
+    auto idx = gen_uid(cur_time);
+    string filename = "audio_" + to_str(cur_time) + "_0_" + to_str(idx) + ".wav";
     cap.file = bfs::File(filename, 1);
     cap.file.write((char*)&cap.h, sizeof(WavHeader));
     cap.bytesWritten = 0;
     cap.startTime = cur_time;
+    cap.idx = idx;
 }
 
 void audio_stop() {
@@ -176,6 +192,16 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
     }
 
     return fpApplyFrequencyToBuffer(pThis, edx, freq);
+}
+
+static int __fastcall hkApplyVolumeToBuffer(IDirectSoundBuffer** pThis, void* edx, long volume) {
+    CriticalSectionLock lock(g_audioCS);
+    auto it = g_captures.find(*pThis);
+    if (it != g_captures.end()) {
+        // cout << "set volume: " << (long)volume << "\n";
+        it->second.volume = volume;
+    }
+    return fpApplyVolumeToBuffer(pThis, edx, volume);
 }
 
 static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
@@ -238,7 +264,8 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
         CriticalSectionLock lock(g_audioCS);
         unsigned long timestamp = btas::get_time();
         // create wav file for each sound to be joined later via script
-        string filename = "audio_" + to_str(timestamp) + "_" + to_str(gen_uid(timestamp)) + ".wav";
+        auto idx = gen_uid(timestamp);
+        string filename = "audio_" + to_str(timestamp) + "_0_" + to_str(idx) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
             cap.h.channels = desc->lpwfxFormat->nChannels;
@@ -248,6 +275,7 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
             cap.h.blockAlign = desc->lpwfxFormat->nBlockAlign;
             cap.file.write((char*)&cap.h, sizeof(WavHeader));
             cap.startTime = timestamp;
+            cap.idx = idx;
             g_captures[*buffer] = std::move(cap);
         }
         if (fpUnlock == nullptr) {
@@ -274,6 +302,9 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         target = (void*)(mem::get_base("mmfs2.dll") + 0x451d0);
         hook(target, hkApplyFrequencyToBuffer, &fpApplyFrequencyToBuffer);
         enable_hook(target);
+        target = (void*)(mem::get_base("mmfs2.dll") + 0x45190);
+        hook(target, hkApplyVolumeToBuffer, &fpApplyVolumeToBuffer);
+        enable_hook(target);
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45060);
         hook(target, hkStopHardwareBuffer, &fpStopHardwareBuffer);
         enable_hook(target);
@@ -292,10 +323,12 @@ void audio_init() {
     if (!conf::cap_au && !conf::no_au)
         return;
     InitializeCriticalSection(&g_audioCS);
+    /*
     auto handle = GetModuleHandleW(L"kernel32.dll");
     if (handle)
         SetFileInformationByHandlePtr = (decltype(SetFileInformationByHandlePtr))GetProcAddress(handle, "SetFileInformationByHandle");
     else
         SetFileInformationByHandlePtr = nullptr;
+    */
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate, &fpDirectSoundCreate);
 }
