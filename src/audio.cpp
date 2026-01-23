@@ -234,7 +234,7 @@ static void reinit_wav(AudioCapture& cap) {
     cap.idx = idx;
     cap.events.clear();
     cap.events.push_back({ 0, cap.lastFreq, cap.lastVol }); // Hacky
-    cout << "reinit " << cap.h.sampleRate << " " << cap.lastVol << "\n";
+    // cout << "reinit " << cap.h.sampleRate << " " << cap.lastVol << "\n";
 }
 
 void audio_stop() {
@@ -258,7 +258,7 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
             // cout << "reset to " << targetFreq << "\n";
         }
         if (targetFreq >= 100 && targetFreq <= 100000) {
-            if (!it->second.file.is_open())
+            if (0 && !it->second.file.is_open())
                 reinit_wav(it->second);
             record_event(it->second, targetFreq, it->second.lastVol);
         }
@@ -271,7 +271,7 @@ static int __fastcall hkApplyVolumeToBuffer(IDirectSoundBuffer** pThis, void* ed
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
-        if (!it->second.file.is_open())
+        if (0 && !it->second.file.is_open())
             reinit_wav(it->second);
         record_event(it->second, it->second.lastFreq, volume);
     }
