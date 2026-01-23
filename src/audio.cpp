@@ -62,12 +62,18 @@ struct WavHeader {
 struct AudioCapture {
     bfs::File file;
     WavHeader h;
+    double resampleRatio;
+    double sampleAcc;
     unsigned long startTime;
     long volume;
     uint32_t bytesWritten;
+    DWORD currentSrcFreq;
     int idx;
     
     AudioCapture() {
+        resampleRatio = 1.0;
+        sampleAcc = 0.0;
+        currentSrcFreq = 0;
         bytesWritten = 0;
         startTime = 0;
         idx = 0;
@@ -75,6 +81,9 @@ struct AudioCapture {
     }
 
     AudioCapture(string fn) : file(fn, 1) {
+        resampleRatio = 1.0;
+        sampleAcc = 0.0;
+        currentSrcFreq = 0;
         bytesWritten = 0;
         startTime = 0;
         idx = 0;
@@ -110,6 +119,42 @@ static int gen_uid(unsigned long mytime) {
         last_uid = 0;
     }
     return last_uid++;
+}
+
+static void setup_fixed_header(WavHeader& h, uint16_t channels, uint16_t bits) {
+    h.channels = channels;
+    h.sampleRate = 48000;
+    h.bitsPerSample = bits;
+    h.blockAlign = (channels * bits) / 8;
+    h.byteRate = h.sampleRate * h.blockAlign;
+}
+
+static void write_resampled(AudioCapture& cap, const char* data, uint32_t len) {
+    if (cap.h.bitsPerSample != 16) {
+        cap.file.write(data, len);
+        cap.bytesWritten += len;
+        return;
+    }
+    int16_t* src = (int16_t*)data;
+    int numSamples = len / cap.h.blockAlign;
+    int chans = cap.h.channels;
+
+    std::vector<int16_t> outputBuffer;
+    outputBuffer.reserve((int)(numSamples * cap.resampleRatio) * chans);
+
+    while (cap.sampleAcc < numSamples) {
+        int srcIdx = (int)cap.sampleAcc;
+        for (int c = 0; c < chans; c++) {
+            outputBuffer.push_back(src[srcIdx * chans + c]);
+        }
+        cap.sampleAcc += (1.0 / cap.resampleRatio);
+    }
+    cap.sampleAcc -= numSamples;
+    if (!outputBuffer.empty()) {
+        uint32_t outSize = outputBuffer.size() * sizeof(int16_t);
+        cap.file.write((char*)outputBuffer.data(), outSize);
+        cap.bytesWritten += outSize;
+    }
 }
 
 static void finalize_wav(AudioCapture& cap) {
@@ -189,14 +234,9 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
     // IDK but hooking dsound directly doesnt work
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
-    if (it != g_captures.end() && freq != 0 && freq != it->second.h.sampleRate && it->second.file.is_open()) {
-        // We dont support dynamic freq but just remember last
-        // cout << "freq set " << freq << "\n";
-
-        // Let's re-init
-        finalize_wav(it->second);
-        reinit_wav(it->second);
-        it->second.h.sampleRate = freq;
+    if (it != g_captures.end() && freq != 0) {
+        it->second.currentSrcFreq = freq;
+        it->second.resampleRatio = 48000.0 / (double)freq;
     }
 
     return fpApplyFrequencyToBuffer(pThis, edx, freq);
@@ -255,14 +295,10 @@ static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID 
     if (it != g_captures.end()) {
         if (!it->second.file.is_open()) {
             reinit_wav(it->second);
-            // cout << "skip\n";
-            // if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
-            // if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
+            return fpUnlock(pThis, pv1, db1, pv2, db2);
         }
-        else {
-            if (pv1 && db1 > 0) { it->second.file.write((char*)pv1, db1); it->second.bytesWritten += db1; }
-            if (pv2 && db2 > 0) { it->second.file.write((char*)pv2, db2); it->second.bytesWritten += db2; }
-        }
+        if (pv1 && db1 > 0) write_resampled(it->second, (char*)pv1, db1);
+        if (pv2 && db2 > 0) write_resampled(it->second, (char*)pv2, db2);
     }
     return fpUnlock(pThis, pv1, db1, pv2, db2);
 }
@@ -277,11 +313,9 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
         string filename = "audio_" + to_str(timestamp) + "_0_" + to_str(idx) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
-            cap.h.channels = desc->lpwfxFormat->nChannels;
-            cap.h.sampleRate = desc->lpwfxFormat->nSamplesPerSec;
-            cap.h.bitsPerSample = desc->lpwfxFormat->wBitsPerSample;
-            cap.h.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
-            cap.h.blockAlign = desc->lpwfxFormat->nBlockAlign;
+            setup_fixed_header(cap.h, desc->lpwfxFormat->nChannels, desc->lpwfxFormat->wBitsPerSample);
+            cap.currentSrcFreq = desc->lpwfxFormat->nSamplesPerSec;
+            cap.resampleRatio = 48000.0 / (double)cap.currentSrcFreq;
             cap.file.write((char*)&cap.h, sizeof(WavHeader));
             cap.startTime = timestamp;
             cap.idx = idx;
