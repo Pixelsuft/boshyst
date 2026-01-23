@@ -1099,8 +1099,6 @@ void btas::draw_info() {
 }
 
 void btas::draw_tab() {
-	if (is_hourglass)
-		return;
 	if (!is_replay)
 		is_paused = true; // TODO: configure that
 	//RECT test;

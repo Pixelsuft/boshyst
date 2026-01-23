@@ -287,8 +287,10 @@ void ui::draw() {
 	}
 	ImGuiIO& io = ImGui::GetIO();
 	io.FontGlobalScale = conf::font_scale;
-	if (is_btas)
-		ui_menu_draw();
+	if (is_btas) {
+		if (!is_hourglass)
+			ui_menu_draw();
+	}
 	else {
 		int scene_id = get_scene_id();
 		if (scene_id != last_scene) {
