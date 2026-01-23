@@ -799,7 +799,7 @@ static void exec_event(BTasEvent& ev) {
 	}
 	case 9: {
 		// God mode fix
-		conf::god = (bool)ev.click.x;
+		conf::god = ev.click.x == 0 ? false : true;
 		break;
 	}
 	}

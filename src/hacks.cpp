@@ -779,8 +779,6 @@ void init_game_loop() {
         // Ok this might be overkill
         // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
         // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
-        hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
-        hook(mem::addr("GetProcessTimes", "kernel32.dll"), GetProcessTimesHook);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
         // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
@@ -838,6 +836,10 @@ void init_simple_hacks() {
         // hook(mem::get_base() + 0x41ba0, EditWindowProcHook, &EditWindowProcOrig);
         MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
         EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
+    }
+    if (is_btas) {
+        hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
+        hook(mem::addr("GetProcessTimes", "kernel32.dll"), GetProcessTimesHook);
     }
     ExecuteObjectAction = (decltype(ExecuteObjectAction))(mem::get_base() + 0x15180);
     Ordinal_78 = (decltype(Ordinal_78))(mem::get_base("mmfs2.dll") + 0x116e0);
