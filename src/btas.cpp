@@ -923,7 +923,8 @@ void btas::on_after_update() {
 
 		if (is_replay && st.frame == st.total && st.frame > 0) {
 			is_replay = false;
-			is_paused = true;
+			if (!is_hourglass)
+				is_paused = true;
 
 			repl_holding.clear();
 			ASS((int)st.ev.size() == repl_index);
