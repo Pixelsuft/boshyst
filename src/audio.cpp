@@ -103,7 +103,6 @@ typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD,
 typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DWORD);
 typedef int(__fastcall* tApplyVolumeToBuffer)(IDirectSoundBuffer**, void*, long);
 typedef int(__fastcall* tStopHardwareBuffer)(IDirectSoundBuffer**, void*);
-typedef int(__fastcall* tResetBufferPosition)(IDirectSoundBuffer**, void*);
 
 // static BOOL (__stdcall* SetFileInformationByHandlePtr)(HANDLE, FILE_INFO_BY_HANDLE_CLASS, LPVOID, DWORD);
 static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
@@ -112,7 +111,6 @@ static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
 static tApplyVolumeToBuffer fpApplyVolumeToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
 static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
-static tResetBufferPosition fpResetBufferPosition = nullptr;
 static int last_uid = 0;
 static unsigned long last_time = 0;
 
@@ -285,20 +283,6 @@ static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void*
     *pThis = nullptr;
 }
 
-static int __fastcall hkResetBufferPosition(IDirectSoundBuffer** pThis, void* edx) {
-    // return fpResetBufferPosition(pThis, edx);
-    // FIXME
-    CriticalSectionLock lock(g_audioCS);
-    auto it = g_captures.find(*pThis);
-    auto cur_time = btas::get_time();
-    if (it != g_captures.end() && it->second.bytesWritten > 0 && it->second.startTime < cur_time) {
-        // cout << "hkResetBufferPosition " << it->second.bytesWritten << "\n";
-        finalize_wav(it->second);
-        reinit_wav(it->second);
-    }
-    return fpResetBufferPosition(pThis, edx);
-}
-
 static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) {
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(pThis);
@@ -362,10 +346,6 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45060);
         hook(target, hkStopHardwareBuffer, &fpStopHardwareBuffer);
         enable_hook(target);
-        // Does not help anyway
-        //target = (void*)(mem::get_base("mmfs2.dll") + 0x45070);
-        //hook(target, hkResetBufferPosition, &fpResetBufferPosition);
-        //enable_hook(target);
         target = (void*)(mem::get_base("mmfs2.dll") + 0x45050);
         hook(target, hkReleaseHardwareBuffer);
         enable_hook(target);
