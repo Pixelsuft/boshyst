@@ -68,6 +68,7 @@ struct AudioCapture {
     long volume;
     uint32_t bytesWritten;
     DWORD currentSrcFreq;
+    uint32_t sampleRateOrig;
     int idx;
     
     AudioCapture() {
@@ -78,6 +79,7 @@ struct AudioCapture {
         startTime = 0;
         idx = 0;
         volume = 0;
+        sampleRateOrig = 0;
     }
 
     AudioCapture(string fn) : file(fn, 1) {
@@ -88,6 +90,7 @@ struct AudioCapture {
         startTime = 0;
         idx = 0;
         volume = 0;
+        sampleRateOrig = 0;
     }
 };
 
@@ -234,9 +237,16 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
     // IDK but hooking dsound directly doesnt work
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
-    if (it != g_captures.end() && freq != 0) {
-        it->second.currentSrcFreq = freq;
-        it->second.resampleRatio = 48000.0 / (double)freq;
+    if (it != g_captures.end()) {
+        DWORD targetFreq = freq;
+        if (targetFreq == 0) {
+            targetFreq = it->second.sampleRateOrig;
+            // cout << "reset to " << targetFreq << "\n";
+        }
+        if (targetFreq >= 100 && targetFreq <= 100000) {
+            it->second.currentSrcFreq = targetFreq;
+            it->second.resampleRatio = 48000.0 / (double)targetFreq;
+        }
     }
 
     return fpApplyFrequencyToBuffer(pThis, edx, freq);
@@ -313,6 +323,7 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
         string filename = "audio_" + to_str(timestamp) + "_0_" + to_str(idx) + ".wav";
         AudioCapture cap(filename);
         if (cap.file.is_open()) {
+            cap.sampleRateOrig = desc->lpwfxFormat->nSamplesPerSec;
             setup_fixed_header(cap.h, desc->lpwfxFormat->nChannels, desc->lpwfxFormat->wBitsPerSample);
             cap.currentSrcFreq = desc->lpwfxFormat->nSamplesPerSec;
             cap.resampleRatio = 48000.0 / (double)cap.currentSrcFreq;
