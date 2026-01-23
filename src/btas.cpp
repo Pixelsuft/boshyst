@@ -611,7 +611,7 @@ static void export_replay(const std::string& path) {
 		BTasEvent& ev = *it;
 		if (!export_hash && (ev.idx == 3 || ev.idx == 4))
 			continue;
-		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7 || ev.idx == 8) {
+		if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7 || ev.idx == 8 || ev.idx == 9) {
 			ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," + to_str(ev.click.x)));
 		}
 		else {
@@ -641,7 +641,7 @@ static void import_replay(const std::string& path) {
 	while (f.read_line(line)) {
 		int idx = atoi(line.c_str());
 		BTasEvent ev;
-		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7 || idx == 8)
+		if (idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 7 || idx == 8 || idx == 9)
 			ASS(sscanf(line.c_str(), "%i,%i,%i", &idx, &ev.frame, &ev.click.x) == 3);
 		else
 			ASS(sscanf(line.c_str(), "%i,%i,%i,%i", &idx, &ev.frame, &ev.click.x, &ev.click.y) == 4);
@@ -783,6 +783,11 @@ static void exec_event(BTasEvent& ev) {
 	case 8: {
 		// Set current time (only useful before any frames?)
 		st.time = ev.tm.val;
+		break;
+	}
+	case 9: {
+		// God mode fix
+		conf::god = (bool)ev.click.x;
 		break;
 	}
 	}
