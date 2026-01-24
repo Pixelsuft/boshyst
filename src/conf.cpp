@@ -45,7 +45,6 @@ namespace conf {
     bool cur_mouse_checked;
     bool allow_render;
     bool direct_render;
-    bool fix_white_render;
     bool tas_mode;
     bool first_run;
     bool tp_on_click;
@@ -189,7 +188,6 @@ static void create_default_config(const string& path) {
     ASS(file.write_line(""));
     ASS(file.write_line("allow_render = 0 // Allow video capturing"));
     ASS(file.write_line("direct_render = 1 // Capture video directly using Direct3D 9 instead of making screenshots of the window using Win32 API"));
-    ASS(file.write_line("fix_white_render = 1 // Fix white screen when using direct render"));
     ASS(file.write_line("old_render = 0 // Turn on this if you have rendering issues (only when not using direct render; likely will cause window content overriding)"));
     ASS(file.write_line("render_start = 0 // Start frame (not recommended to use, see readme)"));
     ASS(file.write_line("render_count = 0 // Frame count (not recommended to use, see readme)"));
@@ -263,7 +261,7 @@ void conf::read() {
     tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi =
         no_sh = keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info =
         no_cmove = draw_cursor = emu_mouse = allow_render = hg_instant = false;
-    direct_render = fix_white_render = true;
+    direct_render = true;
 	cur_mouse_checked = false;
     tp_on_click = input_in_menu = false;
     font_scale = 1.f;
@@ -341,8 +339,6 @@ void conf::read() {
             direct_render = read_int(line) != 0;
         else if (starts_with(line, "old_render="))
             old_rec = read_int(line) != 0;
-        else if (starts_with(line, "fix_white_render="))
-            fix_white_render = read_int(line) != 0;
         else if (starts_with(line, "render_start="))
             cap_start = read_int(line);
         else if (starts_with(line, "render_count="))

@@ -1,5 +1,7 @@
 #pragma once
 
+extern bool capturing;
+
 namespace rec {
 	void init(void* dev);
 	void cap(void* dev);

@@ -22,9 +22,6 @@ using std::cout;
 extern HANDLE hproc;
 extern HWND hwnd;
 extern HWND mhwnd;
-extern bool capturing;
-extern bool show_menu;
-extern bool next_white;
 extern int lock_rng_range;
 extern bool fix_rng;
 extern float fix_rng_val;
@@ -226,12 +223,11 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
     if (strcmp(cap, "I Wanna Be The Boshy") == 0) {
+        next_white = true;
         // This happens only when chaning/resetting scene lul
         audio_stop(); // Yeah it's hacky (for performance)
-        if (capturing) {
-            next_white = true;
+        if (capturing)
             return FALSE;
-        }
     }
     return SetWindowTextAOrig(hwnd, cap);
 }
@@ -352,6 +348,7 @@ static int __stdcall UpdateGameFrameHook() {
     if (!conf::direct_render)
         rec::rec_tick(nullptr);
 
+    next_white = false;
     last_upd2 = false;
     return ret;
 }

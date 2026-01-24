@@ -153,6 +153,8 @@ static void finalize_wav(AudioCapture& cap) {
 }
 
 void on_audio_destroy() {
+    if (!conf::cap_au)
+        return;
     CriticalSectionLock lock(g_audioCS);
     for (auto& pair : g_captures) finalize_wav(pair.second);
     g_captures.clear();
@@ -258,8 +260,6 @@ static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void*
             // cout << "reset to " << targetFreq << "\n";
         }
         if (targetFreq >= 100 && targetFreq <= 100000) {
-            if (0 && !it->second.file.is_open())
-                reinit_wav(it->second);
             record_event(it->second, targetFreq, it->second.lastVol);
         }
     }
@@ -271,8 +271,6 @@ static int __fastcall hkApplyVolumeToBuffer(IDirectSoundBuffer** pThis, void* ed
     CriticalSectionLock lock(g_audioCS);
     auto it = g_captures.find(*pThis);
     if (it != g_captures.end()) {
-        if (0 && !it->second.file.is_open())
-            reinit_wav(it->second);
         record_event(it->second, it->second.lastFreq, volume);
     }
     return fpApplyVolumeToBuffer(pThis, edx, volume);

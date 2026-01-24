@@ -141,6 +141,8 @@ void rec::init(void* dev) {
 }
 
 void rec::cap(void* dev) {
+    if (next_white)
+        return;
     if (dev == nullptr) {
         BOOL success;
         if (conf::old_rec) {
@@ -169,7 +171,7 @@ void rec::cap(void* dev) {
         );
         ASS(bits == ws.second);
     }
-    else if (!next_white) {
+    else {
         LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
         LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
         ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
@@ -191,7 +193,6 @@ void rec::cap(void* dev) {
         }
         pBackBuffer->Release();
     }
-    next_white = false;
     DWORD dwWritten;
     BOOL bSuccess = WriteFile(
         hChildStdinWrite,
@@ -201,6 +202,10 @@ void rec::cap(void* dev) {
         nullptr
     );
     ASS(bSuccess);
+    if (!bSuccess) {
+        rec::stop(dev);
+        return;
+    }
     ASS(FlushFileBuffers(hChildStdinWrite));
 }
 
@@ -248,10 +253,6 @@ void rec::rec_tick(void* dev) {
             rec::stop(dev);
         }
         if (capturing) {
-            if (last_reset && strcmp(buf, "I Wanna Be The Boshy") == 0) {
-                SetWindowTextAOrig(hwnd, "I Wanna Be The Boshy R");
-                next_white = conf::fix_white_render;
-            }
             if (!is_btas || last_upd2)
                 rec::cap(dev);
         }

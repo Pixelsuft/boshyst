@@ -18,7 +18,7 @@
 #include <map>
 #undef max
 #undef min
-#define STATE_VER 1
+#define STATE_VER 2
 
 using std::cout;
 using std::string;
@@ -113,10 +113,14 @@ struct BTasState {
 	int scene;
 	// Current frames
 	int frame;
+	// Real frames
+	int hg_frame;
 	// Frames on this scene
 	int sc_frame;
 	// Total frames (for replay)
 	int total;
+	// Total real frames
+	int hg_total;
 	// Current time (usually frame * 20)
 	int time;
 	// Save value not saved
@@ -138,9 +142,9 @@ struct BTasState {
 
 	void clear() {
 		time = 0;
-		frame = sc_frame = 0;
+		frame = sc_frame = hg_frame = 0;
 		scene = 0;
-		total = 0;
+		total = hg_total = 0;
 		cur_pos[0] = cur_pos[1] = last_pos[0] = last_pos[1] = 0;
 		m_pos[0] = m_pos[1] = -100;
 		seed = 0;
@@ -198,6 +202,8 @@ static void import_replay(const std::string& path) {
 	while (f.read_line(line)) {
 		if (starts_with(line, "total: "))
 			st.total = std::atoi(line.substr(7).c_str());
+		else if (starts_with(line, "hg_total: "))
+			st.hg_total = std::atoi(line.substr(10).c_str());
 		else if (starts_with(line, "data: "))
 			break;
 	}
@@ -225,6 +231,7 @@ static void export_replay(const std::string& path) {
 	}
 	ASS(f.write_line("brep"));
 	ASS(f.write_line(string("total: ") + to_str(st.total)));
+	ASS(f.write_line(string("hg_total: ") + to_str(st.hg_total)));
 	ASS(f.write_line("data: "));
 	for (auto it = st.ev.begin(); it != st.ev.end(); it++) {
 		BTasEvent& ev = *it;
@@ -401,6 +408,7 @@ void btas::init() {
 
 static void trim_current_state() {
 	st.total = st.frame;
+	st.hg_total = st.hg_frame;
 	// Hacky way to trim events from st.total to st.frame
 	while (!st.ev.empty() && (st.ev.end() - 1)->frame >= st.frame)
 		st.ev.erase(st.ev.end() - 1);
@@ -509,8 +517,10 @@ static void b_state_save(int slot) {
 	write_bin(f, (int)STATE_VER);
 	write_bin(f, st.scene);
 	write_bin(f, st.frame);
+	write_bin(f, st.hg_frame);
 	write_bin(f, st.sc_frame);
 	write_bin(f, st.total);
+	write_bin(f, st.hg_total);
 	write_bin(f, st.cur_pos[0]);
 	write_bin(f, st.cur_pos[1]);
 	write_bin(f, st.last_pos[0]);
@@ -592,8 +602,10 @@ static void b_state_load(int slot, bool from_loop) {
 		}
 		int dummy;
 		load_bin(f, dummy); // frame
+		load_bin(f, dummy); // hg_frame
 		load_bin(f, dummy); // sc frame
 		load_bin(f, st.total);
+		load_bin(f, st.hg_total);
 		load_bin(f, dummy); // cur pos
 		load_bin(f, dummy);
 		load_bin(f, dummy); // last_pos
@@ -621,8 +633,10 @@ static void b_state_load(int slot, bool from_loop) {
 	else {
 		st.scene = scene_id;
 		load_bin(f, st.frame);
+		load_bin(f, st.hg_frame);
 		load_bin(f, st.sc_frame);
 		load_bin(f, st.total);
+		load_bin(f, st.hg_total);
 		load_bin(f, st.cur_pos[0]);
 		load_bin(f, st.cur_pos[1]);
 		load_bin(f, st.last_pos[0]);
@@ -906,7 +920,10 @@ void btas::on_after_update() {
 		st.frame++;
 		// cout << st.frame << " " << st.seed << std::endl;
 		st.sc_frame++;
+		if (!next_white)
+			st.hg_frame++;
 		st.total = std::max(st.total, st.frame);
+		st.hg_total = std::max(st.hg_total, st.hg_frame);
 		st.time += 20;
 
 		ObjectHeader* pp = (ObjectHeader*)get_player_ptr(get_scene_id());
@@ -950,6 +967,10 @@ void btas::on_after_update() {
 
 unsigned long btas::get_time() {
 	return st.time;
+}
+
+unsigned long btas::get_hg_time() {
+	return st.hg_frame * 50;
 }
 
 void btas::on_key(int k, bool pressed) {
@@ -1047,7 +1068,7 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-	ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, st.sc_frame, get_state().frameCount);
+	ImGui::Text("Frames: %i / %i, %i, %i, %i", st.frame, st.total, st.hg_frame, get_state().frameCount, st.sc_frame);
 
 	ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
 	ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);
@@ -1129,7 +1150,7 @@ void btas::draw_tab() {
 		ImGui::Checkbox("Hide info window", &conf::tas_no_info);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
 		ImGui::Checkbox("Export hash checks", &export_hash);
-		if (ImGui::Button("Export"))
+		if (ImGui::Button("Export") && st.frame != 0)
 			export_replay(string(export_buf) + ".breplay");
 		if (st.frame == 0)
 			ImGui::SameLine();

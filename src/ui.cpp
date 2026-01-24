@@ -257,7 +257,6 @@ static void ui_menu_draw() {
 				conf::allow_render = true;
 			if (!capturing)
 				ImGui::Checkbox("Use Direct3D9 render", &conf::direct_render);
-			ImGui::Checkbox("Fix white screen (Direct3D9)", &conf::fix_white_render);
 			ImGui::Checkbox("Old render (BitBlt)", &conf::old_rec);
 			if (conf::allow_render && !capturing && ImGui::Button("Start recording")) {
 				conf::cap_start = conf::cap_cnt = 0; // Hack

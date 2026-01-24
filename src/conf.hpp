@@ -24,7 +24,6 @@ namespace conf {
 	extern bool cur_mouse_checked;
 	extern bool allow_render;
 	extern bool direct_render;
-	extern bool fix_white_render;
 	extern bool tas_mode;
 	extern bool first_run;
 	extern bool tp_on_click;

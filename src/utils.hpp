@@ -33,6 +33,7 @@ static bool c_ends_with(const char* str, const char* end) {
 }
 
 extern bool capturing;
+extern bool next_white;
 
 bool MyKeyState(int k);
 int JustKeyState(int k);
