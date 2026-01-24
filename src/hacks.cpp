@@ -387,10 +387,10 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
-        if (is_btas && uMsg == WM_GETMINMAXINFO) {
+        if (is_btas && uMsg == WM_GETMINMAXINFO && (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
             MINMAXINFO* mmi = (MINMAXINFO*)lParam;
-            mmi->ptMaxTrackSize.x = 5120 + 32;
-            mmi->ptMaxTrackSize.y = 3840 + 64;
+            mmi->ptMaxTrackSize.x = conf::force_size[0] + 32;
+            mmi->ptMaxTrackSize.y = conf::force_size[1] + 64;
             return 0;
         }
         if (uMsg == WM_KEYDOWN) {
@@ -413,10 +413,10 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
-        if (is_btas && uMsg == WM_GETMINMAXINFO) {
+        if (is_btas && uMsg == WM_GETMINMAXINFO && (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
             MINMAXINFO* mmi = (MINMAXINFO*)lParam;
-            mmi->ptMaxTrackSize.x = 5120 + 32;
-            mmi->ptMaxTrackSize.y = 3840 + 64;
+            mmi->ptMaxTrackSize.x = conf::force_size[0] + 32;
+            mmi->ptMaxTrackSize.y = conf::force_size[1] + 64;
             return 0;
         }
         if (uMsg == WM_KEYDOWN) {
