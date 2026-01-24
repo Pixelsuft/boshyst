@@ -970,7 +970,7 @@ unsigned long btas::get_time() {
 }
 
 unsigned long btas::get_hg_time() {
-	return st.hg_frame * 50;
+	return st.hg_frame * 20;
 }
 
 void btas::on_key(int k, bool pressed) {

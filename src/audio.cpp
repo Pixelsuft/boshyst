@@ -110,6 +110,10 @@ static int gen_uid(unsigned long mytime) {
     return last_uid++;
 }
 
+static unsigned long audio_get_time() {
+    return btas::get_hg_time();
+}
+
 static void setup_fixed_header(WavHeader& h, uint16_t channels, uint16_t bits) {
     h.channels = channels;
     h.sampleRate = 48000;
@@ -119,7 +123,7 @@ static void setup_fixed_header(WavHeader& h, uint16_t channels, uint16_t bits) {
 }
 
 static void record_event(AudioCapture& cap, DWORD freq, long vol) {
-    unsigned long cur = btas::get_time();
+    unsigned long cur = audio_get_time();
     unsigned long offset = (cur > cap.startTime) ? (cur - cap.startTime) : 0;
     if (freq != cap.lastFreq || vol != cap.lastVol) {
         cap.events.push_back({ offset, freq, vol });
@@ -135,7 +139,7 @@ static void write_original_raw(AudioCapture& cap, const char* data, uint32_t len
 
 static void finalize_wav(AudioCapture& cap) {
     if (cap.file.is_open()) {
-        cap.endTime = btas::get_time();
+        cap.endTime = audio_get_time();
         uint32_t finalFileSize = cap.bytesWritten + 36;
 
         cap.file.seek(4, bfs::SeekBegin);
@@ -226,7 +230,7 @@ void on_audio_destroy() {
 }
 
 static void reinit_wav(AudioCapture& cap) {
-    auto cur_time = btas::get_time();
+    auto cur_time = audio_get_time();
     auto idx = gen_uid(cur_time);
     string fn = "audio_" + to_str(cur_time) + "_" + to_str(idx) + ".wav";
     cap.file = bfs::File(fn, 1);
