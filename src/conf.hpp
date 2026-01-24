@@ -5,6 +5,7 @@ namespace conf {
 	extern int pos[2];
 	extern int size[2];
 	extern int full_size[2];
+	extern int force_size[2];
 	extern int menu_hotkey;
 	extern int rapid_bind;
 	extern int hitbox_level;

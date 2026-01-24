@@ -1068,7 +1068,7 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-	ImGui::Text("Frames: %i / %i, %i, %i, %i", st.frame, st.total, st.hg_frame, get_state().frameCount, st.sc_frame);
+	ImGui::Text("Frames: %i / %i, %i / %i, %i, %i", st.frame, st.total, st.hg_frame, st.hg_total, get_state().frameCount, st.sc_frame);
 
 	ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
 	ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);

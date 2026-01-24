@@ -23,6 +23,7 @@ namespace conf {
     int pos[2];
     int size[2];
     int full_size[2];
+    int force_size[2];
     int cap_start;
     int cap_cnt;
     int rapid_bind;
@@ -179,6 +180,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(""));
+    ASS(file.write_line("tas_force_size = 0, 0 // You can force window size to be higher than you monitor resolution"));
     ASS(file.write_line("tas_force_gdi = 0 // Force software renderer (doesnt support UI)"));
     ASS(file.write_line("tas_disable_audio = 0 // Disable audio output"));
     ASS(file.write_line("tas_audio_capture = 0 // Capture audio in tas mode"));
@@ -353,6 +355,8 @@ void conf::read() {
             read_vec2_int(line, "win_size=%i,%i", size);
         else if (starts_with(line, "fullscreen_size"))
             read_vec2_int(line, "fullscreen_size=%i,%i", full_size);
+        else if (starts_with(line, "tas_force_size"))
+            read_vec2_int(line, "tas_force_size=%i,%i", force_size);
         else if (starts_with(line, "bind="))
             read_bind(line_orig, line);
         else if (starts_with(line, "btas="))

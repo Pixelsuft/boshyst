@@ -387,11 +387,12 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
-        /*
-        if (uMsg == WM_CONTEXTMENU && SendMessageA(hWnd, WM_NCHITTEST, 0, lParam) == HTCAPTION) {
+        if (is_btas && uMsg == WM_GETMINMAXINFO) {
+            MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+            mmi->ptMaxTrackSize.x = 5120 + 32;
+            mmi->ptMaxTrackSize.y = 3840 + 64;
             return 0;
         }
-        */
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
@@ -412,6 +413,12 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
+        if (is_btas && uMsg == WM_GETMINMAXINFO) {
+            MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+            mmi->ptMaxTrackSize.x = 5120 + 32;
+            mmi->ptMaxTrackSize.y = 3840 + 64;
+            return 0;
+        }
         if (uMsg == WM_KEYDOWN) {
             if (wParam == (WPARAM)conf::menu_hotkey)
                 show_menu = !show_menu;
@@ -459,11 +466,11 @@ static int __stdcall GetSystemMetricsHook(int nIndex) {
         /*
         case SM_CXSCREEN:
         case SM_CXVIRTUALSCREEN:
-            return 1280;
+            return 3840;
         case SM_CYSCREEN:
         case SM_CYVIRTUALSCREEN:
-            return 1024;
-        */
+            return 2160;
+            */
     case SM_CMONITORS:
         return 1;
     case SM_SAMEDISPLAYFORMAT:
@@ -756,6 +763,29 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     HideObjectIfNeededOrig(obj);
 }
 
+static BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect);
+static BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
+    if (hWnd == hwnd && (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
+        lpRect->left = 0;
+        lpRect->top = 0;
+        lpRect->right = conf::force_size[0];
+        lpRect->bottom = conf::force_size[1];
+        return TRUE;
+    }
+    return GetClientRectOrig(hWnd, lpRect);
+}
+
+static BOOL(__stdcall* AdjustWindowRectExOrig)(LPRECT, DWORD, BOOL, DWORD);
+static BOOL __stdcall AdjustWindowRectExHook(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle) {
+    if (conf::force_size[0] != 0 || conf::force_size[1] != 0) {
+        lpRect->left = 0;
+        lpRect->top = 0;
+        lpRect->right = conf::force_size[0];
+        lpRect->bottom = conf::force_size[1];
+    }
+    return AdjustWindowRectExOrig(lpRect, dwStyle, bMenu, dwExStyle);
+}
+
 void init_game_loop() {
     // Executed as early as possible
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
@@ -772,6 +802,8 @@ void init_game_loop() {
         }
         hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
+        hook(mem::addr("GetClientRect", "user32.dll"), GetClientRectHook, &GetClientRectOrig);
+        hook(mem::addr("AdjustWindowRectEx", "user32.dll"), AdjustWindowRectExHook, &AdjustWindowRectExOrig);
         hook(mem::addr("SetFocus", "user32.dll"), SetFocusHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("GetFocus", "user32.dll"), GetActiveWindowHook);
