@@ -577,7 +577,6 @@ static void b_state_load(int slot, bool from_loop) {
 		repl_holding.clear();
 		need_scene_state_slot = slot;
 		last_msg = "Restarting game";
-		RunHeader& pState = get_state();
 		pState.rhNextFrame = 4; // Restart flag
 		pState.rhNextFrameData = 0;
 		st.frame = st.sc_frame = 0;
@@ -604,7 +603,6 @@ static void b_state_load(int slot, bool from_loop) {
 		need_scene_state_slot = slot;
 		// last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " + to_str(get_scene_id()) + ")";
 		last_msg = string("Loading scene ") + to_str(scene_id);
-		RunHeader& pState = get_state();
 		pState.rhNextFrame = 3; // Set scene flag
 		pState.rhNextFrameData = scene_id | 0x8000; // Scene ID
 		ExecuteTriggeredEvent(0xfffefffd);
@@ -1170,6 +1168,20 @@ void btas::draw_tab() {
 		ImGui::Checkbox("Hide info window", &conf::tas_no_info);
 		ImGui::InputText("Replay name", export_buf, MAX_PATH);
 		ImGui::Checkbox("Export hash checks", &export_hash);
+		if (ImGui::Button("Reset")) {
+			repl_index = 0;
+			is_paused = true;
+			is_replay = false;
+			repl_holding.clear();
+			st.clear_arr();
+			st.clear();
+			init_temp_saves();
+			last_msg = "Restarting game";
+			pState.rhNextFrame = 4; // Restart flag
+			pState.rhNextFrameData = 0;
+			ExecuteTriggeredEvent(0xfffefffd);
+		}
+		ImGui::SameLine();
 		if (ImGui::Button("Export") && st.frame != 0)
 			export_replay(string(export_buf) + ".breplay");
 		if (st.frame == 0)
