@@ -15,7 +15,7 @@
 #include "ghidra_headers.h"
 #include <vector>
 #include <algorithm>
-#include <map>
+#include <unordered_map>
 #undef max
 #undef min
 #define STATE_VER 2
@@ -158,6 +158,7 @@ static std::vector<BTasBind> binds;
 static std::vector<int> holding;
 // Same but for replay to not cause problems when pressing real keys
 static std::vector<int> repl_holding;
+static std::unordered_map<int, std::vector<int>> rng_logger;
 static string last_msg;
 static string need_replay_load = "";
 static BTasState st;
@@ -741,12 +742,26 @@ unsigned int btas::get_rng(unsigned int maxv) {
 	auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), (int)maxv, [](const IntPair& a, int range) {
 		return a.a > range;
 	});
+	unsigned int ret;
 	// Do we have value for that range (maxv) in our queue?
 	if (it == st.rng_buf.end() || it->a != (int)maxv)
-		return RandomOrig(maxv);
-	// Return our value
-	auto ret = it->b;
-	st.rng_buf.erase(it);
+		ret = RandomOrig(maxv);
+	else {
+		// Return our value
+		ret = (unsigned int)it->b;
+		st.rng_buf.erase(it);
+	}
+	if (!fast_forward && !fast_forward_skip) {
+		// Fill RNG log
+		auto mit = rng_logger.find((int)maxv);
+		if (mit == rng_logger.end()) {
+			std::vector<int> new_vec;
+			new_vec.push_back((int)ret);
+			rng_logger[(int)maxv] = new_vec;
+		}
+		else
+			mit->second.push_back((int)ret);
+	}
 	return ret;
 }
 
@@ -922,6 +937,7 @@ bool btas::on_before_update() {
 			// cout << "Hashing frame " << st.frame << std::endl;
 		}
 	}
+	rng_logger.clear();
 	last_upd = true;
 	last_upd2 = true;
 	st.prev = is_replay ? repl_holding : holding;
@@ -1138,6 +1154,14 @@ void btas::draw_info() {
 		}
 	}
 	ImGui::Text("Keys: %s", cur_keys.size() > 1 ? cur_keys.substr(2).c_str() : "");
+	ImGui::TextUnformatted("Last frame RNG: ");
+	for (auto mit = rng_logger.begin(); mit != rng_logger.end(); mit++) {
+		std::string rng_text = to_str(mit->first) + " (" + to_str(mit->second.size()) + "): ";
+		for (auto it = mit->second.begin(); it != mit->second.end(); it++)
+			rng_text += to_str(*it) + ", ";
+		rng_text.resize(rng_text.size() - 2);
+		ImGui::TextUnformatted(rng_text.c_str());
+	}
 }
 
 void btas::draw_tab() {

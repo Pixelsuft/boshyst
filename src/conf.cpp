@@ -197,7 +197,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("render_cmd = ffmpeg -y -f:v rawvideo -s $SIZE -pix_fmt rgb32 -r 50 -i - -an -vcodec libx264 -b:v 10000k output.mp4"));
     ASS(file.write_line(""));
     ASS(file.write_line("no_mouse_move = 1 // Prevent mouse cursor from moving to kill the player"));
-    ASS(file.write_line("draw_cursor = 1 // Draw virtual cursor pos on screen (kinda pointless)"));
+    ASS(file.write_line("draw_cursor = 1 // Draw virtual cursor pos on screen (slightly pointless)"));
     ASS(file.write_line("simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
     ASS(file.write_line("# Mouse on keyboard bindings (useful for hourglass)"));
     ASS(file.write_line("# Multible mouse binds to one key are supported (order is important)"));
