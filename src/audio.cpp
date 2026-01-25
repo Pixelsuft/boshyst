@@ -63,6 +63,8 @@ struct AudioEvent {
     unsigned long timeOffset; // Relative to cap.startTime
     DWORD frequency;
     long volume;
+
+    AudioEvent(unsigned long to, DWORD f, long v) : timeOffset(to), frequency(f), volume(v) {}
 };
 
 struct AudioCapture {
@@ -126,7 +128,7 @@ static void record_event(AudioCapture& cap, DWORD freq, long vol) {
     unsigned long cur = audio_get_time();
     unsigned long offset = (cur > cap.startTime) ? (cur - cap.startTime) : 0;
     if (freq != cap.lastFreq || vol != cap.lastVol) {
-        cap.events.push_back({ offset, freq, vol });
+        cap.events.push_back(AudioEvent(offset, freq, vol));
         cap.lastFreq = freq;
         cap.lastVol = vol;
     }
@@ -160,7 +162,8 @@ void on_audio_destroy() {
     if (!conf::cap_au)
         return;
     CriticalSectionLock lock(g_audioCS);
-    for (auto& pair : g_captures) finalize_wav(pair.second);
+    for (auto it = g_captures.begin(); it != g_captures.end(); it++)
+        finalize_wav(it->second);
     g_captures.clear();
 
     if (g_history.empty()) return;
@@ -239,7 +242,7 @@ static void reinit_wav(AudioCapture& cap) {
     cap.startTime = cur_time;
     cap.idx = idx;
     cap.events.clear();
-    cap.events.push_back({ 0, cap.lastFreq, cap.lastVol }); // Hacky
+    cap.events.push_back(AudioEvent(0, cap.lastFreq, cap.lastVol)); // Hacky
     // cout << "reinit " << cap.h.sampleRate << " " << cap.lastVol << "\n";
 }
 
