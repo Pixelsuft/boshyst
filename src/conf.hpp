@@ -35,6 +35,7 @@ namespace conf {
 	extern bool force_gdi;
 	extern bool hg_instant;
 	extern bool tas_no_info;
+	extern bool no_rng_patches;
 
 	void read();
 }

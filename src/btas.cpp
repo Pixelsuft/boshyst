@@ -361,6 +361,8 @@ void btas::pre_init() {
 	temp = 0x24;
 	WPM(mem::get_base() + 0x386fb, &temp, 1);
 	WPM(mem::get_base() + 0x3a4e9, &temp, 1);
+	if (conf::no_rng_patches)
+		return;
 	// Force 0 rng for engine shit not related to the game
 	const uint8_t rng_buf[] = { 0x31, 0xc0, 0x90, 0x90, 0x90 };
 	// Bouncing ball?
