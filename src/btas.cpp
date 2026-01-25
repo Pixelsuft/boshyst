@@ -30,6 +30,7 @@ extern SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 extern DWORD(__stdcall* timeGetTimeOrig)();
 extern int(__stdcall* UpdateGameFrameOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
+extern unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
 static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
 static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
@@ -359,6 +360,23 @@ void btas::pre_init() {
 	temp = 0x24;
 	WPM(mem::get_base() + 0x386fb, &temp, 1);
 	WPM(mem::get_base() + 0x3a4e9, &temp, 1);
+	// Force 0 rng for engine shit not related to the game
+	const uint8_t rng_buf[] = { 0x31, 0xc0, 0x90, 0x90, 0x90 };
+	// Bouncing ball?
+	WPM(mem::get_base() + 0x22694, buf, 5);
+	WPM(mem::get_base() + 0x2269f, rng_buf, 5);
+	WPM(mem::get_base() + 0x226d6, buf, 5);
+	WPM(mem::get_base() + 0x226e1, rng_buf, 5);
+	WPM(mem::get_base() + 0x2273a, rng_buf, 5);
+	WPM(mem::get_base() + 0x22745, buf, 5);
+	// Select bit stuff
+	WPM(mem::get_base() + 0x207ef, rng_buf, 5);
+	WPM(mem::get_base() + 0x207f7, buf, 5);
+	WPM(mem::get_base() + 0x13c4b, rng_buf, 5);
+	WPM(mem::get_base() + 0x13c53, buf, 5);
+	const uint8_t rng_buf2[] = { 0x31, 0xd2, 0x90, 0x90, 0x90 };
+	WPM(mem::get_base() + 0x13c20, rng_buf2, 5);
+	WPM(mem::get_base() + 0x13c2b, buf, 6);
 }
 
 void btas::init() {
@@ -629,6 +647,8 @@ static void b_state_load(int slot, bool from_loop) {
 			init_temp_saves();
 		}
 		repl_index = 0;
+		if (st.frame != 0)
+			last_msg = "Running replay not from the start, may desync";
 	}
 	else {
 		st.scene = scene_id;
@@ -718,12 +738,14 @@ void btas::unreg_obj(int handle) {
 }
 
 unsigned int btas::get_rng(unsigned int maxv) {
+	if (maxv == 0 || maxv == 1)
+		return 0;
 	auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), (int)maxv, [](const IntPair& a, int range) {
 		return a.a > range;
 	});
 	// Do we have value for that range (maxv) in our queue?
 	if (it == st.rng_buf.end() || it->a != (int)maxv)
-		return maxv; // Should gen def value
+		return RandomOrig(maxv);
 	// Return our value
 	auto ret = it->b;
 	st.rng_buf.erase(it);
@@ -1131,8 +1153,6 @@ void btas::draw_tab() {
 		ImGui::Checkbox("Paused", &is_paused);
 		ImGui::Checkbox("Fast forward", &fast_forward);
 		if (ImGui::Checkbox("Replay mode", &is_replay)) {
-			if (is_replay && st.frame != 0 && !reset_on_replay)
-				last_msg = "Running replay not from start, may desync!";
 			repl_holding.clear();
 			if (is_replay) {
 				st.temp_ev.clear();

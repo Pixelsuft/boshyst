@@ -157,6 +157,8 @@ static void ui_menu_draw() {
 		if (ImGui::CollapsingHeader("Visual")) {
 			if (ImGui::SliderFloat("Font scale", &conf::font_scale, 0.01f, 10.f))
 				conf::font_scale = mclamp(conf::font_scale, 0.01f, 10.f);
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				conf::font_scale = 1.f;
 			ImGui::Checkbox("Pixel filter", &conf::pixel_filter);
 			ImGui::Checkbox("No viewport", &conf::no_vp);
 			ImGui::Checkbox("No perspective", &conf::no_ps);
