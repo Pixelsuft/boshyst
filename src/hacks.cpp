@@ -155,10 +155,9 @@ static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* o
         // cout << "BULLET EVENT " << x << " " << y << " " << direction << std::endl;
         next_our_bullet = false;
     }
-    if (action->objectToLaunchID == 106) {
+    if (action->objectToLaunchID == 106 && action->launchSpeed == 70) {
         action->objectToLaunchID = bullet_id;
-        if (bullet_speed != 70)
-            action->launchSpeed = bullet_speed;
+        action->launchSpeed = bullet_speed;
         LaunchObjectActionOrig(action, obj, x, y, direction);
         action->objectToLaunchID = 106;
         action->launchSpeed = 70;
