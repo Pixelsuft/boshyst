@@ -31,8 +31,6 @@ extern DWORD(__stdcall* timeGetTimeOrig)();
 extern int(__stdcall* UpdateGameFrameOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 extern unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
-static UINT (__stdcall *pTimeBeginPeriod)(UINT uPeriod);
-static UINT (__stdcall *pTimeEndPeriod)(UINT uPeriod);
 static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
 void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
 
@@ -309,6 +307,8 @@ void btas::read_setting(const string& line, const string& line_orig) {
 
 void btas::pre_init() {
 	cout << "btas pre-init\n";
+	DestroyObject = (decltype(DestroyObject))(mem::get_base() + 0x1e710);
+	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
 	const uint8_t joy_patch[] = {
 		0x31, 0xC0, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
@@ -410,13 +410,8 @@ void btas::init() {
 	next_step = slowmo = false;
 	auto h = GetModuleHandleW(L"winmm.dll");
 	ASS(h != nullptr);
-	pTimeBeginPeriod = (decltype(pTimeBeginPeriod))GetProcAddress(h, "timeBeginPeriod");
-	pTimeEndPeriod = (decltype(pTimeEndPeriod))GetProcAddress(h, "timeEndPeriod");
-	ASS(pTimeBeginPeriod != nullptr && pTimeEndPeriod != nullptr);
 	last_msg = "None";
 	strcpy(export_buf, "replay");
-	DestroyObject = (decltype(DestroyObject))(mem::get_base() + 0x1e710);
-	ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
 	st.clear();
 	st.clear_arr();
 	if (!need_replay_load.empty()) {
@@ -682,12 +677,16 @@ static void b_state_load(int slot, bool from_loop) {
 		trim_current_state();
 		// Fix internal state load bug when dynamic sprites lose collision
 		// TODO: also do this in normal mode?
-		for (int i = 0; i < pState.activeObjectCount; i++) {
-			ObjectHeader* obj = pState.objectList[i * 2];
-			if (!obj || !(obj->flags) || !obj->spriteHandle)
-				continue;
-			// Force mask recalculation
-			obj->spriteHandle->flags |= 1;
+		if (pState.objectList == nullptr)
+			last_msg = "Failed to fix sprites (objectList is nullptr WTF)";
+		else {
+			for (int i = 0; i < pState.activeObjectCount; i++) {
+				ObjectHeader* obj = pState.objectList[i * 2];
+				if (!obj || !(obj->flags) || !obj->spriteHandle)
+					continue;
+				// Force mask recalculation
+				obj->spriteHandle->flags |= 1;
+			}
 		}
 		import_timers_fix();
 		pState.lastFrameScore = st.c1;
