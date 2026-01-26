@@ -2,7 +2,7 @@
 
 > Version 1.2, February 2021
 
-> Copyright (C) 2025 Pixelsuft
+> Copyright (C) 2025 - 2026 Pixelsuft
  
  Everyone is permitted to copy and distribute verbatim or modified copies of this license document.
 
