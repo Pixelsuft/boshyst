@@ -176,7 +176,7 @@ static void ui_menu_draw() {
 			2 - prev
 			3 - set (pState->rhNextFrameData = need_frame | 0x8000
 			4 - reset game
-			5 - reset audio
+			5 - pause game
 			7/9 - load state sus
 			*/
 			RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
@@ -210,8 +210,6 @@ static void ui_menu_draw() {
 			}
 			if (ImGui::Button("Reset game"))
 				pState->rhNextFrame = 4;
-			if (ImGui::Button("Reset audio"))
-				pState->rhNextFrame = 5;
 			ImGui::Text("Be careful here!");
 			if (ImGui::InputInt("Bullet object ID", &bullet_id))
 				bullet_id = std::max(bullet_id, 0);
