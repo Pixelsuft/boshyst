@@ -678,7 +678,7 @@ static void b_state_load(int slot, bool from_loop) {
 		// Fix internal state load bug when dynamic sprites lose collision
 		// TODO: also do this in normal mode?
 		if (pState.objectList == nullptr)
-			last_msg = "Failed to fix sprites (objectList is nullptr WTF)";
+			last_msg = "Failed to fix sprites: objectList is nullptr WTF";
 		else {
 			for (int i = 0; i < pState.activeObjectCount; i++) {
 				ObjectHeader* obj = pState.objectList[i * 2];
