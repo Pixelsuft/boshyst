@@ -135,6 +135,14 @@ static void read_bind(const string& line_orig, const string& line) {
         // Ugly.
         while (fn.size() > 0 && (isspace(fn[0]) || std::find(fn.begin(), fn.end(), ',') != fn.end()))
             fn = fn.substr(1);
+        for (size_t i = 1; i < fn.size(); i++) {
+            if (fn[i - 1] == '/' && fn[i] == '/') {
+                fn = fn.substr(0, i - 1);
+                break;
+            }
+        }
+        while (fn.size() > 0 && isspace(fn[fn.size() - 1]))
+            fn = fn.substr(0, fn.size() - 1);
         InputEvent ev(fn, starts_with(line, "bind=save,") ? InputEvent::SAVE : InputEvent::LOAD);
         auto it = conf::mb.find(num);
         if (it == conf::mb.end()) {
