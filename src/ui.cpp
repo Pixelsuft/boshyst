@@ -221,6 +221,8 @@ static void ui_menu_draw() {
 				bullet_speed = 70;
 		}
 		if (ImGui::CollapsingHeader("Random")) {
+			if (!is_btas)
+				ImGui::Checkbox("Reset RNG when loading state", &conf::reset_rng);
 			ImGui::Text("Last rand() value: %i / %i", last_new_rand_val, (int)RAND_MAX);
 			if (!is_btas) {
 				ImGui::Checkbox("Fixed MMF2_Random() value %", &fix_rng);

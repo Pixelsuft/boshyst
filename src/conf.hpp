@@ -36,6 +36,7 @@ namespace conf {
 	extern bool hg_instant;
 	extern bool tas_no_info;
 	extern bool no_rng_patches;
+	extern bool reset_rng;
 
 	void read();
 }

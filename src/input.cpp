@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <iostream>
+#include <ctime>
 #include "input.hpp"
 #include "init.hpp"
 #include "hook.hpp"
@@ -10,6 +11,7 @@
 #include "fs.hpp"
 #include "utils.hpp"
 #include "btas.hpp"
+#include "ghidra_headers.h"
 
 using std::cout;
 
@@ -64,6 +66,12 @@ static SHORT __stdcall GetAsyncKeyStateHook(int k) {
     return GetAsyncKeyStateOrig(k);
 }
 
+static void reset_rng() {
+    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    pState.RandomSeed = static_cast<short>(std::rand());
+}
+
 void input_tick() {
     if (is_btas)
         return;
@@ -86,11 +94,15 @@ void input_tick() {
                     bfs::File file(*eit->state.fn, 1);
                     if (file.is_open())
                         state_save(&file);
+                    if (conf::reset_rng)
+                        reset_rng();
                 }
                 else if (eit->type == eit->LOAD) {
                     bfs::File file(*eit->state.fn, 0);
                     if (file.is_open())
                         state_load(&file);
+                    if (conf::reset_rng)
+                        reset_rng();
                 }
             }
         }

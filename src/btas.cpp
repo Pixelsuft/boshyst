@@ -1166,7 +1166,7 @@ void btas::draw_info() {
 }
 
 void btas::draw_tab() {
-	if (!is_replay)
+	if (!is_replay && 0)
 		is_paused = true; // TODO: configure that
 	//RECT test;
 	//GetClientRect(::hwnd, &test);
