@@ -209,7 +209,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("no_mouse_move = 1 // Prevent mouse cursor from moving to kill the player"));
     ASS(file.write_line("draw_cursor = 1 // Draw virtual cursor pos on screen (slightly pointless)"));
     ASS(file.write_line("simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
-    ASS(file.write_line("reset_rng = 0 // Reset RNG when loading state via bind (check below)"));
+    ASS(file.write_line("reset_rng = 0 // Regenerate RNG seed when loading state via bind (check below)"));
     ASS(file.write_line("# Mouse on keyboard bindings (useful for hourglass)"));
     ASS(file.write_line("# Multible mouse binds to one key are supported (order is important)"));
     ASS(file.write_line("# Boshy selection example (via 'K' key) from F3 menu"));
