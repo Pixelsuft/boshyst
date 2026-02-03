@@ -35,6 +35,7 @@ int bullet_id = 106;
 int bullet_speed = 70;
 int last_new_rand_val = 0;
 bool last_reset = false;
+static void(__cdecl* SuperINI_Crypt)(char*, ulong, char*, ulong);
 static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
 static void (*ProcessFrameRendering)(void);
 static void(__cdecl* ExecuteObjectAction)(ActionHeader* action);
@@ -787,6 +788,18 @@ static BOOL __stdcall AdjustWindowRectExHook(LPRECT lpRect, DWORD dwStyle, BOOL 
     return AdjustWindowRectExOrig(lpRect, dwStyle, bMenu, dwExStyle);
 }
 
+static bool is_encrypted_ini(char* data) {
+    if (c_starts_with(data, "[Options]") || c_starts_with(data, "[License]") || c_starts_with(data, "[Achievements]") || c_starts_with(data, "[Check]"))
+        return false;
+    return true;
+}
+
+static void __cdecl SuperINI_CryptChecked(char* inp, ulong inplen, char* key, ulong keylen)
+{
+    if (inplen < 16 || is_encrypted_ini(inp))
+        SuperINI_Crypt(inp, inplen, key, keylen);
+}
+
 void init_game_loop() {
     // Executed as early as possible
     ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
@@ -837,6 +850,13 @@ void init_game_loop() {
     // Actually might be useful for normal mod menu
     if (is_btas || !is_hourglass)
         hook(mem::get_base() + 0x47140, GetCollidingObjectListHook, &GetCollidingObjectListOrig);
+    // Patch to support loading unencrypted save files
+    if (1) {
+        SuperINI_Crypt = (decltype(SuperINI_Crypt))(mem::get_base("INI++.mfx") + 0x15681);
+        DWORD bW;
+        size_t addr = (size_t)((uint64_t)SuperINI_CryptChecked - ((uint64_t)(mem::get_base("INI++.mfx") + 0x1a5f7) + 5));
+        ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1a5f7 + 1), &addr, 4, &bW) && bW == 4);
+    }
     enable_hook();
 }
 

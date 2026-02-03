@@ -6,6 +6,7 @@
 #include "ass.hpp"
 #include "mem.hpp"
 #include "fs.hpp"
+#include "conf.hpp"
 #include "ui.hpp"
 #include "utils.hpp"
 #include "ghidra_headers.h"
@@ -164,6 +165,12 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 	ScreenToClient(hwnd, &point);
 	x_buf = point.x;
 	y_buf = point.y;
+}
+
+void update_save_encryption() {
+	DWORD bW;
+	DWORD temp = conf::no_encryption ? 0xeb : 0x74;
+	ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1b293), &temp, 1, &bW) && bW == 1);
 }
 
 const char* get_scene_name() {

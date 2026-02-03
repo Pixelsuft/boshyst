@@ -250,6 +250,8 @@ static void ui_menu_draw() {
 		}
 		if (ImGui::CollapsingHeader("System")) {
 			ImGui::Checkbox("Keep save", &conf::keep_save);
+			if (ImGui::Checkbox("No save encryption", &conf::no_encryption))
+				update_save_encryption();
 			ImGui::Checkbox("No mouse move", &conf::no_cmove);
 			ImGui::Checkbox("Draw cursor", &conf::draw_cursor);
 			ImGui::Checkbox("Simulate mouse", &conf::emu_mouse);

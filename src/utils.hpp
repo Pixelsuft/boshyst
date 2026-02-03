@@ -32,6 +32,14 @@ static bool c_ends_with(const char* str, const char* end) {
     return memcmp(str + sl - el, end, el) == 0;
 }
 
+static bool c_starts_with(const char* str, const char* start) {
+    //size_t sl = strlen(str);
+    size_t el = strlen(start);
+    //if (el > sl)
+    //    return false;
+    return memcmp(str, start, el) == 0;
+}
+
 extern bool capturing;
 extern bool next_white;
 
@@ -42,6 +50,7 @@ std::string unicode_to_utf8(wchar_t* buf, bool autofree);
 void get_win_size(int& w_buf, int& h_buf);
 void get_cursor_pos(int& x_buf, int& y_buf);
 void get_cursor_pos_orig(int& x_buf, int& y_buf);
+void update_save_encryption();
 int get_scene_id();
 void* get_player_ptr(int s);
 void init_game_loop();

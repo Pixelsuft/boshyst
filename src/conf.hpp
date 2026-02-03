@@ -37,6 +37,7 @@ namespace conf {
 	extern bool tas_no_info;
 	extern bool no_rng_patches;
 	extern bool reset_rng;
+	extern bool no_encryption;
 
 	void read();
 }

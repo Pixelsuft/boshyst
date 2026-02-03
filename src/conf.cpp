@@ -58,6 +58,7 @@ namespace conf {
     bool tas_no_info;
     bool no_rng_patches;
     bool reset_rng;
+    bool no_encryption;
 }
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -189,6 +190,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("disable_perspective = 0 // Disable background distortion"));
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
     ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
+    ASS(file.write_line("no_encryption = 0 // No save encryption (breaks saves without using mod menu)"));
     ASS(file.write_line(""));
     ASS(file.write_line("tas_force_size = 0, 0 // You can force window size to be higher than you monitor resolution"));
     ASS(file.write_line("tas_force_gdi = 0 // Force software renderer (doesnt support UI)"));
@@ -272,8 +274,8 @@ void conf::read() {
     rapid_bind = -1;
     first_run = false;
     tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi = no_rng_patches =
-        no_sh = keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info =
-        no_cmove = draw_cursor = emu_mouse = allow_render = hg_instant = false;
+        no_sh = keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info = reset_rng =
+        no_cmove = draw_cursor = emu_mouse = allow_render = hg_instant = no_encryption = false;
     direct_render = true;
 	cur_mouse_checked = false;
     tp_on_click = input_in_menu = false;
@@ -328,6 +330,8 @@ void conf::read() {
             menu = read_int(line) != 0;
         else if (starts_with(line, "keep_save="))
             keep_save = read_int(line) != 0;
+        else if (starts_with(line, "no_encryption="))
+            no_encryption = read_int(line) != 0;
         else if (starts_with(line, "no_mouse_move="))
             no_cmove = read_int(line) != 0;
         else if (starts_with(line, "draw_cursor="))
