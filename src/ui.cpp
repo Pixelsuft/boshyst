@@ -159,6 +159,7 @@ static void ui_menu_draw() {
 				conf::font_scale = mclamp(conf::font_scale, 0.01f, 10.f);
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
 				conf::font_scale = 1.f;
+			ImGui::Checkbox("TAS info window", &conf::tas_mode);
 			ImGui::Checkbox("Pixel filter", &conf::pixel_filter);
 			ImGui::Checkbox("No viewport", &conf::no_vp);
 			ImGui::Checkbox("No perspective", &conf::no_ps);
@@ -200,10 +201,11 @@ static void ui_menu_draw() {
 				else
 					pState->rhNextFrame = 1;
 			}
-			ImGui::InputInt("Next scene ID", &next_scene_id);
-			next_scene_id = mclamp(next_scene_id, 0, 60);
-			if (next_scene_id == 54)
-				next_scene_id = 55;
+			if (ImGui::InputInt("Next scene ID", &next_scene_id)) {
+				next_scene_id = mclamp(next_scene_id, 0, 60);
+				if (next_scene_id == 54)
+					next_scene_id = 55;
+			}
 			if (ImGui::Button("Set scene")) {
 				pState->rhNextFrame = 3;
 				pState->rhNextFrameData = next_scene_id | 0x8000;
@@ -211,12 +213,12 @@ static void ui_menu_draw() {
 			if (ImGui::Button("Reset game"))
 				pState->rhNextFrame = 4;
 			ImGui::Text("Be careful here!");
-			if (ImGui::InputInt("Bullet object ID", &bullet_id))
-				bullet_id = std::max(bullet_id, 0);
+			if (ImGui::InputInt("Bullet object ID", &bullet_id) && bullet_id < 0)
+				bullet_id = 0;
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
 				bullet_id = 106;
-			if (ImGui::InputInt("Bullet speed", &bullet_speed))
-				bullet_speed = std::max(bullet_speed, 0);
+			if (ImGui::InputInt("Bullet speed", &bullet_speed) && bullet_speed < 0)
+				bullet_speed = 0;
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
 				bullet_speed = 70;
 		}
@@ -305,11 +307,12 @@ void ui::draw() {
 		}
 		cur_frames++;
 		cur_frames2++;
-		if (!conf::tas_mode) {
+		if (!is_hourglass) {
 			last_reset = false;
 			ui_menu_draw();
 			post_draw();
-			return;
+			if (!conf::tas_mode)
+				return;
 		}
 	}
 	if (conf::tas_no_info)
@@ -317,7 +320,7 @@ void ui::draw() {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]), ImGuiCond_Once);
-	auto flags = ImGuiWindowFlags_NoTitleBar | (is_btas ? 0 : (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs)) |
+	auto flags = ImGuiWindowFlags_NoTitleBar | (is_hourglass ? (ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs) : 0) |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings;
 	if (ImGui::Begin("Boshyst Info", nullptr, flags))
 		draw_basic_text();

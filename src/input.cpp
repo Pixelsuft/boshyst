@@ -66,12 +66,6 @@ static SHORT __stdcall GetAsyncKeyStateHook(int k) {
     return GetAsyncKeyStateOrig(k);
 }
 
-static void reset_rng() {
-    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
-    pState.RandomSeed = static_cast<short>(std::rand());
-}
-
 void input_tick() {
     if (is_btas)
         return;
@@ -94,15 +88,15 @@ void input_tick() {
                     bfs::File file(*eit->state.fn, 1);
                     if (file.is_open())
                         state_save(&file);
-                    if (conf::reset_rng)
-                        reset_rng();
                 }
                 else if (eit->type == eit->LOAD) {
                     bfs::File file(*eit->state.fn, 0);
+                    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+                    short prev_seed = pState.RandomSeed;
                     if (file.is_open())
                         state_load(&file);
                     if (conf::reset_rng)
-                        reset_rng();
+                        pState.RandomSeed = prev_seed;
                 }
             }
         }
