@@ -673,6 +673,7 @@ static void b_state_load(int slot, bool from_loop) {
 		// Let's not touch anything while game loads state
 		b_loading_saving_state = true;
 		state_load(&f);
+		pState = get_state();
 		b_loading_saving_state = false;
 		trim_current_state();
 		// Fix internal state load bug when dynamic sprites lose collision

@@ -5,6 +5,7 @@ boshyst
 Debug
 DebugForRel
 Release
+ReleaseFast
 RelNoOpt
 x64
 *.aps

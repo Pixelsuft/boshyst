@@ -95,8 +95,10 @@ void input_tick() {
                     short prev_seed = pState.RandomSeed;
                     if (file.is_open())
                         state_load(&file);
-                    if (conf::reset_rng)
+                    if (conf::reset_rng) {
+                        pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
                         pState.RandomSeed = prev_seed;
+                    }
                 }
             }
         }
