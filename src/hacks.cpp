@@ -297,7 +297,8 @@ static int __stdcall UpdateGameFrameHook() {
         return ret;
     }
 
-    input_tick();
+    if (input_tick() && 0)
+        return 0;
     ui::pre_update();
 
     if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))

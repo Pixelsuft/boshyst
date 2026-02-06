@@ -66,9 +66,10 @@ static SHORT __stdcall GetAsyncKeyStateHook(int k) {
     return GetAsyncKeyStateOrig(k);
 }
 
-void input_tick() {
+bool input_tick() {
+    bool ret = false;
     if (is_btas)
-        return;
+        return ret;
     int w, h;
     get_win_size(w, h);
     // TODO: better way to handle??? (BTAS way?) (still need to be compatible with hourglass)
@@ -86,23 +87,29 @@ void input_tick() {
                 }
                 else if (eit->type == eit->SAVE) {
                     bfs::File file(*eit->state.fn, 1);
-                    if (file.is_open())
+                    if (file.is_open()) {
                         state_save(&file);
+                        ret = true;
+                    }
                 }
                 else if (eit->type == eit->LOAD) {
                     bfs::File file(*eit->state.fn, 0);
                     RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
                     short prev_seed = pState.RandomSeed;
-                    if (file.is_open())
+                    if (file.is_open()) {
                         state_load(&file);
-                    if (conf::reset_rng) {
                         pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-                        pState.RandomSeed = prev_seed;
+                        if (conf::reset_rng) {
+                            pState.RandomSeed = prev_seed;
+                            ret = true;
+                        }
+                        // pState.rhNextFrame = 0x65;
                     }
                 }
             }
         }
     }
+    return ret;
 }
 
 void input_init() {

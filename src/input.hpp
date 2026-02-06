@@ -46,5 +46,5 @@ struct InputEvent {
     }
 };
 
-void input_tick();
+bool input_tick();
 void input_init();

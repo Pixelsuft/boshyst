@@ -364,11 +364,22 @@ bool state_save(bfs::File* file) {
 bool state_load(bfs::File* file) {
 	static int(__cdecl* LoadFunc)(HANDLE, int*) = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
 	int outver = 0;
-	if (file == nullptr) {
+	// DWORD bW;
+	//const uint8_t buf1_h[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+	//const uint8_t buf1_o[] = { 0xff, 0x15, 0x98, 0x31, 0x45, 0x00, 0x8b, 0x0d, 0x98, 0x9a, 0x45, 0x00 };
+	//const uint8_t buf2_o[] = { 0xff, 0xd3 };
+	//const uint8_t buf3_o[] = { 0xc7, 0x40, 0x7c, 0x00, 0x00, 0x00, 0x00 };
+	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x35dd0), buf1_h, 12, &bW) && bW == 12);
+	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36416), buf1_h, 2, &bW) && bW == 2);
+	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36439), buf1_h, 7, &bW) && bW == 7);
+	if (file == nullptr && 0) {
 		LoadFunc(INVALID_HANDLE_VALUE, &outver);
 		return true;
 	}
 	auto ret = LoadFunc(file->get_handle(), &outver);
+	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x35dd0), buf1_o, 12, &bW) && bW == 12);
+	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36416), buf2_o, 2, &bW) && bW == 2);
+	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36439), buf3_o, 7, &bW) && bW == 7);
 	// cout << "load ret: " << ret << "\n";
 	return true;
 }
