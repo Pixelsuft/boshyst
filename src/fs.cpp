@@ -2,33 +2,24 @@
 #include "fs.hpp"
 #include "ass.hpp"
 #include "utils.hpp"
-#include <cstdlib>
 #include <Windows.h>
+#include <cstdlib>
 
-using std::string;
 using bfs::File;
+using std::string;
 
-File::File() NOEXCEPT {
-    handle = INVALID_HANDLE_VALUE;
-}
+File::File() NOEXCEPT { handle = INVALID_HANDLE_VALUE; }
 
 File::File(const string& path, int mode) NOEXCEPT {
     wchar_t* w_path = utf8_to_unicode(path);
-    handle = (void*)CreateFileW(
-        w_path,
-        mode == 1 ? (GENERIC_WRITE | DELETE) : GENERIC_READ,
-        mode == 1 ? 0 : FILE_SHARE_READ,
-        nullptr,
-        mode == 1 ? CREATE_ALWAYS : OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        nullptr
-    );
+    handle = (void*)CreateFileW(w_path, mode == 1 ? (GENERIC_WRITE | DELETE) : GENERIC_READ,
+                                mode == 1 ? 0 : FILE_SHARE_READ, nullptr,
+                                mode == 1 ? CREATE_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
+                                nullptr);
     std::free(w_path);
 }
 
-File::File(File&& other) NOEXCEPT : handle(other.handle) {
-    other.handle = INVALID_HANDLE_VALUE;
-}
+File::File(File&& other) NOEXCEPT : handle(other.handle) { other.handle = INVALID_HANDLE_VALUE; }
 
 File& File::operator=(File&& other) NOEXCEPT {
     if (this != &other) {
@@ -39,9 +30,7 @@ File& File::operator=(File&& other) NOEXCEPT {
     return *this;
 }
 
-bool File::is_open() {
-	return handle != INVALID_HANDLE_VALUE;
-}
+bool File::is_open() { return handle != INVALID_HANDLE_VALUE; }
 
 bool File::read_line(std::string& line) {
     ASS(is_open());
@@ -70,7 +59,8 @@ bool File::read(void* buf, size_t size) {
 bool File::write(const void* buf, size_t size) {
     ASS(is_open());
     DWORD bytesWritten;
-    return WriteFile(handle, buf, (DWORD)size, &bytesWritten, nullptr) && (DWORD)size == bytesWritten;
+    return WriteFile(handle, buf, (DWORD)size, &bytesWritten, nullptr) &&
+           (DWORD)size == bytesWritten;
 }
 
 bool File::seek(long long offset, bfs::SeekMode mode) {
@@ -81,9 +71,15 @@ bool File::seek(long long offset, bfs::SeekMode mode) {
 
     DWORD moveMethod;
     switch (mode) {
-    case SeekCurrent: moveMethod = FILE_CURRENT; break;
-    case SeekEnd:     moveMethod = FILE_END;     break;
-    default:          moveMethod = FILE_BEGIN;   break;
+    case SeekCurrent:
+        moveMethod = FILE_CURRENT;
+        break;
+    case SeekEnd:
+        moveMethod = FILE_END;
+        break;
+    default:
+        moveMethod = FILE_BEGIN;
+        break;
     }
 
     return SetFilePointerEx(handle, liOffset, nullptr, moveMethod) != 0;

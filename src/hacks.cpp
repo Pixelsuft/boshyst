@@ -1,21 +1,21 @@
 #define WIN32_LEAN_AND_MEAN
 #define _CRT_SECURE_NO_WARNINGS
-#include <Windows.h>
-#include <shlwapi.h>
-#include <iostream>
-#include <ctime>
-#include <imgui.h>
-#include <mmsystem.h>
-#include "hook.hpp"
-#include "mem.hpp"
+#include "btas.hpp"
 #include "conf.hpp"
+#include "ghidra_headers.h"
+#include "hook.hpp"
+#include "init.hpp"
+#include "input.hpp"
+#include "mem.hpp"
 #include "rec.hpp"
 #include "ui.hpp"
-#include "input.hpp"
-#include "init.hpp"
 #include "utils.hpp"
-#include "btas.hpp"
-#include "ghidra_headers.h"
+#include <Windows.h>
+#include <ctime>
+#include <imgui.h>
+#include <iostream>
+#include <mmsystem.h>
+#include <shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 
 using std::cout;
@@ -39,9 +39,12 @@ static void(__cdecl* SuperINI_Crypt)(char*, ulong, char*, ulong);
 static void(__stdcall* AudioTimerCallback)(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
 static void (*ProcessFrameRendering)(void);
 static void(__cdecl* ExecuteObjectAction)(ActionHeader* action);
-static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_);
+static HANDLE(__stdcall* CreateFileOrig)(LPCSTR _fn, DWORD dw_access, DWORD share_mode,
+                                         LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags,
+                                         HANDLE template_);
 static void(__stdcall* Ordinal_78)(void* hMainEngine, SpriteHandle* hSprite, BOOL bShow);
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam,
+                                                             LPARAM lParam);
 
 struct my_timeb {
     time_t time;
@@ -73,9 +76,10 @@ static int __cdecl randHook() {
     // For MMKRandomPool.mfx (used very rarely)
     int ret;
     if (is_btas) {
-        // Ok let's just fix it to 0 so we don't have to deal with many shit, hopefully nobody will notice :)
-        //ret = btas::get_rng(RAND_MAX);
-        //if (ret != RAND_MAX)
+        // Ok let's just fix it to 0 so we don't have to deal with many shit, hopefully nobody will
+        // notice :)
+        // ret = btas::get_rng(RAND_MAX);
+        // if (ret != RAND_MAX)
         //    return ret;
         // I don't think it's good to call orig rand
         return 0;
@@ -83,36 +87,40 @@ static int __cdecl randHook() {
     if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (RAND_MAX + 1)))
         ret = (unsigned int)((float)RAND_MAX * fix_rng_val / 100.f);
     else
-	    ret = randOrig();
+        ret = randOrig();
     last_new_rand_val = ret;
-	return ret;
+    return ret;
 }
 
 static int(__cdecl* _stricmpOrig)(const char* s1, const char* s2) = nullptr;
 static int __cdecl _stricmpHook(const char* s1, const char* s2) {
     // DirBlur x3.fx fucks up collision for some reason
-    if (conf::no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 || strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 || strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 || strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
+    if (conf::no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 ||
+                        strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 ||
+                        strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 ||
+                        strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
         // shaders
         // Extra: Add, Invert, Sub, Mono, Blend, XOR, OR, AND
         // cout << "!!!: " << s1 << " " << s2 << '\n';
         // s1 = "Sub";
         // TODO: check FUN_00426f90
         return -1;
-    }
-    else if (conf::god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
+    } else if (conf::god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
         // god mode
         return -1;
-    }
-    else if (conf::no_trans && strcmp(s1, "teleporting") == 0) {
+    } else if (conf::no_trans && strcmp(s1, "teleporting") == 0) {
         // no teleport effects
         return -1;
     }
-    // menuChosen, NameTags, jump, doublejump, teleporting, save, Save, shoot, shooot, restart, KillAll, killboss
+    // menuChosen, NameTags, jump, doublejump, teleporting, save, Save, shoot, shooot, restart,
+    // KillAll, killboss
     auto ret = _stricmpOrig(s1, s2);
     return ret;
 }
 
-static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_mode, LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags, HANDLE template_) {
+static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_mode,
+                                       LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags,
+                                       HANDLE template_) {
     if (!conf::keep_save)
         return CreateFileOrig(_fn, dw_access, share_mode, sec_attr, cr_d, flags, template_);
     if (!_fn)
@@ -131,12 +139,14 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
     return ret;
 }
 
-static int(__cdecl* CreateObjectOrig)(ushort parentHandle, ushort objectInfoID, int posX, int posY, void* creationParam,
-    ushort creationFlags, uint initialDir, int layerIndex);
-static int __cdecl
-CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, void* creationParam,
-    ushort creationFlags, uint initialDir, int layerIndex) {
-    auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam, creationFlags, initialDir, layerIndex);
+static int(__cdecl* CreateObjectOrig)(ushort parentHandle, ushort objectInfoID, int posX, int posY,
+                                      void* creationParam, ushort creationFlags, uint initialDir,
+                                      int layerIndex);
+static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY,
+                                    void* creationParam, ushort creationFlags, uint initialDir,
+                                    int layerIndex) {
+    auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam,
+                                creationFlags, initialDir, layerIndex);
     // if (is_btas && objectInfoID == 106 && ret != -1)
     //    btas::reg_obj(ret);
     if (parentHandle == 28 && ret != -1) {
@@ -145,8 +155,10 @@ CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY, v
     return ret;
 }
 
-static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction);
-static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y, uint direction) {
+static void(__cdecl* LaunchObjectActionOrig)(ActionHeader* action, ObjectHeader* obj, int x, int y,
+                                             uint direction);
+static void __cdecl LaunchObjectActionHook(ActionHeader* action, ObjectHeader* obj, int x, int y,
+                                           uint direction) {
     if (next_our_bullet) {
         action->objectToLaunchID = 106;
         obj = (ObjectHeader*)get_player_ptr(get_scene_id());
@@ -171,19 +183,18 @@ void launch_bullet(int x, int y, int dir) {
     auto obj = (ObjectHeader*)get_player_ptr(get_scene_id());
     if (!obj)
         return;
-    ActionHeader action = { 0 };
+    ActionHeader action = {0};
     action.actionID = 0x1D;
     action.launchSpeed = 70;
     action.objectToLaunchID = 106;
     action.creatorID = 28;
-    //action.size = 0;
-    //action.eventCode = 1;
+    // action.size = 0;
+    // action.eventCode = 1;
     if (dir == -1) {
         next_bullet_x = obj->xPos + (obj->hoCurrentDirection == 0 ? 8 : -8);
         next_bullet_y = obj->yPos - 10;
         next_bullet_dir = obj->hoCurrentDirection;
-    }
-    else {
+    } else {
         next_bullet_x = x;
         next_bullet_y = y;
         next_bullet_dir = (uint)dir;
@@ -245,8 +256,9 @@ static void __cdecl ActHook(ActionHeader* act) {
     // *(ushort*)(pState.currentExecutingEvent + 4) &= ~0x1e;
     auto cnt = (uint) * (byte*)(pState.currentExecutingEvent + 3);
     auto c = act->eventCode;
-    //if (c >= 0 && c != 2 && c != 32 && c != 33 && c != 34 && c != 36 && c != 41 && c != 58 && c != 61 && c != 57)
-    //    cout << 'a' << act->eventCode << std::endl;
+    // if (c >= 0 && c != 2 && c != 32 && c != 33 && c != 34 && c != 36 && c != 41 && c != 58 && c
+    // != 61 && c != 57)
+    //     cout << 'a' << act->eventCode << std::endl;
     auto a = act->actionID;
     if (c == 33 && a == 94 && cnt > 4) {
         cout << "begin " << act << std::endl;
@@ -330,7 +342,8 @@ static int __stdcall UpdateGameFrameHook() {
             int x, y, w, h;
             get_win_size(w, h);
             get_cursor_pos_orig(x, y);
-            // TODO: how to map cursor pos into game properly (scaling) (need to hook Viewport.mfx?)?
+            // TODO: how to map cursor pos into game properly (scaling) (need to hook
+            // Viewport.mfx?)?
             RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
             player->xPos = pState.currentViewportX + x * 640 / w;
             player->yPos = pState.currentViewportY + y * 480 / h;
@@ -370,8 +383,7 @@ static unsigned int __cdecl RandomHook(unsigned int maxv) {
             ret = maxv - 1;
         else
             ret = (unsigned int)((float)maxv * fix_rng_val / 100.f);
-    }
-    else
+    } else
         ret = RandomOrig(maxv);
     ui_register_rand(maxv, ret);
     return ret;
@@ -390,7 +402,8 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
-        if (is_btas && uMsg == WM_GETMINMAXINFO && (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
+        if (is_btas && uMsg == WM_GETMINMAXINFO &&
+            (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
             MINMAXINFO* mmi = (MINMAXINFO*)lParam;
             mmi->ptMaxTrackSize.x = conf::force_size[0] + 32;
             mmi->ptMaxTrackSize.y = conf::force_size[1] + 64;
@@ -416,7 +429,8 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
     if (1) {
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
-        if (is_btas && uMsg == WM_GETMINMAXINFO && (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
+        if (is_btas && uMsg == WM_GETMINMAXINFO &&
+            (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
             MINMAXINFO* mmi = (MINMAXINFO*)lParam;
             mmi->ptMaxTrackSize.x = conf::force_size[0] + 32;
             mmi->ptMaxTrackSize.y = conf::force_size[1] + 64;
@@ -431,7 +445,7 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
             btas::on_key((int)wParam, uMsg == WM_KEYDOWN);
         }
         if (!b_loading_saving_state)
-           ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
+            ImGui_ImplWin32_WndProcHandler(::mhwnd, uMsg, wParam, lParam);
     }
     if (is_btas && uMsg > WM_MOUSEFIRST && uMsg < WM_MOUSELAST)
         return 0;
@@ -492,7 +506,7 @@ static int __stdcall GetSystemMetricsHook(int nIndex) {
     }
 }
 
-static int (__stdcall* FindBestModeCallbackOrig)(int* candidate, DisplaySearchCriteria* best);
+static int(__stdcall* FindBestModeCallbackOrig)(int* candidate, DisplaySearchCriteria* best);
 static int __stdcall FindBestModeCallbackHook(int* candidate, DisplaySearchCriteria* best) {
     auto ret = FindBestModeCallbackOrig(candidate, best);
     if (conf::full_size[0] < 0)
@@ -520,7 +534,7 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     auto ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
     uint8_t temp = 0xeb;
-    const uint8_t buf[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    const uint8_t buf[] = {0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
     DWORD bW;
     if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
         // hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
@@ -530,8 +544,12 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     }
     if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
         // Disable thread creation as early as possible (for better stability)
-        ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5, &bW) != 0 && bW == 5);
-        ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1, &bW) != 0 && bW == 1);
+        ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5,
+                               &bW) != 0 &&
+            bW == 5);
+        ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1,
+                               &bW) != 0 &&
+            bW == 1);
     }
     if (is_btas && c_ends_with(lpLibFileName, "Yaso.mfx")) {
         hook(mem::addr("InternetGetConnectedState", "wininet.dll"), InternetGetConnectedStateHook);
@@ -547,7 +565,9 @@ static HMODULE __stdcall LoadLibraryWHook(LPCWSTR lpLibFileName) {
     return LoadLibraryWOrig(lpLibFileName);
 }
 
-static HINSTANCE __stdcall ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd) {
+static HINSTANCE __stdcall ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile,
+                                             LPCSTR lpParameters, LPCSTR lpDirectory,
+                                             INT nShowCmd) {
     // No need to open URLs
     return nullptr;
 }
@@ -562,9 +582,7 @@ static HWND __stdcall SetFocusHook(HWND hWnd) {
     return ::hwnd;
 }
 
-static DWORD __stdcall GetTickCountHook() {
-    return (DWORD)btas::get_time();
-}
+static DWORD __stdcall GetTickCountHook() { return (DWORD)btas::get_time(); }
 
 static time_t __cdecl timeHook(time_t* tloc) {
     if (tloc)
@@ -581,13 +599,13 @@ static void __cdecl _ftimeHook(struct my_timeb* timeptr) {
     }
 }
 
-BOOL (__stdcall *QueryPerformanceFrequencyOrig)(LARGE_INTEGER* ret) = QueryPerformanceFrequency;
+BOOL(__stdcall* QueryPerformanceFrequencyOrig)(LARGE_INTEGER* ret) = QueryPerformanceFrequency;
 static BOOL __stdcall QueryPerformanceFrequencyHook(LARGE_INTEGER* ret) {
     ret->QuadPart = 1000;
     return TRUE;
 }
 
-BOOL (__stdcall *QueryPerformanceCounterOrig)(LARGE_INTEGER* ret) = QueryPerformanceCounter;
+BOOL(__stdcall* QueryPerformanceCounterOrig)(LARGE_INTEGER* ret) = QueryPerformanceCounter;
 static BOOL __stdcall QueryPerformanceCounterHook(LARGE_INTEGER* ret) {
     if (!hooks_inited)
         return QueryPerformanceCounterOrig(ret);
@@ -599,7 +617,9 @@ static void __stdcall GetSystemTimeAsFileTimeHook(LPFILETIME tm) {
     ((LARGE_INTEGER*)tm)->QuadPart = (LONGLONG)btas::get_time();
 }
 
-static BOOL __stdcall GetProcessTimesHook(HANDLE hProcess, LPFILETIME lpCreationTime, LPFILETIME lpExitTime, LPFILETIME lpKernelTime, LPFILETIME lpUserTime) {
+static BOOL __stdcall GetProcessTimesHook(HANDLE hProcess, LPFILETIME lpCreationTime,
+                                          LPFILETIME lpExitTime, LPFILETIME lpKernelTime,
+                                          LPFILETIME lpUserTime) {
     ((LARGE_INTEGER*)lpCreationTime)->QuadPart = 0;
     ((LARGE_INTEGER*)lpKernelTime)->QuadPart = 0;
     ((LARGE_INTEGER*)lpUserTime)->QuadPart = (LONGLONG)btas::get_time();
@@ -607,14 +627,16 @@ static BOOL __stdcall GetProcessTimesHook(HANDLE hProcess, LPFILETIME lpCreation
     return TRUE;
 }
 
-static MMRESULT (__stdcall* timeSetEventOrig)(UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT);
-static MMRESULT __stdcall timeSetEventHook(UINT uDelay, UINT uResolution, LPTIMECALLBACK lpTimeProc, DWORD_PTR dwUser, UINT fuEvent) {
+static MMRESULT(__stdcall* timeSetEventOrig)(UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT);
+static MMRESULT __stdcall timeSetEventHook(UINT uDelay, UINT uResolution, LPTIMECALLBACK lpTimeProc,
+                                           DWORD_PTR dwUser, UINT fuEvent) {
     if (uDelay == 50 && uResolution == 10) {
         // Audio processing timer
         // Hacky (i think no need to check for AudioTimerCallback
         ASS(!audio_timer_hooked);
         audio_timer_hooked = true;
-        AudioTimerCallback = reinterpret_cast<decltype(AudioTimerCallback)>(mem::get_base("mmfs2.dll") + 0x42940);
+        AudioTimerCallback =
+            reinterpret_cast<decltype(AudioTimerCallback)>(mem::get_base("mmfs2.dll") + 0x42940);
         return 1337228;
     }
     return timeSetEventOrig(uDelay, uResolution, lpTimeProc, dwUser, fuEvent);
@@ -631,61 +653,51 @@ static MMRESULT __stdcall timeKillEventHook(UINT uTimerID) {
 }
 
 static void(__cdecl* DestroyObjectOrig)(int handle);
-static void __cdecl DestroyObjectHook(int handle) {
-    DestroyObjectOrig(handle);
-}
+static void __cdecl DestroyObjectHook(int handle) { DestroyObjectOrig(handle); }
 
 typedef int(__fastcall* tCheckSpriteCollision)(
-    void* pRunHeader,          // ECX
-    SpriteHandle* sprite,              // EDX
-    void* pObjectAndEventList, // Stack + 0x04
-    ObjectHeader* pSrc,                // Stack + 0x08
-    void** pOutput,            // Stack + 0x0C
-    float srcAngle,            // Stack + 0x10
-    int srcX,                  // Stack + 0x14
-    int srcY,                  // Stack + 0x18
-    float kindaRot,            // Stack + 0x1C (often used as 'scale' in MMF2)
-    float scaleX,              // Stack + 0x20
-    float scaleY,              // Stack + 0x24
+    void* pRunHeader,           // ECX
+    SpriteHandle* sprite,       // EDX
+    void* pObjectAndEventList,  // Stack + 0x04
+    ObjectHeader* pSrc,         // Stack + 0x08
+    void** pOutput,             // Stack + 0x0C
+    float srcAngle,             // Stack + 0x10
+    int srcX,                   // Stack + 0x14
+    int srcY,                   // Stack + 0x18
+    float kindaRot,             // Stack + 0x1C (often used as 'scale' in MMF2)
+    float scaleX,               // Stack + 0x20
+    float scaleY,               // Stack + 0x24
     unsigned int collisionFlags // Stack + 0x28 (implied by the uint uVar1 logic)
-    );
+);
 
 static tCheckSpriteCollision fpCheckSpriteCollision = nullptr;
 
 // Detour function
-static int __fastcall DetourCheckSpriteCollision(
-    void* pRunHeader,
-    SpriteHandle* sprite,
-    void* pObjectAndEventList,
-    ObjectHeader* pSrc,
-    void** pOutput,
-    float srcAngle,
-    int srcX,
-    int srcY,
-    float kindaRot,
-    float scaleX,
-    float scaleY,
-    unsigned int collisionFlags
-) {
+static int __fastcall DetourCheckSpriteCollision(void* pRunHeader, SpriteHandle* sprite,
+                                                 void* pObjectAndEventList, ObjectHeader* pSrc,
+                                                 void** pOutput, float srcAngle, int srcX, int srcY,
+                                                 float kindaRot, float scaleX, float scaleY,
+                                                 unsigned int collisionFlags) {
     if (pSrc == nullptr || pRunHeader == nullptr) {
         return 0;
     }
-    auto ret = fpCheckSpriteCollision(
-        pRunHeader, sprite, pObjectAndEventList, pSrc,
-        pOutput, srcAngle, srcX, srcY, kindaRot, scaleX, scaleY, collisionFlags
-    );
+    auto ret =
+        fpCheckSpriteCollision(pRunHeader, sprite, pObjectAndEventList, pSrc, pOutput, srcAngle,
+                               srcX, srcY, kindaRot, scaleX, scaleY, collisionFlags);
 
     if (ret > 0)
-    cout << ret << ": " << sprite->flags << " " << pSrc->oiHandle << " " << pSrc->collisionFlags << " "
-        << srcAngle << " " << kindaRot << " " << srcX << " " << scaleX << " " << collisionFlags << std::endl;
+        cout << ret << ": " << sprite->flags << " " << pSrc->oiHandle << " " << pSrc->collisionFlags
+             << " " << srcAngle << " " << kindaRot << " " << srcX << " " << scaleX << " "
+             << collisionFlags << std::endl;
 
     return ret;
 }
 
-static int(__cdecl* GetCollidingObjectListOrig)(ObjectHeader*, uint, uint, float, float, int, int, ObjectHeader***, int);
-static int __cdecl GetCollidingObjectListHook
-(ObjectHeader* obj, uint angle, uint scale, float scaleX, float scaleY, int x, int y,
-    ObjectHeader*** outList, int filterGroup) {
+static int(__cdecl* GetCollidingObjectListOrig)(ObjectHeader*, uint, uint, float, float, int, int,
+                                                ObjectHeader***, int);
+static int __cdecl GetCollidingObjectListHook(ObjectHeader* obj, uint angle, uint scale,
+                                              float scaleX, float scaleY, int x, int y,
+                                              ObjectHeader*** outList, int filterGroup) {
     // bullet created by player for sure
     if (obj && obj->parentID == 28 && obj->oiHandle == 106 && obj->spriteHandle) {
         // cout << obj->oiHandle << " " << obj->spriteHandle->flags << std::endl;
@@ -694,10 +706,11 @@ static int __cdecl GetCollidingObjectListHook
             // cout << "fixed\n";
             obj->spriteHandle->flags &= ~0x8; // remove SF_INACTIVE
             obj->spriteHandle->flags |= 0x40; // add SF_RECALC
-            obj->spriteHandle->flags |= 0x1; // add SF_RECREATEMASK
+            obj->spriteHandle->flags |= 0x1;  // add SF_RECREATEMASK
         }
     }
-    auto ret = GetCollidingObjectListOrig(obj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
+    auto ret =
+        GetCollidingObjectListOrig(obj, angle, scale, scaleX, scaleY, x, y, outList, filterGroup);
     return ret;
 }
 
@@ -713,31 +726,38 @@ static void __stdcall DragAcceptFilesHook(HWND hWnd, BOOL fAccept) {
     // cout << "DragAcceptFilesHook\n";
 }
 
-static HWND (__stdcall* CreateWindowExAOrig)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
+static HWND(__stdcall* CreateWindowExAOrig)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND,
+                                            HMENU, HINSTANCE, LPVOID);
 
-static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
+static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName,
+                                          DWORD dwStyle, int X, int Y, int nWidth, int nHeight,
+                                          HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
+                                          LPVOID lpParam) {
     if (lpClassName && strcmp(lpClassName, "Mf2MainClassTh") == 0) {
-        HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+        HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
+                                       nHeight, hWndParent, hMenu, hInstance, lpParam);
         ::hwnd = ret;
         return ret;
-    }
-    else if (lpClassName && strcmp(lpClassName, "Mf2EditClassTh") == 0) {
-        HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+    } else if (lpClassName && strcmp(lpClassName, "Mf2EditClassTh") == 0) {
+        HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
+                                       nHeight, hWndParent, hMenu, hInstance, lpParam);
         ::mhwnd = ret;
         return ret;
-    }
-    else if (!is_replay && lpClassName && (strcmp(lpClassName, "EDIT") == 0 ||
-        strcmp(lpClassName, "COMBOBOX") == 0 || strcmp(lpClassName, "LISTBOX") == 0 ||
-        strcmp(lpClassName, "omgwtfbbqColorButton") == 0 || strcmp(lpClassName, "omgwtfbbqColorSelector") == 0)) {
+    } else if (!is_replay && lpClassName &&
+               (strcmp(lpClassName, "EDIT") == 0 || strcmp(lpClassName, "COMBOBOX") == 0 ||
+                strcmp(lpClassName, "LISTBOX") == 0 ||
+                strcmp(lpClassName, "omgwtfbbqColorButton") == 0 ||
+                strcmp(lpClassName, "omgwtfbbqColorSelector") == 0)) {
         // cout << "CreateWindowExAHook " << lpClassName << " -> STATIC\n";
         lpClassName = "STATIC";
     }
     // cout << "create " << lpClassName << "\n";
-    HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+    HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
+                                   nHeight, hWndParent, hMenu, hInstance, lpParam);
     return ret;
 }
 
-static void (__cdecl* HideObjectIfNeededOrig)(ObjectHeader* obj);
+static void(__cdecl* HideObjectIfNeededOrig)(ObjectHeader* obj);
 static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     // Ugly shit for showing hitbox (original player)
     int mvtOffset = obj->hoAdpOffset;
@@ -752,7 +772,8 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
         int count = conf::hitbox_level;
         for (int i = pState.activeObjectCount - 1; i > 20; i--) {
             ObjectHeader* ptr = pState.objectList[i * 2];
-            if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) > 0 || std::abs(obj->yPos - ptr->yPos) > 0)
+            if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) > 0 ||
+                std::abs(obj->yPos - ptr->yPos) > 0)
                 continue;
             statusFlags = (ushort*)((int)&ptr->eventTriggerTable + mvtOffset);
             *statusFlags &= ~1;
@@ -779,7 +800,8 @@ static BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
 }
 
 static BOOL(__stdcall* AdjustWindowRectExOrig)(LPRECT, DWORD, BOOL, DWORD);
-static BOOL __stdcall AdjustWindowRectExHook(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle) {
+static BOOL __stdcall AdjustWindowRectExHook(LPRECT lpRect, DWORD dwStyle, BOOL bMenu,
+                                             DWORD dwExStyle) {
     if (conf::force_size[0] != 0 || conf::force_size[1] != 0) {
         lpRect->left = 0;
         lpRect->top = 0;
@@ -790,20 +812,21 @@ static BOOL __stdcall AdjustWindowRectExHook(LPRECT lpRect, DWORD dwStyle, BOOL 
 }
 
 static bool is_encrypted_ini(char* data) {
-    if (c_starts_with(data, "[Options]") || c_starts_with(data, "[License]") || c_starts_with(data, "[Achievements]") || c_starts_with(data, "[Check]"))
+    if (c_starts_with(data, "[Options]") || c_starts_with(data, "[License]") ||
+        c_starts_with(data, "[Achievements]") || c_starts_with(data, "[Check]"))
         return false;
     return true;
 }
 
-static void __cdecl SuperINI_CryptChecked(char* inp, ulong inplen, char* key, ulong keylen)
-{
+static void __cdecl SuperINI_CryptChecked(char* inp, ulong inplen, char* key, ulong keylen) {
     if (inplen < 16 || is_encrypted_ini(inp))
         SuperINI_Crypt(inp, inplen, key, keylen);
 }
 
 void init_game_loop() {
     // Executed as early as possible
-    ProcessFrameRendering = reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
+    ProcessFrameRendering =
+        reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     if (is_btas) {
@@ -818,15 +841,19 @@ void init_game_loop() {
         hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
         hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
         hook(mem::addr("GetClientRect", "user32.dll"), GetClientRectHook, &GetClientRectOrig);
-        hook(mem::addr("AdjustWindowRectEx", "user32.dll"), AdjustWindowRectExHook, &AdjustWindowRectExOrig);
+        hook(mem::addr("AdjustWindowRectEx", "user32.dll"), AdjustWindowRectExHook,
+             &AdjustWindowRectExOrig);
         hook(mem::addr("SetFocus", "user32.dll"), SetFocusHook);
         hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("GetFocus", "user32.dll"), GetActiveWindowHook);
         hook(mem::addr("CreateWindowExA", "user32.dll"), CreateWindowExAHook, &CreateWindowExAOrig);
-        hook(mem::addr("GetSystemMetrics", "user32.dll"), GetSystemMetricsHook, &GetSystemMetricsOrig);
+        hook(mem::addr("GetSystemMetrics", "user32.dll"), GetSystemMetricsHook,
+             &GetSystemMetricsOrig);
         // Ok this might be overkill
-        // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"), QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
-        // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook, &QueryPerformanceCounterOrig);
+        // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"),
+        // QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
+        // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook,
+        // &QueryPerformanceCounterOrig);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
         hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
         // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
@@ -855,8 +882,11 @@ void init_game_loop() {
     if (1) {
         SuperINI_Crypt = (decltype(SuperINI_Crypt))(mem::get_base("INI++.mfx") + 0x15681);
         DWORD bW;
-        size_t addr = (size_t)((uint64_t)SuperINI_CryptChecked - ((uint64_t)(mem::get_base("INI++.mfx") + 0x1a5f7) + 5));
-        ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1a5f7 + 1), &addr, 4, &bW) && bW == 4);
+        size_t addr = (size_t)((uint64_t)SuperINI_CryptChecked -
+                               ((uint64_t)(mem::get_base("INI++.mfx") + 0x1a5f7) + 5));
+        ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1a5f7 + 1), &addr, 4,
+                               &bW) &&
+            bW == 4);
     }
     enable_hook();
 }
@@ -889,8 +919,10 @@ void init_simple_hacks() {
     if (!is_hourglass && (is_btas || !conf::tas_mode)) {
         // hook(mem::get_base() + 0x43e30, MainWindowProcHook, &MainWindowProcOrig);
         // hook(mem::get_base() + 0x41ba0, EditWindowProcHook, &EditWindowProcOrig);
-        MainWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
-        EditWindowProcOrig = (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
+        MainWindowProcOrig =
+            (WNDPROC)SetWindowLongPtrA(::hwnd, GWLP_WNDPROC, (LONG)MainWindowProcHook);
+        EditWindowProcOrig =
+            (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
     if (is_btas && !is_hourglass) {
         hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
@@ -900,8 +932,10 @@ void init_simple_hacks() {
     Ordinal_78 = (decltype(Ordinal_78))(mem::get_base("mmfs2.dll") + 0x116e0);
     // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
-    hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
-    hook(mem::addr("DisplayRunObject", "Perspective.mfx"), DisplayRunObjectPHook, &DisplayRunObjectPOrig);
+    hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook,
+         &DisplayRunObjectVPOrig);
+    hook(mem::addr("DisplayRunObject", "Perspective.mfx"), DisplayRunObjectPHook,
+         &DisplayRunObjectPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
     // hook(mem::addr("strcmp", "MSVCR90.dll"), strcmpHook, &strcmpOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
@@ -910,7 +944,8 @@ void init_simple_hacks() {
     hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
-    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision, &fpCheckSpriteCollision);
+    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision,
+    // &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);

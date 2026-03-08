@@ -7,6 +7,6 @@ void get_cursor_pos(int& x_buf, int& y_buf);
 void ui_register_rand(int maxval, int ret);
 
 namespace ui {
-	void pre_update();
-	void draw();
-}
+void pre_update();
+void draw();
+} // namespace ui

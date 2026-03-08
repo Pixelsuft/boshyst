@@ -1,65 +1,67 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <cstring>
-#include <string>
-#include <iostream>
-#include <algorithm>
-#include "input.hpp"
-#include "init.hpp"
 #include "conf.hpp"
 #include "ass.hpp"
 #include "btas.hpp"
 #include "fs.hpp"
+#include "init.hpp"
+#include "input.hpp"
+#include <Windows.h>
+#include <algorithm>
+#include <cstring>
+#include <iostream>
+#include <string>
+#include <map>
+#include <vector>
 #undef max
 #undef min
 
-using std::string;
 using std::cout;
+using std::string;
 
 namespace conf {
-    std::map<int, std::vector<InputEvent>> mb;
-    string cap_cmd;
-    int pos[2];
-    int size[2];
-    int full_size[2];
-    int force_size[2];
-    int cap_start;
-    int cap_cnt;
-    int rapid_bind;
-    int menu_hotkey;
-    int hitbox_level;
-    float font_scale;
-    bool old_rec;
-    bool no_vp;
-    bool no_ps;
-    bool cap_au;
-    bool no_au;
-    bool au_mth;
-    bool no_sh;
-    bool god;
-    bool menu;
-    bool keep_save;
-    bool no_cmove;
-    bool draw_cursor;
-    bool emu_mouse;
-    bool cur_mouse_checked;
-    bool allow_render;
-    bool direct_render;
-    bool tas_mode;
-    bool first_run;
-    bool tp_on_click;
-    bool skip_msg;
-    bool input_in_menu;
-    bool no_trans;
-    bool force_gdi;
-    bool pixel_filter;
-    bool hg_instant;
-    bool tas_no_info;
-    bool no_rng_patches;
-    bool reset_rng;
-    bool no_encryption;
-}
+std::map<int, std::vector<InputEvent>> mb;
+string cap_cmd;
+int pos[2];
+int size[2];
+int full_size[2];
+int force_size[2];
+int cap_start;
+int cap_cnt;
+int rapid_bind;
+int menu_hotkey;
+int hitbox_level;
+float font_scale;
+bool old_rec;
+bool no_vp;
+bool no_ps;
+bool cap_au;
+bool no_au;
+bool au_mth;
+bool no_sh;
+bool god;
+bool menu;
+bool keep_save;
+bool no_cmove;
+bool draw_cursor;
+bool emu_mouse;
+bool cur_mouse_checked;
+bool allow_render;
+bool direct_render;
+bool tas_mode;
+bool first_run;
+bool tp_on_click;
+bool skip_msg;
+bool input_in_menu;
+bool no_trans;
+bool force_gdi;
+bool pixel_filter;
+bool hg_instant;
+bool tas_no_info;
+bool no_rng_patches;
+bool reset_rng;
+bool no_encryption;
+} // namespace conf
 
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
 
@@ -88,8 +90,7 @@ static int read_int(const string& line) {
         else if (was_eq && isdigit(*it)) {
             ret = (ret * 10) + (*it - '0');
             was_set = true;
-        }
-        else if (was_eq && *it == '/')
+        } else if (was_eq && *it == '/')
             return ret;
         else if (was_eq && !was_set && tolower(*it) == 't')
             return 1;
@@ -124,18 +125,17 @@ static void read_bind(const string& line_orig, const string& line) {
             std::vector<InputEvent> temp_vec;
             temp_vec.push_back(std::move(ev));
             conf::mb[num] = std::move(temp_vec);
-        }
-        else {
+        } else {
             it->second.push_back(std::move(ev));
         }
-    }
-    else if (starts_with(line, "bind=save,") || starts_with(line, "bind=load,")) {
+    } else if (starts_with(line, "bind=save,") || starts_with(line, "bind=load,")) {
         if (is_hourglass || is_btas)
             return;
         std::string fn = line;
         ASS(sscanf(line.substr(10).c_str(), "%i", &num) == 1);
         // Ugly.
-        while (fn.size() > 0 && (isspace(fn[0]) || std::find(fn.begin(), fn.end(), ',') != fn.end()))
+        while (fn.size() > 0 &&
+               (isspace(fn[0]) || std::find(fn.begin(), fn.end(), ',') != fn.end()))
             fn = fn.substr(1);
         for (size_t i = 1; i < fn.size(); i++) {
             if (fn[i - 1] == '/' && fn[i] == '/') {
@@ -151,18 +151,15 @@ static void read_bind(const string& line_orig, const string& line) {
             std::vector<InputEvent> temp_vec;
             temp_vec.push_back(std::move(ev));
             conf::mb[num] = std::move(temp_vec);
-        }
-        else {
+        } else {
             it->second.push_back(std::move(ev));
         }
-    }
-    else if (starts_with(line, "bind=rapid,")) {
+    } else if (starts_with(line, "bind=rapid,")) {
         if (is_hourglass || is_btas)
             return;
         ASS(sscanf(line.substr(11).c_str(), "%i", &num) == 1);
         conf::rapid_bind = num;
-    }
-    else {
+    } else {
         ass::show_err("Invalid bind");
         ASS(false);
     }
@@ -172,12 +169,15 @@ static void create_default_config(const string& path) {
     bfs::File file(path, 1);
     ASS(file.is_open());
     ASS(file.write_line("menu = 1 // Show menu window"));
-    ASS(file.write_line("hourglass_instant = 0 // Instant mod load in hourglass, may cause softlock"));
-    ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing (automatically enabled when using Hourglass or BTAS)"));
+    ASS(file.write_line(
+        "hourglass_instant = 0 // Instant mod load in hourglass, may cause softlock"));
+    ASS(file.write_line("tas_mode = 0 // Use small info window, useful for TASing (automatically "
+                        "enabled when using Hourglass or BTAS)"));
     ASS(file.write_line("win_pos = 0, 0 // Info window position"));
     ASS(file.write_line("win_size = 200, 100 // Info window size"));
     ASS(file.write_line("menu_hotkey = 45 // Default menu toggle hotkey, VK_INSERT"));
-    ASS(file.write_line("fullscreen_size = 0, 0 // Leave defaults for fullscreen mode (also use -1, -1 for desktop resolution)"));
+    ASS(file.write_line("fullscreen_size = 0, 0 // Leave defaults for fullscreen mode (also use "
+                        "-1, -1 for desktop resolution)"));
     ASS(file.write_line(""));
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
@@ -189,41 +189,55 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
     ASS(file.write_line("disable_perspective = 0 // Disable background distortion"));
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
-    ASS(file.write_line("keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
-    ASS(file.write_line("no_encryption = 0 // No save encryption (breaks saves without using mod menu)"));
+    ASS(file.write_line(
+        "keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
+    ASS(file.write_line(
+        "no_encryption = 0 // No save encryption (breaks saves without using mod menu)"));
     ASS(file.write_line(""));
-    ASS(file.write_line("tas_force_size = 0, 0 // You can force window size to be higher than you monitor resolution"));
+    ASS(file.write_line("tas_force_size = 0, 0 // You can force window size to be higher than you "
+                        "monitor resolution"));
     ASS(file.write_line("tas_force_gdi = 0 // Force software renderer (doesnt support UI)"));
     ASS(file.write_line("tas_disable_audio = 0 // Disable audio output"));
     ASS(file.write_line("tas_audio_capture = 0 // Capture audio in tas mode"));
-    ASS(file.write_line("tas_audio_main_thread = 0 // Force audio processing on main thread for stability"));
+    ASS(file.write_line(
+        "tas_audio_main_thread = 0 // Force audio processing on main thread for stability"));
     ASS(file.write_line("tas_replay_mode = 0 // Replay mode by default"));
     ASS(file.write_line("tas_no_info = 0 // Hide info window"));
     ASS(file.write_line(""));
     ASS(file.write_line("allow_render = 0 // Allow video capturing"));
-    ASS(file.write_line("direct_render = 1 // Capture video directly using Direct3D 9 instead of making screenshots of the window using Win32 API"));
-    ASS(file.write_line("old_render = 0 // Turn on this if you have rendering issues (only when not using direct render; likely will cause window content overriding)"));
+    ASS(file.write_line("direct_render = 1 // Capture video directly using Direct3D 9 instead of "
+                        "making screenshots of the window using Win32 API"));
+    ASS(file.write_line("old_render = 0 // Turn on this if you have rendering issues (only when "
+                        "not using direct render; likely will cause window content overriding)"));
     ASS(file.write_line("render_start = 0 // Start frame (not recommended to use, see readme)"));
     ASS(file.write_line("render_count = 0 // Frame count (not recommended to use, see readme)"));
     ASS(file.write_line("# render_end = 0 // End frame"));
-    ASS(file.write_line("render_cmd = ffmpeg -y -f:v rawvideo -s $SIZE -pix_fmt rgb32 -r 50 -i - -an -vcodec libx264 -b:v 10000k output.mp4"));
+    ASS(file.write_line("render_cmd = ffmpeg -y -f:v rawvideo -s $SIZE -pix_fmt rgb32 -r 50 -i - "
+                        "-an -vcodec libx264 -b:v 10000k output.mp4"));
     ASS(file.write_line(""));
-    ASS(file.write_line("no_mouse_move = 1 // Prevent mouse cursor from moving to kill the player"));
-    ASS(file.write_line("draw_cursor = 1 // Draw virtual cursor pos on screen (slightly pointless)"));
-    ASS(file.write_line("simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
-    ASS(file.write_line("reset_rng = 0 // Regenerate RNG seed when loading state via bind (check below)"));
+    ASS(file.write_line(
+        "no_mouse_move = 1 // Prevent mouse cursor from moving to kill the player"));
+    ASS(file.write_line(
+        "draw_cursor = 1 // Draw virtual cursor pos on screen (slightly pointless)"));
+    ASS(file.write_line(
+        "simulate_mouse = 0 // Allow simulating mouse via keyboard (disables real mouse input)"));
+    ASS(file.write_line(
+        "reset_rng = 0 // Regenerate RNG seed when loading state via bind (check below)"));
     ASS(file.write_line("# Mouse on keyboard bindings (useful for hourglass)"));
     ASS(file.write_line("# Multible mouse binds to one key are supported (order is important)"));
     ASS(file.write_line("# Boshy selection example (via 'K' key) from F3 menu"));
-    ASS(file.write_line("bind = click, 75, 84.0, 276.0 // Virtual Key (here is K), X pos in [0;640), Y pos in [0;480) (move cursor and click on Quadrick)"));
+    ASS(file.write_line("bind = click, 75, 84.0, 276.0 // Virtual Key (here is K), X pos in "
+                        "[0;640), Y pos in [0;480) (move cursor and click on Quadrick)"));
     ASS(file.write_line("bind = click, 75, 315.0, 406.0 // Click 'Select' button"));
-    ASS(file.write_line("bind = click, 75, -100, -100 // Move mouse outside (so not clicking, just move) of the window"));
+    ASS(file.write_line("bind = click, 75, -100, -100 // Move mouse outside (so not clicking, just "
+                        "move) of the window"));
     ASS(file.write_line("# State saving/loading (useful for training)"));
     ASS(file.write_line("bind = load, 70, example_state.mfs // 'F' to load state"));
     ASS(file.write_line("bind = save, 71, example_state.mfs // 'G' to save state"));
     ASS(file.write_line("bind = rapid, 66 // 'B' for rapid fire hack"));
     ASS(file.write_line(""));
-    ASS(file.write_line("# Map BTAS keys: map, keyboard_key, mod (0 - None, 1 - Ctrl, 2 - Shift), ingame_key"));
+    ASS(file.write_line(
+        "# Map BTAS keys: map, keyboard_key, mod (0 - None, 1 - Ctrl, 2 - Shift), ingame_key"));
     ASS(file.write_line("btas = map, 82, 0, 82 // 'R'"));
     ASS(file.write_line("btas = map, 90, 0, 90 // 'Z'"));
     ASS(file.write_line("btas = map, 88, 0, 88 // 'X'"));
@@ -261,8 +275,10 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("btas = load_state, 48, 0, 10"));
     ASS(file.write_line("# BTAS binds: function, keyboard_key, mod"));
     ASS(file.write_line("btas = toggle_pause, 19, 0 // PAUSE to pause/resume"));
-    ASS(file.write_line("btas = fastforward, 9, 0 // Hold TAB for fastforward, you can use toggle_fastforward as well!"));
-    ASS(file.write_line("btas = fastforward_skip, 66, 0 // Hold 'B' for fastforward without drawing frames (you might need toggle_fastforward_skip)"));
+    ASS(file.write_line("btas = fastforward, 9, 0 // Hold TAB for fastforward, you can use "
+                        "toggle_fastforward as well!"));
+    ASS(file.write_line("btas = fastforward_skip, 66, 0 // Hold 'B' for fastforward without "
+                        "drawing frames (you might need toggle_fastforward_skip)"));
     ASS(file.write_line("btas = step, 86, 0 // Play single frame on 'V'"));
     ASS(file.write_line("btas = slowmotion, 32, 0 // Slow-mo on Space"));
 }
@@ -273,11 +289,11 @@ void conf::read() {
     cap_cnt = 0;
     rapid_bind = -1;
     first_run = false;
-    tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi = no_rng_patches =
-        no_sh = keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info = reset_rng =
-        no_cmove = draw_cursor = emu_mouse = allow_render = hg_instant = no_encryption = false;
+    tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi = no_rng_patches = no_sh =
+        keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info = reset_rng = no_cmove =
+            draw_cursor = emu_mouse = allow_render = hg_instant = no_encryption = false;
     direct_render = true;
-	cur_mouse_checked = false;
+    cur_mouse_checked = false;
     tp_on_click = input_in_menu = false;
     font_scale = 1.f;
     menu_hotkey = 45;
@@ -384,8 +400,7 @@ void conf::read() {
             cap_cmd = line_orig.substr(10);
             while (cap_cmd.size() > 0 && (isspace(cap_cmd[0]) || cap_cmd[0] == '='))
                 cap_cmd = cap_cmd.substr(1);
-        }
-        else {
+        } else {
             ass::show_err((string("Unknown setting: ") + line_orig).c_str());
             ASS(false);
         }

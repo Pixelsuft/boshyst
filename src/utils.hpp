@@ -5,9 +5,7 @@ struct IntPair {
     int a;
     int b;
 
-    IntPair() {
-        a = b = 0;
-    }
+    IntPair() { a = b = 0; }
 
     IntPair(int a, int b) {
         this->a = a;
@@ -15,8 +13,7 @@ struct IntPair {
     }
 };
 
-template<typename T>
-inline std::string to_str(T x) {
+template <typename T> inline std::string to_str(T x) {
 #if _MSC_VER >= 1900
     return std::to_string(x);
 #else
@@ -33,10 +30,10 @@ static bool c_ends_with(const char* str, const char* end) {
 }
 
 static bool c_starts_with(const char* str, const char* start) {
-    //size_t sl = strlen(str);
+    // size_t sl = strlen(str);
     size_t el = strlen(start);
-    //if (el > sl)
-    //    return false;
+    // if (el > sl)
+    //     return false;
     return memcmp(str, start, el) == 0;
 }
 

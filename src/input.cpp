@@ -1,22 +1,24 @@
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <iostream>
-#include <ctime>
 #include "input.hpp"
-#include "init.hpp"
-#include "hook.hpp"
+#include "btas.hpp"
 #include "conf.hpp"
+#include "fs.hpp"
+#include "ghidra_headers.h"
+#include "hook.hpp"
+#include "init.hpp"
 #include "mem.hpp"
 #include "ui.hpp"
-#include "fs.hpp"
 #include "utils.hpp"
-#include "btas.hpp"
-#include "ghidra_headers.h"
+#include <Windows.h>
+#include <ctime>
+#include <vector>
+#include <map>
+#include <iostream>
 
 using std::cout;
 
 namespace conf {
-    extern std::map<int, std::vector<InputEvent>> mb;
+extern std::map<int, std::vector<InputEvent>> mb;
 }
 extern HWND hwnd;
 extern HWND mhwnd;
@@ -40,8 +42,7 @@ static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
     if (show_menu && !conf::emu_mouse) {
         p->x = -100;
         p->y = -100;
-    } 
-    else {
+    } else {
         p->x = cur_x;
         p->y = cur_y;
     }
@@ -84,15 +85,13 @@ bool input_tick() {
                         continue;
                     SusProc(mhwnd, WM_LBUTTONDOWN, 0, 0);
                     SusProc(mhwnd, WM_LBUTTONUP, 0, 0);
-                }
-                else if (eit->type == eit->SAVE) {
+                } else if (eit->type == eit->SAVE) {
                     bfs::File file(*eit->state.fn, 1);
                     if (file.is_open()) {
                         state_save(&file);
                         ret = true;
                     }
-                }
-                else if (eit->type == eit->LOAD) {
+                } else if (eit->type == eit->LOAD) {
                     bfs::File file(*eit->state.fn, 0);
                     RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
                     short prev_seed = pState.RandomSeed;

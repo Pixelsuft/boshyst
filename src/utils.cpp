@@ -1,24 +1,24 @@
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include "utils.hpp"
+#include "ass.hpp"
+#include "conf.hpp"
+#include "fs.hpp"
+#include "ghidra_headers.h"
+#include "mem.hpp"
+#include "ui.hpp"
 #include <Psapi.h>
+#include <Windows.h>
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
-#include "ass.hpp"
-#include "mem.hpp"
-#include "fs.hpp"
-#include "conf.hpp"
-#include "ui.hpp"
-#include "utils.hpp"
-#include "ghidra_headers.h"
 #include <vector>
-#include <algorithm>
 
 using std::cout;
 
 void ass::show_err(const char* text) {
-	wchar_t* buf = utf8_to_unicode(text);
-	MessageBoxW(nullptr, buf, L"Boshyst error!", MB_ICONERROR);
-	std::free(buf);
+    wchar_t* buf = utf8_to_unicode(text);
+    MessageBoxW(nullptr, buf, L"Boshyst error!", MB_ICONERROR);
+    std::free(buf);
 }
 
 HANDLE hproc = GetCurrentProcess();
@@ -29,357 +29,415 @@ extern SHORT(__stdcall* GetKeyStateOrig)(int k);
 static std::vector<int> key_states;
 
 bool MyKeyState(int k) {
-	HWND fg = GetForegroundWindow();
-	return (fg == hwnd || fg == mhwnd) && (GetKeyStateOrig(k) & 128);
+    HWND fg = GetForegroundWindow();
+    return (fg == hwnd || fg == mhwnd) && (GetKeyStateOrig(k) & 128);
 }
 
 int JustKeyState(int k) {
-	// 1 - just pressed, -1 - just released
-	auto it = std::find(key_states.begin(), key_states.end(), k);
-	auto st = MyKeyState(k);
-	if (it == key_states.end()) {
-		if (st) {
-			key_states.push_back(k);
-			return 1;
-		}
-		return 0;
-	}
-	if (!st) {
-		key_states.erase(it);
-		return -1;
-	}
-	return 0;
+    // 1 - just pressed, -1 - just released
+    auto it = std::find(key_states.begin(), key_states.end(), k);
+    auto st = MyKeyState(k);
+    if (it == key_states.end()) {
+        if (st) {
+            key_states.push_back(k);
+            return 1;
+        }
+        return 0;
+    }
+    if (!st) {
+        key_states.erase(it);
+        return -1;
+    }
+    return 0;
 }
 
 wchar_t* utf8_to_unicode(const std::string& utf8) {
-	int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), nullptr, 0);
-	ASS(utf8.size() == 0 || size_needed > 0);
-	wchar_t* ret = (wchar_t*)std::malloc((size_t)size_needed * sizeof(wchar_t) + 2);
-	ASS(ret != nullptr);
-	int chars_converted = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), ret, size_needed);
-	ASS(chars_converted == size_needed);
-	ret[size_needed] = L'\0';
-	return ret;
+    int size_needed =
+        MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), static_cast<int>(utf8.length()), nullptr, 0);
+    ASS(utf8.size() == 0 || size_needed > 0);
+    wchar_t* ret = (wchar_t*)std::malloc((size_t)size_needed * sizeof(wchar_t) + 2);
+    ASS(ret != nullptr);
+    int chars_converted = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(),
+                                              static_cast<int>(utf8.length()), ret, size_needed);
+    ASS(chars_converted == size_needed);
+    ret[size_needed] = L'\0';
+    return ret;
 }
 
 std::string unicode_to_utf8(wchar_t* buf, bool autofree) {
-	int size_needed = WideCharToMultiByte(CP_UTF8, 0, buf, -1, nullptr, 0, nullptr, nullptr);
-	ASS(size_needed > 0);
-	std::string ret(size_needed - 1, 0);
-	int chars_converted = WideCharToMultiByte(CP_UTF8, 0, buf, -1, &ret[0], size_needed, nullptr, nullptr);
-	ASS(chars_converted == size_needed);
-	if (autofree)
-		std::free(buf);
-	return ret;
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, buf, -1, nullptr, 0, nullptr, nullptr);
+    ASS(size_needed > 0);
+    std::string ret(size_needed - 1, 0);
+    int chars_converted =
+        WideCharToMultiByte(CP_UTF8, 0, buf, -1, &ret[0], size_needed, nullptr, nullptr);
+    ASS(chars_converted == size_needed);
+    if (autofree)
+        std::free(buf);
+    return ret;
 }
 
 /*
 static HMODULE GetSxSModuleHandle(const char* targetPart) {
-	// When GetModuleHandleA doesn't work this might help
-	HMODULE hMods[1024];
-	HANDLE hProcess = GetCurrentProcess();
-	DWORD cbNeeded;
+        // When GetModuleHandleA doesn't work this might help
+        HMODULE hMods[1024];
+        HANDLE hProcess = GetCurrentProcess();
+        DWORD cbNeeded;
 
-	if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
-		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
-			char szModName[MAX_PATH];
-			if (GetModuleFileNameExA(hProcess, hMods[i], szModName, MAX_PATH)) {
-				if (c_ends_with(szModName, targetPart)) {
-					return hMods[i];
-				}
-			}
-		}
-	}
-	return NULL;
+        if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
+                for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
+                        char szModName[MAX_PATH];
+                        if (GetModuleFileNameExA(hProcess, hMods[i], szModName, MAX_PATH)) {
+                                if (c_ends_with(szModName, targetPart)) {
+                                        return hMods[i];
+                                }
+                        }
+                }
+        }
+        return NULL;
 }
 */
 
 size_t mem::get_base() {
-	static auto def_ret = (size_t)GetModuleHandleW(nullptr);
-	return def_ret;
+    static auto def_ret = (size_t)GetModuleHandleW(nullptr);
+    return def_ret;
 }
 
 size_t mem::get_base(const char* obj_name) {
-	size_t ret = (size_t)GetModuleHandleA(obj_name);
-	ASS(ret != 0);
-	return (size_t)ret;
+    size_t ret = (size_t)GetModuleHandleA(obj_name);
+    ASS(ret != 0);
+    return (size_t)ret;
 }
 
 void* mem::addr(const char* func_name, const char* obj_name) {
-	// cout << "trying to load " << obj_name << std::endl;
-	// auto obj = (strcmp(obj_name, "MSVCR90.dll") == 0) ? GetSxSModuleHandle(obj_name) : GetModuleHandleA(obj_name);
-	auto obj = GetModuleHandleA(obj_name);
-	if (!obj && 0) {
-		cout << "trying to fix " << obj_name << " for " << func_name << std::endl;
-		LoadLibraryA(obj_name);
-		obj = GetModuleHandleA(obj_name);
-	}
-	ASS(obj != nullptr);
-	if (!obj)
-		return nullptr;
-	auto ptr = GetProcAddress(obj, func_name);
-	ASS(ptr != nullptr);
-	return ptr;
+    // cout << "trying to load " << obj_name << std::endl;
+    // auto obj = (strcmp(obj_name, "MSVCR90.dll") == 0) ? GetSxSModuleHandle(obj_name) :
+    // GetModuleHandleA(obj_name);
+    auto obj = GetModuleHandleA(obj_name);
+    if (!obj && 0) {
+        cout << "trying to fix " << obj_name << " for " << func_name << std::endl;
+        LoadLibraryA(obj_name);
+        obj = GetModuleHandleA(obj_name);
+    }
+    ASS(obj != nullptr);
+    if (!obj)
+        return nullptr;
+    auto ptr = GetProcAddress(obj, func_name);
+    ASS(ptr != nullptr);
+    return ptr;
 }
 
 static uint8_t* read_ptr(const uint8_t* addr) {
-	SIZE_T bt_read;
-	uint8_t* buf = nullptr;
-	auto ret = ReadProcessMemory(hproc, (LPCVOID)addr, &buf, 4, &bt_read);
-	return buf;
+    SIZE_T bt_read;
+    uint8_t* buf = nullptr;
+    auto ret = ReadProcessMemory(hproc, (LPCVOID)addr, &buf, 4, &bt_read);
+    return buf;
 }
 
 void* mem::ptr_from_offsets(const size_t* offsets, size_t n) {
-	uint8_t* temp_addr = read_ptr((uint8_t*)offsets[0]);
-	uint8_t* ptr = nullptr;
-	for (size_t i = 1; i < n; i++) {
-		ptr = temp_addr + offsets[i];
-		temp_addr = read_ptr(ptr);
-	}
-	return ptr;
+    uint8_t* temp_addr = read_ptr((uint8_t*)offsets[0]);
+    uint8_t* ptr = nullptr;
+    for (size_t i = 1; i < n; i++) {
+        ptr = temp_addr + offsets[i];
+        temp_addr = read_ptr(ptr);
+    }
+    return ptr;
 }
 
 void get_win_size(int& w_buf, int& h_buf) {
-	RECT rect;
-	memset(&rect, 0, sizeof(rect));
-	GetClientRect(hwnd, &rect);
-	w_buf = rect.right;
-	h_buf = rect.bottom;
+    RECT rect;
+    memset(&rect, 0, sizeof(rect));
+    GetClientRect(hwnd, &rect);
+    w_buf = rect.right;
+    h_buf = rect.bottom;
 }
 
 void get_cursor_pos(int& x_buf, int& y_buf) {
-	// Virtual cursor pos
-	POINT point;
-	memset(&point, 0, sizeof(point));
-	GetCursorPos(&point);
-	ScreenToClient(hwnd, &point);
-	x_buf = point.x;
-	y_buf = point.y;
+    // Virtual cursor pos
+    POINT point;
+    memset(&point, 0, sizeof(point));
+    GetCursorPos(&point);
+    ScreenToClient(hwnd, &point);
+    x_buf = point.x;
+    y_buf = point.y;
 }
 
 void get_cursor_pos_orig(int& x_buf, int& y_buf) {
-	// Real cursor pos
-	POINT point;
-	memset(&point, 0, sizeof(point));
-	GetCursorPosOrig(&point);
-	ScreenToClient(hwnd, &point);
-	x_buf = point.x;
-	y_buf = point.y;
+    // Real cursor pos
+    POINT point;
+    memset(&point, 0, sizeof(point));
+    GetCursorPosOrig(&point);
+    ScreenToClient(hwnd, &point);
+    x_buf = point.x;
+    y_buf = point.y;
 }
 
 void update_save_encryption() {
-	DWORD bW;
-	DWORD temp = conf::no_encryption ? 0xeb : 0x74;
-	ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1b293), &temp, 1, &bW) && bW == 1);
+    DWORD bW;
+    DWORD temp = conf::no_encryption ? 0xeb : 0x74;
+    ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1b293), &temp, 1, &bW) &&
+        bW == 1);
 }
 
 const char* get_scene_name() {
-	// TODO: mem::get_base()?
-	GlobalStats& gStats = **(GlobalStats**)(0x459a98);
-	return (gStats.sceneName && *gStats.sceneName) ? gStats.sceneName : "Unknown";
+    // TODO: mem::get_base()?
+    GlobalStats& gStats = **(GlobalStats**)(0x459a98);
+    return (gStats.sceneName && *gStats.sceneName) ? gStats.sceneName : "Unknown";
 }
 
 int get_scene_id() {
-	// TODO: mem::get_base()?
-	RunApp& gState = **(RunApp**)0x0459a94;
-	return gState.rhCurrentFrame;
+    // TODO: mem::get_base()?
+    RunApp& gState = **(RunApp**)0x0459a94;
+    return gState.rhCurrentFrame;
 }
 
 static void* get_player_by_id(int idx) {
-	const size_t offsets[] = { mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, (size_t)idx, 0 };
-	return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
+    const size_t offsets[] = {mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, (size_t)idx, 0};
+    return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 
 static int get_player_handle(int s) {
-	switch (s) {
-	case 1: return 4;
-	case 2: return 28;
-	case 3: return 14;
-	case 4: return 331;
-	case 5: return 41;
-	case 6: return 38;
-	case 7: return 28;
-	case 8: return 25;
-	case 9: return 18;
-	case 10: return 614;
-	case 11: return 18;
-	case 12: return 519;
-	case 13: return 14;
-	case 14: return 34;
-	case 16: return 20;
-	case 21: return 42;
-	case 22: return 28;
-	case 23: return 14;
-	case 24: return 14;
-	case 25: return 76;
-	case 26: return 23;
-	case 27: return 14;
-	case 28: return 17;
-	case 29: return 13;
-	case 30: return 23;
-	case 31: return 17;
-	case 32: return 13;
-	case 33: return 13;
-	case 34: return 18;
-	case 35: return 16;
-	case 36: return 22;
-	case 37: return 11;
-	case 38: return 13;
-	case 39: return 13;
-	case 40: return 50;
-	case 43: return 50;
-	case 44: return 50;
-	case 45: return 21;
-	case 47: return 680;
-	case 48: return 40;
-	case 49: return 14;
-	case 50: return 38;
-	case 51: return 13;
-	case 52: return 15;
-	case 53: return 14;
-	case 58: return 18;
-	case 59: return 15;
-	case 60: return 13;
-	default: return -1;
-	}
+    switch (s) {
+    case 1:
+        return 4;
+    case 2:
+        return 28;
+    case 3:
+        return 14;
+    case 4:
+        return 331;
+    case 5:
+        return 41;
+    case 6:
+        return 38;
+    case 7:
+        return 28;
+    case 8:
+        return 25;
+    case 9:
+        return 18;
+    case 10:
+        return 614;
+    case 11:
+        return 18;
+    case 12:
+        return 519;
+    case 13:
+        return 14;
+    case 14:
+        return 34;
+    case 16:
+        return 20;
+    case 21:
+        return 42;
+    case 22:
+        return 28;
+    case 23:
+        return 14;
+    case 24:
+        return 14;
+    case 25:
+        return 76;
+    case 26:
+        return 23;
+    case 27:
+        return 14;
+    case 28:
+        return 17;
+    case 29:
+        return 13;
+    case 30:
+        return 23;
+    case 31:
+        return 17;
+    case 32:
+        return 13;
+    case 33:
+        return 13;
+    case 34:
+        return 18;
+    case 35:
+        return 16;
+    case 36:
+        return 22;
+    case 37:
+        return 11;
+    case 38:
+        return 13;
+    case 39:
+        return 13;
+    case 40:
+        return 50;
+    case 43:
+        return 50;
+    case 44:
+        return 50;
+    case 45:
+        return 21;
+    case 47:
+        return 680;
+    case 48:
+        return 40;
+    case 49:
+        return 14;
+    case 50:
+        return 38;
+    case 51:
+        return 13;
+    case 52:
+        return 15;
+    case 53:
+        return 14;
+    case 58:
+        return 18;
+    case 59:
+        return 15;
+    case 60:
+        return 13;
+    default:
+        return -1;
+    }
 }
 
 void* get_player_ptr(int s) {
-	int handle = get_player_handle(s);
-	RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-	if (handle != -1 && handle < pState.activeObjectCount) {
-		auto ret = pState.objectList[handle * 2];
-		if (ret && (ret->xPos > 60000 || ret->yPos == 0)) // Died
-			return nullptr;
-		return ret;
-	}
-	return nullptr;
-	/*
-	// FIXME: return W4, W5, B8
-	switch (s) {
-	// Tutorial
-	case 35:
-		return get_player_by_id(0x80);
-	// W1, W3, METAL GEAR
-	case 2:
-	case 7:
-	case 22:
-		return get_player_by_id(0xE0);
-	// MARIO SECRET
-	case 32:
-		return get_player_by_id(0x68);
-	// B1, B5, B7, W8, POKEWORLD, CHEETAHMEN
-	case 3:
-	case 13:
-	case 23:
-	case 24:
-	case 49:
-	case 53:
-		return get_player_by_id(0x70);
-	// W2
-	case 4:
-		return get_player_by_id(0xA58);
-	// MB1
-	case 5:
-		return get_player_by_id(0x148);
-	// B2, GASTLY
-	case 6:
-	case 8:
-		return get_player_by_id(0x130);
-	// B3, B4, W11, B9
-	case 9:
-	case 11:
-	case 34:
-	case 58:
-		return get_player_by_id(0x90);
-	// W4
-	case 10:
-		return get_player_by_id(0x100);
-	// W5
-	case 12:
-		return get_player_by_id(0x38);
-	// W6
-	case 14:
-		return get_player_by_id(0x110);
-	// B6
-	case 16:
-		return get_player_by_id(0xA0);
-	// W7, Gardius
-	case 21:
-	case 38:
-		return get_player_by_id(0x150);
-	// B10, TELEPROOM
-	case 31:
-	case 28:
-		return get_player_by_id(0x88);
-	// B8
-	case 25:
-		return get_player_by_id(0x48);
-	// W9, W10
-	case 26:
-	case 30:
-		return get_player_by_id(0xB8);
-	// KAPPA
-	case 36:
-		return get_player_by_id(0xB0);
-	// FB
-	case 45:
-		return get_player_by_id(0xA8);
-	// PRIZE ROOM
-	case 48:
-		return get_player_by_id(0x140);
-	// BLIZZARD
-	case 52:
-		return get_player_by_id(0x78);
-	// ELEVATOR
-	case 50:
-		return get_player_by_id(0x138);
-	// FINAL PATH
-	case 37:
-		return get_player_by_id(0x58);
-	}
-	if (s == 0 || s == 1 || s == 20) {
-		player_handle = -1;
-		return nullptr;
-	}
-	RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-	if (player_handle != -1 && player_handle < pState.activeObjectCount)
-		return pState.objectList[player_handle * 2];
-	player_handle = -1;
-	return nullptr;*/
+    int handle = get_player_handle(s);
+    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+    if (handle != -1 && handle < pState.activeObjectCount) {
+        auto ret = pState.objectList[handle * 2];
+        if (ret && (ret->xPos > 60000 || ret->yPos == 0)) // Died
+            return nullptr;
+        return ret;
+    }
+    return nullptr;
+    /*
+    // FIXME: return W4, W5, B8
+    switch (s) {
+    // Tutorial
+    case 35:
+            return get_player_by_id(0x80);
+    // W1, W3, METAL GEAR
+    case 2:
+    case 7:
+    case 22:
+            return get_player_by_id(0xE0);
+    // MARIO SECRET
+    case 32:
+            return get_player_by_id(0x68);
+    // B1, B5, B7, W8, POKEWORLD, CHEETAHMEN
+    case 3:
+    case 13:
+    case 23:
+    case 24:
+    case 49:
+    case 53:
+            return get_player_by_id(0x70);
+    // W2
+    case 4:
+            return get_player_by_id(0xA58);
+    // MB1
+    case 5:
+            return get_player_by_id(0x148);
+    // B2, GASTLY
+    case 6:
+    case 8:
+            return get_player_by_id(0x130);
+    // B3, B4, W11, B9
+    case 9:
+    case 11:
+    case 34:
+    case 58:
+            return get_player_by_id(0x90);
+    // W4
+    case 10:
+            return get_player_by_id(0x100);
+    // W5
+    case 12:
+            return get_player_by_id(0x38);
+    // W6
+    case 14:
+            return get_player_by_id(0x110);
+    // B6
+    case 16:
+            return get_player_by_id(0xA0);
+    // W7, Gardius
+    case 21:
+    case 38:
+            return get_player_by_id(0x150);
+    // B10, TELEPROOM
+    case 31:
+    case 28:
+            return get_player_by_id(0x88);
+    // B8
+    case 25:
+            return get_player_by_id(0x48);
+    // W9, W10
+    case 26:
+    case 30:
+            return get_player_by_id(0xB8);
+    // KAPPA
+    case 36:
+            return get_player_by_id(0xB0);
+    // FB
+    case 45:
+            return get_player_by_id(0xA8);
+    // PRIZE ROOM
+    case 48:
+            return get_player_by_id(0x140);
+    // BLIZZARD
+    case 52:
+            return get_player_by_id(0x78);
+    // ELEVATOR
+    case 50:
+            return get_player_by_id(0x138);
+    // FINAL PATH
+    case 37:
+            return get_player_by_id(0x58);
+    }
+    if (s == 0 || s == 1 || s == 20) {
+            player_handle = -1;
+            return nullptr;
+    }
+    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+    if (player_handle != -1 && player_handle < pState.activeObjectCount)
+            return pState.objectList[player_handle * 2];
+    player_handle = -1;
+    return nullptr;*/
 }
 
 bool state_save(bfs::File* file) {
-	static bool(__cdecl* SaveFunc)(HANDLE) = reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
-	if (file == nullptr) {
-		// TODO: actually make save/load dialog
-		SaveFunc(INVALID_HANDLE_VALUE);
-		return true;
-	}
-	auto ret = SaveFunc(file->get_handle());
-	// cout << "save ret: " << ret << "\n";
-	return true;
+    static bool(__cdecl * SaveFunc)(HANDLE) =
+        reinterpret_cast<decltype(SaveFunc)>(mem::get_base() + 0x37dc0);
+    if (file == nullptr) {
+        // TODO: actually make save/load dialog
+        SaveFunc(INVALID_HANDLE_VALUE);
+        return true;
+    }
+    auto ret = SaveFunc(file->get_handle());
+    // cout << "save ret: " << ret << "\n";
+    return true;
 }
 
 bool state_load(bfs::File* file) {
-	static int(__cdecl* LoadFunc)(HANDLE, int*) = reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
-	int outver = 0;
-	// DWORD bW;
-	//const uint8_t buf1_h[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
-	//const uint8_t buf1_o[] = { 0xff, 0x15, 0x98, 0x31, 0x45, 0x00, 0x8b, 0x0d, 0x98, 0x9a, 0x45, 0x00 };
-	//const uint8_t buf2_o[] = { 0xff, 0xd3 };
-	//const uint8_t buf3_o[] = { 0xc7, 0x40, 0x7c, 0x00, 0x00, 0x00, 0x00 };
-	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x35dd0), buf1_h, 12, &bW) && bW == 12);
-	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36416), buf1_h, 2, &bW) && bW == 2);
-	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36439), buf1_h, 7, &bW) && bW == 7);
-	if (file == nullptr && 0) {
-		LoadFunc(INVALID_HANDLE_VALUE, &outver);
-		return true;
-	}
-	auto ret = LoadFunc(file->get_handle(), &outver);
-	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x35dd0), buf1_o, 12, &bW) && bW == 12);
-	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36416), buf2_o, 2, &bW) && bW == 2);
-	//ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36439), buf3_o, 7, &bW) && bW == 7);
-	// cout << "load ret: " << ret << "\n";
-	return true;
+    static int(__cdecl * LoadFunc)(HANDLE, int*) =
+        reinterpret_cast<decltype(LoadFunc)>(mem::get_base() + 0x39780);
+    int outver = 0;
+    // DWORD bW;
+    // const uint8_t buf1_h[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+    // 0x90, 0x90, 0x90 }; const uint8_t buf1_o[] = { 0xff, 0x15, 0x98, 0x31, 0x45, 0x00, 0x8b,
+    // 0x0d, 0x98, 0x9a, 0x45, 0x00 }; const uint8_t buf2_o[] = { 0xff, 0xd3 }; const uint8_t
+    // buf3_o[] = { 0xc7, 0x40, 0x7c, 0x00, 0x00, 0x00, 0x00 }; ASS(WriteProcessMemory(hproc,
+    // (void*)(mem::get_base() + 0x35dd0), buf1_h, 12, &bW) && bW == 12);
+    // ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36416), buf1_h, 2, &bW) && bW ==
+    // 2); ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36439), buf1_h, 7, &bW) && bW
+    // == 7);
+    if (file == nullptr && 0) {
+        LoadFunc(INVALID_HANDLE_VALUE, &outver);
+        return true;
+    }
+    auto ret = LoadFunc(file->get_handle(), &outver);
+    // ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x35dd0), buf1_o, 12, &bW) && bW ==
+    // 12); ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36416), buf2_o, 2, &bW) && bW
+    // == 2); ASS(WriteProcessMemory(hproc, (void*)(mem::get_base() + 0x36439), buf3_o, 7, &bW) &&
+    // bW == 7);
+    //  cout << "load ret: " << ret << "\n";
+    return true;
 }

@@ -1,6 +1,5 @@
 #pragma once
-#include <vector>
-#include <map>
+#include <string>
 
 struct InputEvent {
     union {
@@ -14,9 +13,7 @@ struct InputEvent {
     };
     enum Type { CLICK, SAVE, LOAD } type;
 
-    InputEvent() : type(CLICK) {
-        click.x = click.y = 0.f;
-    }
+    InputEvent() : type(CLICK) { click.x = click.y = 0.f; }
 
     InputEvent(const std::string& filename, Type tp) : type(tp) {
         state.fn = new std::string(filename);
@@ -35,8 +32,10 @@ struct InputEvent {
     }
 
     InputEvent& operator=(const InputEvent& other) {
-        if (this == &other) return *this;
-        if (type == SAVE || type == LOAD) delete state.fn;
+        if (this == &other)
+            return *this;
+        if (type == SAVE || type == LOAD)
+            delete state.fn;
         type = other.type;
         if (type == SAVE || type == LOAD)
             state.fn = new std::string(*other.state.fn);

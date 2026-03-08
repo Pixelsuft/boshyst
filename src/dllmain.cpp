@@ -1,21 +1,21 @@
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <shlwapi.h>
-#include <iostream>
-#include <cstdio>
-#include <kiero.h>
-#include <backends/imgui_impl_win32.h>
-#include <backends/imgui_impl_dx9.h>
-#include <d3d9.h>
-#include "conf.hpp"
 #include "ass.hpp"
-#include "mem.hpp"
-#include "init.hpp"
-#include "ui.hpp"
-#include "rec.hpp"
-#include "utils.hpp"
 #include "btas.hpp"
+#include "conf.hpp"
 #include "hook.hpp"
+#include "init.hpp"
+#include "mem.hpp"
+#include "rec.hpp"
+#include "ui.hpp"
+#include "utils.hpp"
+#include <Windows.h>
+#include <backends/imgui_impl_dx9.h>
+#include <backends/imgui_impl_win32.h>
+#include <cstdio>
+#include <d3d9.h>
+#include <iostream>
+#include <kiero.h>
+#include <shlwapi.h>
 #define SHOW_STAGES 0
 
 using std::cout;
@@ -41,11 +41,12 @@ static EndScene oEndScene = nullptr;
 typedef long(__stdcall* SetSamplerState)(LPDIRECT3DDEVICE9, DWORD, D3DSAMPLERSTATETYPE, DWORD);
 static SetSamplerState oSetSamplerState = nullptr;
 
-typedef long(__stdcall* StretchRect)(LPDIRECT3DDEVICE9, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
+typedef long(__stdcall* StretchRect)(LPDIRECT3DDEVICE9, IDirect3DSurface9*, const RECT*,
+                                     IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
 static StretchRect oStretchRect = nullptr;
 
-static long __stdcall hkReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* pPresentationParameters)
-{
+static long __stdcall hkReset(LPDIRECT3DDEVICE9 pDevice,
+                              D3DPRESENT_PARAMETERS* pPresentationParameters) {
     // cout << "dev reset\n";
     ImGui_ImplDX9_InvalidateDeviceObjects();
     long result = oReset(pDevice, pPresentationParameters);
@@ -54,10 +55,8 @@ static long __stdcall hkReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* 
     return result;
 }
 
-static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
-{
-    if (!inited)
-    {
+static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {
+    if (!inited) {
         // Init imgui
         D3DDEVICE_CREATION_PARAMETERS params;
         pDevice->GetCreationParameters(&params);
@@ -92,14 +91,19 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
     return ret;
 }
 
-static long __stdcall hkSetSamplerState(LPDIRECT3DDEVICE9 pDevice, DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value) {
-    if (conf::pixel_filter && Sampler == 0 && (Type == D3DSAMP_MAGFILTER || Type == D3DSAMP_MINFILTER))
+static long __stdcall hkSetSamplerState(LPDIRECT3DDEVICE9 pDevice, DWORD Sampler,
+                                        D3DSAMPLERSTATETYPE Type, DWORD Value) {
+    if (conf::pixel_filter && Sampler == 0 &&
+        (Type == D3DSAMP_MAGFILTER || Type == D3DSAMP_MINFILTER))
         return oSetSamplerState(pDevice, Sampler, Type, D3DTEXF_POINT);
     return oSetSamplerState(pDevice, Sampler, Type, Value);
 }
 
-static long __stdcall hkStretchRect(LPDIRECT3DDEVICE9 pDevice, IDirect3DSurface9* pSrc, const RECT* pSrcR, IDirect3DSurface9* pDst, const RECT* pDstR, D3DTEXTUREFILTERTYPE Filter) {
-    return oStretchRect(pDevice, pSrc, pSrcR, pDst, pDstR, conf::pixel_filter ? D3DTEXF_POINT : Filter);
+static long __stdcall hkStretchRect(LPDIRECT3DDEVICE9 pDevice, IDirect3DSurface9* pSrc,
+                                    const RECT* pSrcR, IDirect3DSurface9* pDst, const RECT* pDstR,
+                                    D3DTEXTUREFILTERTYPE Filter) {
+    return oStretchRect(pDevice, pSrc, pSrcR, pDst, pDstR,
+                        conf::pixel_filter ? D3DTEXF_POINT : Filter);
 }
 
 void try_to_hook_graphics() {
@@ -167,14 +171,9 @@ void try_to_init() {
 
 extern "C" __declspec(dllexport) void dummy_func() {}
 
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-                     )
-{
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
     DisableThreadLibraryCalls(hModule);
-    switch (ul_reason_for_call)
-    {
+    switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH:
         if (mem::get_base() != 0x400000) {
             ass::show_err("Invalid process. You should inject Boshyst only in the IWBTB process!");
@@ -206,4 +205,3 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     }
     return TRUE;
 }
-

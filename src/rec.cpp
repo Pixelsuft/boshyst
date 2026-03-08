@@ -1,27 +1,27 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
 #include "rec.hpp"
 #include "ass.hpp"
+#include "btas.hpp"
 #include "conf.hpp"
 #include "utils.hpp"
-#include "btas.hpp"
-#include <vector>
-#include <cstdlib>
-#include <cstdio>
-#include <memory>
-#include <iostream>
-#include <string>
 #include <MinHook.h>
+#include <Windows.h>
+#include <cstdio>
+#include <cstdlib>
 #include <d3d9.h>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 
 using std::cout;
 
 namespace conf {
-    extern std::string cap_cmd;
-    extern int cap_start;
-    extern int cap_cnt;
-}
+extern std::string cap_cmd;
+extern int cap_start;
+extern int cap_cnt;
+} // namespace conf
 extern bool last_reset;
 
 extern HWND hwnd;
@@ -80,18 +80,16 @@ void rec::init(void* dev) {
         bmp = CreateCompatibleBitmap(srcdc, ws.first, ws.second);
         ASS(bmp != nullptr);
         old_bmp = SelectObject(memdc, bmp);
-    }
-    else {
+    } else {
         // D3D9 capture
         LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
         LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
         ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
         D3DSURFACE_DESC desc;
         ASS(pBackBuffer->GetDesc(&desc) == D3D_OK);
-        ASS(pDevice->CreateOffscreenPlainSurface(
-            desc.Width, desc.Height, desc.Format,
-            D3DPOOL_SYSTEMMEM, &pSysSurface, nullptr
-        ) == D3D_OK);
+        ASS(pDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format,
+                                                 D3DPOOL_SYSTEMMEM, &pSysSurface,
+                                                 nullptr) == D3D_OK);
         pBackBuffer->Release();
     }
     std::string command = "";
@@ -124,18 +122,7 @@ void rec::init(void* dev) {
     si.dwFlags |= STARTF_USESTDHANDLES;
     ZeroMemory(&pi, sizeof(pi));
     wchar_t* w_buf = utf8_to_unicode(command);
-    ASS(CreateProcessW(
-        nullptr,
-        w_buf,
-        nullptr,
-        nullptr,
-        TRUE,
-        0,
-        nullptr,
-        nullptr,
-        &si,
-        &pi
-    ));
+    ASS(CreateProcessW(nullptr, w_buf, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi));
     std::free(w_buf);
     CloseHandle(hChildStdinRead);
 }
@@ -146,32 +133,14 @@ void rec::cap(void* dev) {
     if (dev == nullptr) {
         BOOL success;
         if (conf::old_rec) {
-            success = BitBlt(
-                memdc,
-                0, 0,
-                ws.first,
-                ws.second,
-                srcdc,
-                0, 0,
-                SRCCOPY | CAPTUREBLT
-            );
-        }
-        else {
+            success = BitBlt(memdc, 0, 0, ws.first, ws.second, srcdc, 0, 0, SRCCOPY | CAPTUREBLT);
+        } else {
             success = PrintWindow(hwnd, memdc, PW_CLIENTONLY);
         }
         ASS(success);
-        int bits = GetDIBits(
-            memdc,
-            bmp,
-            0,
-            ws.second,
-            data_buffer.data(),
-            &bmi,
-            DIB_RGB_COLORS
-        );
+        int bits = GetDIBits(memdc, bmp, 0, ws.second, data_buffer.data(), &bmi, DIB_RGB_COLORS);
         ASS(bits == ws.second);
-    }
-    else {
+    } else {
         LPDIRECT3DDEVICE9 pDevice = (LPDIRECT3DDEVICE9)dev;
         LPDIRECT3DSURFACE9 pBackBuffer = nullptr;
         ASS(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer) == D3D_OK);
@@ -187,20 +156,16 @@ void rec::cap(void* dev) {
             ASS(data_buffer.size() == desc.Width * desc.Height * 4);
             unsigned char* pSrc = (unsigned char*)lockedRect.pBits;
             for (UINT y = 0; y < desc.Height; ++y) {
-                memcpy(&data_buffer[y * desc.Width * 4], pSrc + (y * lockedRect.Pitch), desc.Width * 4);
+                memcpy(&data_buffer[y * desc.Width * 4], pSrc + (y * lockedRect.Pitch),
+                       desc.Width * 4);
             }
             pSysSurface->UnlockRect();
         }
         pBackBuffer->Release();
     }
     DWORD dwWritten;
-    BOOL bSuccess = WriteFile(
-        hChildStdinWrite,
-        data_buffer.data(),
-        data_buffer.size(),
-        &dwWritten,
-        nullptr
-    );
+    BOOL bSuccess =
+        WriteFile(hChildStdinWrite, data_buffer.data(), data_buffer.size(), &dwWritten, nullptr);
     ASS(bSuccess);
     if (!bSuccess) {
         rec::stop(dev);
@@ -217,12 +182,15 @@ void rec::stop(void* dev) {
     CloseHandle(pi.hThread);
     ZeroMemory(&pi, sizeof(pi));
     if (dev == nullptr) {
-        if (memdc && old_bmp) SelectObject(memdc, old_bmp);
-        if (bmp) DeleteObject(bmp);
-        if (memdc) DeleteDC(memdc);
-        if (srcdc) ReleaseDC(nullptr, srcdc);
-    }
-    else {
+        if (memdc && old_bmp)
+            SelectObject(memdc, old_bmp);
+        if (bmp)
+            DeleteObject(bmp);
+        if (memdc)
+            DeleteDC(memdc);
+        if (srcdc)
+            ReleaseDC(nullptr, srcdc);
+    } else {
         pSysSurface->Release();
     }
     hChildStdinWrite = nullptr;
@@ -246,8 +214,7 @@ void rec::rec_tick(void* dev) {
         if (strcmp(buf, "I Wanna Be The Boshy R") == 0 && !capturing && (!is_btas || last_upd2)) {
             capturing = true;
             rec::init(dev);
-        }
-        else if (strcmp(buf, "I Wanna Be The Boshy S") == 0 && capturing) {
+        } else if (strcmp(buf, "I Wanna Be The Boshy S") == 0 && capturing) {
             SetWindowTextAOrig(hwnd, "I Wanna Be The Boshy");
             capturing = false;
             rec::stop(dev);
@@ -268,8 +235,7 @@ void rec::rec_tick(void* dev) {
         rec::init(dev);
         rec::cap(dev);
         cur_cnt++;
-    }
-    else if (cur_cnt > 0) {
+    } else if (cur_cnt > 0) {
         rec::cap(dev);
         cur_cnt++;
         if (cur_cnt == conf::cap_cnt) {

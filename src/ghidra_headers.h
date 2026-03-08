@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <Windows.h>
 
 typedef unsigned char   undefined;
 
@@ -1518,7 +1519,7 @@ typedef struct MovementController MovementController, *PMovementController;
 
 typedef struct SpriteHandle SpriteHandle, *PSpriteHandle;
 
-#pragma pack(push, 2) 
+#pragma pack(push, 2)
 struct RunHeader {
     void *hMainEngine;
     undefined4 field1_0x4;
@@ -5676,7 +5677,7 @@ struct RunHeader {
     struct ObjectHeader **objectList;
 };
 
-#pragma pack(pop) 
+#pragma pack(pop)
 
 struct ObjectHeader {
     short handle;
