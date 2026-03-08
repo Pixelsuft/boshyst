@@ -330,9 +330,14 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     auto ret = UpdateGameFrameOrig();
-    if (audio_timer_hooked) {
-        // TODO: actually at virtual 50ms delay
-        AudioTimerCallback(1337228, 0, 0, 0, 0);
+
+    if (audio_timer_hooked && !next_white) {
+        static int audio_fake_timer = 0;
+        audio_fake_timer += 20;
+        if (audio_fake_timer >= 50) {
+            audio_fake_timer -= 50;
+            AudioTimerCallback(1337228, 0, 0, 0, 0);
+        }
     }
 
     if (!is_btas && !show_menu && conf.tp_on_click && MyKeyState(VK_LBUTTON)) {
