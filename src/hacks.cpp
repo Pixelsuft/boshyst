@@ -460,7 +460,7 @@ static void __stdcall FlushInputQueueHook(void) {
 static BOOL __stdcall InternetGetConnectedStateHook(LPDWORD lpdwFlags, DWORD dwReserved) {
     // For sure
     *lpdwFlags = 0x20;
-    return TRUE;
+    return FALSE;
 }
 
 static HRESULT __stdcall DirectDrawCreateHook(void* lpGUID, void* lplpDD, void* pUnkOuter) {
@@ -521,7 +521,7 @@ static int __stdcall FindBestModeCallbackHook(int* candidate, DisplaySearchCrite
 }
 
 static int WINAPI WSAStartupHook(WORD wVersionRequired, void* lpWSAData) {
-    cout << "Failing WSAStartup\n";
+    // cout << "Failing WSAStartup\n";
     return 10092L;
 }
 
