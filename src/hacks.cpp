@@ -56,7 +56,7 @@ struct my_timeb {
 static short(__stdcall* DisplayRunObjectVPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectVPHook(void* pthis) {
     // Viewport.mfx display hook
-    if (conf::no_vp)
+    if (conf.no_vp)
         return 0;
     auto ret = DisplayRunObjectVPOrig(pthis);
     return ret;
@@ -65,7 +65,7 @@ static short __stdcall DisplayRunObjectVPHook(void* pthis) {
 static short(__stdcall* DisplayRunObjectPOrig)(void* pthis) = nullptr;
 static short __stdcall DisplayRunObjectPHook(void* pthis) {
     // Perspective.mfx display hook
-    if (conf::no_ps)
+    if (conf.no_ps)
         return 0;
     auto ret = DisplayRunObjectPOrig(pthis);
     return ret;
@@ -95,7 +95,7 @@ static int __cdecl randHook() {
 static int(__cdecl* _stricmpOrig)(const char* s1, const char* s2) = nullptr;
 static int __cdecl _stricmpHook(const char* s1, const char* s2) {
     // DirBlur x3.fx fucks up collision for some reason
-    if (conf::no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 ||
+    if (conf.no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 ||
                         strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 ||
                         strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 ||
                         strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
@@ -105,10 +105,10 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
         // s1 = "Sub";
         // TODO: check FUN_00426f90
         return -1;
-    } else if (conf::god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
+    } else if (conf.god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
         // god mode
         return -1;
-    } else if (conf::no_trans && strcmp(s1, "teleporting") == 0) {
+    } else if (conf.no_trans && strcmp(s1, "teleporting") == 0) {
         // no teleport effects
         return -1;
     }
@@ -121,7 +121,7 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
 static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_mode,
                                        LPSECURITY_ATTRIBUTES sec_attr, DWORD cr_d, DWORD flags,
                                        HANDLE template_) {
-    if (!conf::keep_save)
+    if (!conf.keep_save)
         return CreateFileOrig(_fn, dw_access, share_mode, sec_attr, cr_d, flags, template_);
     if (!_fn)
         return NULL;
@@ -205,7 +205,7 @@ void launch_bullet(int x, int y, int dir) {
 }
 
 static unsigned int __stdcall SetCursorYHook(void* param_1, int param_2, void* pshit) {
-    if (conf::no_cmove)
+    if (conf.no_cmove)
         return 0;
     BOOL uVar1;
     tagPOINT local_c;
@@ -215,7 +215,7 @@ static unsigned int __stdcall SetCursorYHook(void* param_1, int param_2, void* p
 }
 
 static unsigned int __stdcall SetCursorXHook(void* param_1, int param_2, void* pshit) {
-    if (conf::no_cmove)
+    if (conf.no_cmove)
         return 0;
     BOOL uVar1;
     tagPOINT local_c;
@@ -303,7 +303,7 @@ static int __stdcall UpdateGameFrameHook() {
         auto ret = UpdateGameFrameOrig();
         ProcessFrameRendering();
         btas::on_after_update();
-        if (!conf::direct_render)
+        if (!conf.direct_render)
             rec::rec_tick(nullptr);
         last_upd2 = false;
         return ret;
@@ -313,7 +313,7 @@ static int __stdcall UpdateGameFrameHook() {
         return 0;
     ui::pre_update();
 
-    if (conf::rapid_bind != -1 && MyKeyState(conf::rapid_bind))
+    if (conf.rapid_bind != -1 && MyKeyState(conf.rapid_bind))
         launch_bullet(-1, -1, -1);
 
     static int spawn_x = 0;
@@ -334,7 +334,7 @@ static int __stdcall UpdateGameFrameHook() {
     if (audio_timer_hooked)
         AudioTimerCallback(1337228, 0, 0, 0, 0);
 
-    if (!is_btas && !show_menu && conf::tp_on_click && MyKeyState(VK_LBUTTON)) {
+    if (!is_btas && !show_menu && conf.tp_on_click && MyKeyState(VK_LBUTTON)) {
         // Teleport player with mouse
         int scene_id = get_scene_id();
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
@@ -364,7 +364,7 @@ static int __stdcall UpdateGameFrameHook() {
             ProcessFrameRendering();
     }
 
-    if (!conf::direct_render)
+    if (!conf.direct_render)
         rec::rec_tick(nullptr);
 
     next_white = false;
@@ -391,7 +391,7 @@ static unsigned int __cdecl RandomHook(unsigned int maxv) {
 
 static int(__stdcall* MessageBoxAOrig)(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType);
 static int __stdcall MessageBoxAHook(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) {
-    if (!conf::skip_msg)
+    if (!conf.skip_msg)
         return MessageBoxAOrig(hWnd, lpText, lpCaption, uType);
     // cout << lpText << std::endl;
     return IDNO;
@@ -403,14 +403,14 @@ static LRESULT __stdcall MainWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
         if (is_btas && uMsg == WM_GETMINMAXINFO &&
-            (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
+            (conf.force_size[0] != 0 || conf.force_size[1] != 0)) {
             MINMAXINFO* mmi = (MINMAXINFO*)lParam;
-            mmi->ptMaxTrackSize.x = conf::force_size[0] + 32;
-            mmi->ptMaxTrackSize.y = conf::force_size[1] + 64;
+            mmi->ptMaxTrackSize.x = conf.force_size[0] + 32;
+            mmi->ptMaxTrackSize.y = conf.force_size[1] + 64;
             return 0;
         }
         if (uMsg == WM_KEYDOWN) {
-            if (wParam == (WPARAM)conf::menu_hotkey)
+            if (wParam == (WPARAM)conf.menu_hotkey)
                 show_menu = !show_menu;
         }
         if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP)) {
@@ -430,14 +430,14 @@ static LRESULT __stdcall EditWindowProcHook(HWND hWnd, UINT uMsg, WPARAM wParam,
         if (is_btas && uMsg == WM_DROPFILES)
             return 0;
         if (is_btas && uMsg == WM_GETMINMAXINFO &&
-            (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
+            (conf.force_size[0] != 0 || conf.force_size[1] != 0)) {
             MINMAXINFO* mmi = (MINMAXINFO*)lParam;
-            mmi->ptMaxTrackSize.x = conf::force_size[0] + 32;
-            mmi->ptMaxTrackSize.y = conf::force_size[1] + 64;
+            mmi->ptMaxTrackSize.x = conf.force_size[0] + 32;
+            mmi->ptMaxTrackSize.y = conf.force_size[1] + 64;
             return 0;
         }
         if (uMsg == WM_KEYDOWN) {
-            if (wParam == (WPARAM)conf::menu_hotkey)
+            if (wParam == (WPARAM)conf.menu_hotkey)
                 show_menu = !show_menu;
         }
         if (is_btas && (uMsg == WM_KEYDOWN || uMsg == WM_KEYUP)) {
@@ -509,14 +509,14 @@ static int __stdcall GetSystemMetricsHook(int nIndex) {
 static int(__stdcall* FindBestModeCallbackOrig)(int* candidate, DisplaySearchCriteria* best);
 static int __stdcall FindBestModeCallbackHook(int* candidate, DisplaySearchCriteria* best) {
     auto ret = FindBestModeCallbackOrig(candidate, best);
-    if (conf::full_size[0] < 0)
+    if (conf.full_size[0] < 0)
         best->targetWidth = best->bestMatchedWidth = GetSystemMetricsOrig(0);
-    else if (conf::full_size[0] > 0)
-        best->targetWidth = best->bestMatchedWidth = conf::full_size[0];
-    if (conf::full_size[1] < 0)
+    else if (conf.full_size[0] > 0)
+        best->targetWidth = best->bestMatchedWidth = conf.full_size[0];
+    if (conf.full_size[1] < 0)
         best->targetHeight = best->bestMatchedHeight = GetSystemMetricsOrig(1);
-    else if (conf::full_size[1] > 0)
-        best->targetHeight = best->bestMatchedHeight = conf::full_size[1];
+    else if (conf.full_size[1] > 0)
+        best->targetHeight = best->bestMatchedHeight = conf.full_size[1];
     return 0;
 }
 
@@ -767,14 +767,14 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     // Ugly shit for showing hitbox (original player)
     int mvtOffset = obj->hoAdpOffset;
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
-    if (conf::hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
+    if (conf.hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
         RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
         obj->runtimeFlags = obj->runtimeFlags & 0xdf;
         obj->isDirty = 1;
         obj->animFinished = 0;
         obj->collisionFlags = 0;
         Ordinal_78(pState.hMainEngine, obj->spriteHandle, 1);
-        int count = conf::hitbox_level;
+        int count = conf.hitbox_level;
         for (int i = pState.activeObjectCount - 1; i > 20; i--) {
             ObjectHeader* ptr = pState.objectList[i * 2];
             if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) > 0 ||
@@ -794,11 +794,11 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
 
 static BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect);
 static BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
-    if (hWnd == hwnd && (conf::force_size[0] != 0 || conf::force_size[1] != 0)) {
+    if (hWnd == hwnd && (conf.force_size[0] != 0 || conf.force_size[1] != 0)) {
         lpRect->left = 0;
         lpRect->top = 0;
-        lpRect->right = conf::force_size[0];
-        lpRect->bottom = conf::force_size[1];
+        lpRect->right = conf.force_size[0];
+        lpRect->bottom = conf.force_size[1];
         return TRUE;
     }
     return GetClientRectOrig(hWnd, lpRect);
@@ -807,11 +807,11 @@ static BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
 static BOOL(__stdcall* AdjustWindowRectExOrig)(LPRECT, DWORD, BOOL, DWORD);
 static BOOL __stdcall AdjustWindowRectExHook(LPRECT lpRect, DWORD dwStyle, BOOL bMenu,
                                              DWORD dwExStyle) {
-    if (conf::force_size[0] != 0 || conf::force_size[1] != 0) {
+    if (conf.force_size[0] != 0 || conf.force_size[1] != 0) {
         lpRect->left = 0;
         lpRect->top = 0;
-        lpRect->right = conf::force_size[0];
-        lpRect->bottom = conf::force_size[1];
+        lpRect->right = conf.force_size[0];
+        lpRect->bottom = conf.force_size[1];
     }
     return AdjustWindowRectExOrig(lpRect, dwStyle, bMenu, dwExStyle);
 }
@@ -871,12 +871,12 @@ void init_game_loop() {
         hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
         btas::pre_init();
     }
-    if (conf::force_gdi) {
+    if (conf.force_gdi) {
         // Force software renderer if needed somewhy
         *(short*)(mem::get_base() + 0x59a28) = 1;
         *(short*)(mem::get_base() + 0x59a2a) = 8;
     }
-    if ((conf::tas_mode || is_btas) && conf::au_mth) {
+    if ((conf.tas_mode || is_btas) && conf.au_mth) {
         hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
         hook(mem::addr("timeKillEvent", "winmm.dll"), timeKillEventHook, &timeKillEventOrig);
     }
@@ -911,7 +911,7 @@ void init_temp_saves() {
 void init_simple_hacks() {
     // First-frame init
     input_init();
-    if (!is_hourglass && (is_btas || !conf::tas_mode)) {
+    if (!is_hourglass && (is_btas || !conf.tas_mode)) {
         // hook(mem::get_base() + 0x43e30, MainWindowProcHook, &MainWindowProcOrig);
         // hook(mem::get_base() + 0x41ba0, EditWindowProcHook, &EditWindowProcOrig);
         MainWindowProcOrig =

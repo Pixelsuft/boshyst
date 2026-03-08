@@ -163,7 +163,7 @@ static void finalize_wav(AudioCapture& cap) {
 }
 
 void on_audio_destroy() {
-    if (!conf::cap_au)
+    if (!conf.cap_au)
         return;
     CriticalSectionLock lock(g_audioCS);
     for (auto it = g_captures.begin(); it != g_captures.end(); it++)
@@ -255,7 +255,7 @@ static void reinit_wav(AudioCapture& cap) {
 
 void audio_stop() {
     // User stops audio or scene changes/reset
-    if (!conf::cap_au)
+    if (!conf.cap_au)
         return;
     CriticalSectionLock lock(g_audioCS);
     for (auto it = g_captures.begin(); it != g_captures.end(); it++)
@@ -356,7 +356,7 @@ static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LP
 }
 
 static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk) {
-    if (conf::no_au)
+    if (conf.no_au)
         return DSERR_NODRIVER;
     HRESULT hr = fpDirectSoundCreate(guid, ds, unk);
     if (SUCCEEDED(hr) && ds && *ds && fpCreateSoundBuffer == nullptr) {
@@ -383,7 +383,7 @@ static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, L
 }
 
 void audio_init() {
-    if (!conf::cap_au && !conf::no_au)
+    if (!conf.cap_au && !conf.no_au)
         return;
     InitializeCriticalSection(&g_audioCS);
     /*

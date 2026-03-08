@@ -173,7 +173,7 @@ void get_cursor_pos_orig(int& x_buf, int& y_buf) {
 
 void update_save_encryption() {
     DWORD bW;
-    DWORD temp = conf::no_encryption ? 0xeb : 0x74;
+    DWORD temp = conf.no_encryption ? 0xeb : 0x74;
     ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1b293), &temp, 1, &bW) &&
         bW == 1);
 }

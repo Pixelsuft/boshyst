@@ -19,50 +19,12 @@
 using std::cout;
 using std::string;
 
-namespace conf {
+namespace config {
 std::map<int, std::vector<InputEvent>> mb;
 string cap_cmd;
-int pos[2];
-int size[2];
-int full_size[2];
-int force_size[2];
-int cap_start;
-int cap_cnt;
-int rapid_bind;
-int menu_hotkey;
-int hitbox_level;
-float font_scale;
-bool old_rec;
-bool no_vp;
-bool no_ps;
-bool cap_au;
-bool no_au;
-bool au_mth;
-bool no_sh;
-bool god;
-bool menu;
-bool keep_save;
-bool no_cmove;
-bool draw_cursor;
-bool emu_mouse;
-bool cur_mouse_checked;
-bool allow_render;
-bool direct_render;
-bool tas_mode;
-bool first_run;
-bool tp_on_click;
-bool skip_msg;
-bool input_in_menu;
-bool no_trans;
-bool force_gdi;
-bool pixel_filter;
-bool hg_instant;
-bool tas_no_info;
-bool rng_patches;
-bool reset_rng;
-bool no_encryption;
 } // namespace conf
 
+Config conf;
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
 
 std::string get_config_path() {
@@ -120,11 +82,11 @@ static void read_bind(const string& line_orig, const string& line) {
         InputEvent ev;
         ev.click.x = x;
         ev.click.y = y;
-        auto it = conf::mb.find(num);
-        if (it == conf::mb.end()) {
+        auto it = config::mb.find(num);
+        if (it == config::mb.end()) {
             std::vector<InputEvent> temp_vec;
             temp_vec.push_back(std::move(ev));
-            conf::mb[num] = std::move(temp_vec);
+            config::mb[num] = std::move(temp_vec);
         } else {
             it->second.push_back(std::move(ev));
         }
@@ -146,11 +108,11 @@ static void read_bind(const string& line_orig, const string& line) {
         while (fn.size() > 0 && isspace(fn[fn.size() - 1]))
             fn = fn.substr(0, fn.size() - 1);
         InputEvent ev(fn, starts_with(line, "bind=save,") ? InputEvent::SAVE : InputEvent::LOAD);
-        auto it = conf::mb.find(num);
-        if (it == conf::mb.end()) {
+        auto it = config::mb.find(num);
+        if (it == config::mb.end()) {
             std::vector<InputEvent> temp_vec;
             temp_vec.push_back(std::move(ev));
-            conf::mb[num] = std::move(temp_vec);
+            config::mb[num] = std::move(temp_vec);
         } else {
             it->second.push_back(std::move(ev));
         }
@@ -158,7 +120,7 @@ static void read_bind(const string& line_orig, const string& line) {
         if (is_hourglass || is_btas)
             return;
         ASS(sscanf(line.substr(11).c_str(), "%i", &num) == 1);
-        conf::rapid_bind = num;
+        conf.rapid_bind = num;
     } else {
         ass::show_err("Invalid bind");
         ASS(false);
@@ -283,31 +245,34 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("btas = slowmotion, 32, 0 // Slow-mo on Space"));
 }
 
-void conf::read() {
-    cap_cmd = "";
-    cap_start = 0;
-    cap_cnt = 0;
-    rapid_bind = -1;
-    first_run = false;
-    tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi = rng_patches = no_sh =
-        keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info = reset_rng = no_cmove =
-            draw_cursor = emu_mouse = allow_render = hg_instant = no_encryption = false;
-    direct_render = true;
-    cur_mouse_checked = false;
-    tp_on_click = input_in_menu = false;
-    font_scale = 1.f;
-    menu_hotkey = 45;
-    menu = true;
-    pos[0] = pos[1] = 0;
-    size[0] = 200;
-    size[1] = 100;
+void config::read() {
+    config::cap_cmd = "";
+    conf.cap_start = 0;
+    conf.cap_cnt = 0;
+    conf.rapid_bind = -1;
+    conf.first_run = false;
+    conf.tas_mode = conf.skip_msg = conf.god = conf.no_vp = conf.old_rec = conf.no_au =
+        conf.force_gdi = conf.rng_patches = conf.no_sh = conf.keep_save = conf.no_trans =
+            conf.no_ps = conf.au_mth = conf.cap_au = conf.tas_no_info = conf.reset_rng =
+                conf.no_cmove = conf.draw_cursor = conf.emu_mouse = conf.allow_render =
+                    conf.hg_instant =
+                    conf.no_encryption = false;
+    conf.direct_render = true;
+    conf.cur_mouse_checked = false;
+    conf.tp_on_click = conf.input_in_menu = false;
+    conf.font_scale = 1.f;
+    conf.menu_hotkey = 45;
+    conf.menu = true;
+    conf.pos[0] = conf.pos[1] = 0;
+    conf.size[0] = 200;
+    conf.size[1] = 100;
     string file_path = get_config_path();
     bfs::File ifile(file_path, 0);
     if (!ifile.is_open()) {
         create_default_config(file_path);
         ifile = bfs::File(file_path, 0);
         ASS(ifile.is_open());
-        first_run = true;
+        conf.first_run = true;
     }
     int cap_end = -1;
     string line;
@@ -319,79 +284,79 @@ void conf::read() {
         // cout << "line: " << line << std::endl;
         // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god="))
-            god = read_int(line) != 0;
+            conf.god = read_int(line) != 0;
         else if (starts_with(line, "teleport_with_mouse="))
-            tp_on_click = read_int(line) != 0;
+            conf.tp_on_click = read_int(line) != 0;
         else if (starts_with(line, "tas_mode="))
-            tas_mode = read_int(line) != 0;
+            conf.tas_mode = read_int(line) != 0;
         else if (starts_with(line, "hourglass_instant="))
-            hg_instant = read_int(line) != 0;
+            conf.hg_instant = read_int(line) != 0;
         else if (starts_with(line, "disable_viewport="))
-            no_vp = read_int(line) != 0;
+            conf.no_vp = read_int(line) != 0;
         else if (starts_with(line, "disable_shaders="))
-            no_sh = read_int(line) != 0;
+            conf.no_sh = read_int(line) != 0;
         else if (starts_with(line, "disable_transitions="))
-            no_trans = read_int(line) != 0;
+            conf.no_trans = read_int(line) != 0;
         else if (starts_with(line, "disable_perspective="))
-            no_ps = read_int(line) != 0;
+            conf.no_ps = read_int(line) != 0;
         else if (starts_with(line, "pixel_filter="))
-            pixel_filter = read_int(line) != 0;
+            conf.pixel_filter = read_int(line) != 0;
         else if (starts_with(line, "skip_messageboxes="))
-            skip_msg = read_int(line) != 0;
+            conf.skip_msg = read_int(line) != 0;
         else if (starts_with(line, "hitbox_level="))
-            hitbox_level = std::max(read_int(line), 0);
+            conf.hitbox_level = std::max(read_int(line), 0);
         else if (starts_with(line, "menu_hotkey="))
-            menu_hotkey = read_int(line);
+            conf.menu_hotkey = read_int(line);
         else if (starts_with(line, "menu="))
-            menu = read_int(line) != 0;
+            conf.menu = read_int(line) != 0;
         else if (starts_with(line, "keep_save="))
-            keep_save = read_int(line) != 0;
+            conf.keep_save = read_int(line) != 0;
         else if (starts_with(line, "no_encryption="))
-            no_encryption = read_int(line) != 0;
+            conf.no_encryption = read_int(line) != 0;
         else if (starts_with(line, "no_mouse_move="))
-            no_cmove = read_int(line) != 0;
+            conf.no_cmove = read_int(line) != 0;
         else if (starts_with(line, "draw_cursor="))
-            draw_cursor = read_int(line) != 0;
+            conf.draw_cursor = read_int(line) != 0;
         else if (starts_with(line, "simulate_mouse="))
-            emu_mouse = read_int(line) != 0;
+            conf.emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "reset_rng="))
-            reset_rng = read_int(line) != 0;
+            conf.reset_rng = read_int(line) != 0;
         else if (starts_with(line, "tas_force_gdi="))
-            force_gdi = read_int(line) != 0;
+            conf.force_gdi = read_int(line) != 0;
         else if (starts_with(line, "tas_disable_audio="))
-            no_au = read_int(line) != 0;
+            conf.no_au = read_int(line) != 0;
         else if (starts_with(line, "tas_audio_capture="))
-            cap_au = read_int(line) != 0;
+            conf.cap_au = read_int(line) != 0;
         else if (starts_with(line, "tas_audio_main_thread="))
-            au_mth = read_int(line) != 0;
+            conf.au_mth = read_int(line) != 0;
         else if (starts_with(line, "tas_replay_mode="))
             is_replay = read_int(line) != 0;
         else if (starts_with(line, "tas_no_info="))
-            tas_no_info = read_int(line) != 0;
+            conf.tas_no_info = read_int(line) != 0;
         else if (starts_with(line, "rng_patches="))
-            rng_patches = read_int(line) != 0;
+            conf.rng_patches = read_int(line) != 0;
         else if (starts_with(line, "allow_render="))
-            allow_render = read_int(line) != 0;
+            conf.allow_render = read_int(line) != 0;
         else if (starts_with(line, "direct_render="))
-            direct_render = read_int(line) != 0;
+            conf.direct_render = read_int(line) != 0;
         else if (starts_with(line, "old_render="))
-            old_rec = read_int(line) != 0;
+            conf.old_rec = read_int(line) != 0;
         else if (starts_with(line, "render_start="))
-            cap_start = read_int(line);
+            conf.cap_start = read_int(line);
         else if (starts_with(line, "render_count="))
-            cap_cnt = read_int(line);
+            conf.cap_cnt = read_int(line);
         else if (starts_with(line, "render_end="))
             cap_end = read_int(line);
         else if (starts_with(line, "font_scale="))
-            font_scale = read_float(line);
+            conf.font_scale = read_float(line);
         else if (starts_with(line, "win_pos="))
-            read_vec2_int(line, "win_pos=%i,%i", pos);
+            read_vec2_int(line, "win_pos=%i,%i", conf.pos);
         else if (starts_with(line, "win_size"))
-            read_vec2_int(line, "win_size=%i,%i", size);
+            read_vec2_int(line, "win_size=%i,%i", conf.size);
         else if (starts_with(line, "fullscreen_size"))
-            read_vec2_int(line, "fullscreen_size=%i,%i", full_size);
+            read_vec2_int(line, "fullscreen_size=%i,%i", conf.full_size);
         else if (starts_with(line, "tas_force_size"))
-            read_vec2_int(line, "tas_force_size=%i,%i", force_size);
+            read_vec2_int(line, "tas_force_size=%i,%i", conf.force_size);
         else if (starts_with(line, "bind="))
             read_bind(line_orig, line);
         else if (starts_with(line, "btas="))
@@ -405,8 +370,8 @@ void conf::read() {
             ASS(false);
         }
     }
-    if (font_scale <= 0.f)
-        font_scale = 1.f;
+    if (conf.font_scale <= 0.f)
+        conf.font_scale = 1.f;
     if (cap_end > 0)
-        cap_cnt = cap_end - cap_start;
+        conf.cap_cnt = cap_end - conf.cap_start;
 }

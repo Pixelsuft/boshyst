@@ -20,10 +20,6 @@ using std::cout;
 extern HWND hwnd;
 extern int last_new_rand_val;
 
-namespace conf {
-extern int cap_start;
-extern int cap_cnt;
-} // namespace conf
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam,
                                                              LPARAM lParam);
 
@@ -55,7 +51,7 @@ void ui_register_rand(int maxval, int ret) {
 }
 
 static void post_draw() {
-    if (conf::draw_cursor) {
+    if (conf.draw_cursor) {
         int x, y;
         get_cursor_pos(x, y);
         if (x >= 0 && y >= 0) {
@@ -120,7 +116,7 @@ static void draw_basic_text() {
         // ImGui::Text("In-Game Frames: %i", inGameFrames);
         ImGui::Text("Scene: %i (%s)", scene_id, get_scene_name());
     }
-    if (conf::draw_cursor && ws[0] != 0 && ws[1] != 0) {
+    if (conf.draw_cursor && ws[0] != 0 && ws[1] != 0) {
         int x, y;
         get_cursor_pos(x, y);
         ImGui::Text("Cursor Pos: (%i, %i)", x * 640 / ws[0], y * 480 / ws[1]);
@@ -147,7 +143,7 @@ static void ui_menu_draw() {
     ImGui::SetNextWindowFocus();
     if (ImGui::Begin("Boshyst Menu", nullptr, ImGuiWindowFlags_NoSavedSettings)) {
         static std::string conf_path = get_config_path();
-        if (conf::first_run) {
+        if (conf.first_run) {
             ImGui::Text("First run info:");
             ImGui::Text("Use 'Insert' key to toggle this menu");
             ImGui::Text("You can edit config at \"%s\"", conf_path.c_str());
@@ -158,22 +154,22 @@ static void ui_menu_draw() {
             draw_basic_text();
         }
         if (ImGui::CollapsingHeader("Visual")) {
-            if (ImGui::SliderFloat("Font scale", &conf::font_scale, 0.01f, 10.f))
-                conf::font_scale = mclamp(conf::font_scale, 0.01f, 10.f);
+            if (ImGui::SliderFloat("Font scale", &conf.font_scale, 0.01f, 10.f))
+                conf.font_scale = mclamp(conf.font_scale, 0.01f, 10.f);
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-                conf::font_scale = 1.f;
-            ImGui::Checkbox("TAS info window", &conf::tas_mode);
-            ImGui::Checkbox("Pixel filter", &conf::pixel_filter);
-            ImGui::Checkbox("No viewport", &conf::no_vp);
-            ImGui::Checkbox("No perspective", &conf::no_ps);
-            ImGui::Checkbox("No shaders", &conf::no_sh);
-            ImGui::Checkbox("No transitions", &conf::no_trans);
-            if (ImGui::InputInt("Show hitbox level (BETA)", &conf::hitbox_level))
-                conf::hitbox_level = std::max(conf::hitbox_level, 0);
+                conf.font_scale = 1.f;
+            ImGui::Checkbox("TAS info window", &conf.tas_mode);
+            ImGui::Checkbox("Pixel filter", &conf.pixel_filter);
+            ImGui::Checkbox("No viewport", &conf.no_vp);
+            ImGui::Checkbox("No perspective", &conf.no_ps);
+            ImGui::Checkbox("No shaders", &conf.no_sh);
+            ImGui::Checkbox("No transitions", &conf.no_trans);
+            if (ImGui::InputInt("Show hitbox level (BETA)", &conf.hitbox_level))
+                conf.hitbox_level = std::max(conf.hitbox_level, 0);
         }
         if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
-            ImGui::Checkbox("God mode", &conf::god);
-            ImGui::Checkbox("Teleport with mouse", &conf::tp_on_click);
+            ImGui::Checkbox("God mode", &conf.god);
+            ImGui::Checkbox("Teleport with mouse", &conf.tp_on_click);
             /*
             pState->rhNextFrame
             1 - next
@@ -225,7 +221,7 @@ static void ui_menu_draw() {
         }
         if (ImGui::CollapsingHeader("Random")) {
             if (!is_btas)
-                ImGui::Checkbox("Regenerate RNG seed when loading state", &conf::reset_rng);
+                ImGui::Checkbox("Regenerate RNG seed when loading state", &conf.reset_rng);
             ImGui::Text("Last rand() value: %i / %i", last_new_rand_val, (int)RAND_MAX);
             if (!is_btas) {
                 ImGui::Checkbox("Fixed MMF2_Random() value %", &fix_rng);
@@ -250,30 +246,30 @@ static void ui_menu_draw() {
                 need_save_state = 2;
         }
         if (ImGui::CollapsingHeader("System")) {
-            ImGui::Checkbox("Keep save", &conf::keep_save);
-            if (ImGui::Checkbox("No save encryption", &conf::no_encryption))
+            ImGui::Checkbox("Keep save", &conf.keep_save);
+            if (ImGui::Checkbox("No save encryption", &conf.no_encryption))
                 update_save_encryption();
-            ImGui::Checkbox("No mouse move", &conf::no_cmove);
-            ImGui::Checkbox("Draw cursor", &conf::draw_cursor);
-            ImGui::Checkbox("Simulate mouse", &conf::emu_mouse);
-            ImGui::Checkbox("Skip message boxes", &conf::skip_msg);
-            ImGui::Checkbox("Allow in-game keyboard in menu", &conf::input_in_menu);
+            ImGui::Checkbox("No mouse move", &conf.no_cmove);
+            ImGui::Checkbox("Draw cursor", &conf.draw_cursor);
+            ImGui::Checkbox("Simulate mouse", &conf.emu_mouse);
+            ImGui::Checkbox("Skip message boxes", &conf.skip_msg);
+            ImGui::Checkbox("Allow in-game keyboard in menu", &conf.input_in_menu);
         }
         if (ImGui::CollapsingHeader("Recording")) {
-            if (ImGui::Checkbox("Allow render", &conf::allow_render) && !conf::allow_render &&
+            if (ImGui::Checkbox("Allow render", &conf.allow_render) && !conf.allow_render &&
                 capturing)
-                conf::allow_render = true;
+                conf.allow_render = true;
             if (!capturing)
-                ImGui::Checkbox("Use Direct3D9 render", &conf::direct_render);
-            ImGui::Checkbox("Old render (BitBlt)", &conf::old_rec);
-            if (conf::allow_render && !capturing && ImGui::Button("Start recording")) {
-                conf::cap_start = conf::cap_cnt = 0; // Hack
+                ImGui::Checkbox("Use Direct3D9 render", &conf.direct_render);
+            ImGui::Checkbox("Old render (BitBlt)", &conf.old_rec);
+            if (conf.allow_render && !capturing && ImGui::Button("Start recording")) {
+                conf.cap_start = conf.cap_cnt = 0; // Hack
                 SetWindowTextA(hwnd, "I Wanna Be The Boshy R");
             }
-            if (conf::allow_render && capturing && ImGui::Button("Stop recording")) {
+            if (conf.allow_render && capturing && ImGui::Button("Stop recording")) {
                 SetWindowTextA(hwnd, "I Wanna Be The Boshy S");
             }
-            if (conf::cap_au && !conf::no_au && ImGui::Button("Stop audio capture")) {
+            if (conf.cap_au && !conf.no_au && ImGui::Button("Stop audio capture")) {
                 on_audio_destroy();
             }
         }
@@ -281,19 +277,19 @@ static void ui_menu_draw() {
             ImGui::Text("Created by Pixelsuft");
             ImGui::Text("Config path: %s", conf_path.c_str());
             // FIXME: broken with savestates
-            // if (ImGui::Button("Reload Config")) conf::read();
+            // if (ImGui::Button("Reload Config")) conf.read();
         }
     }
     ImGui::End();
 }
 
 void ui::draw() {
-    if (!conf::menu) {
+    if (!conf.menu) {
         last_reset = false;
         return;
     }
     ImGuiIO& io = ImGui::GetIO();
-    io.FontGlobalScale = conf::font_scale;
+    io.FontGlobalScale = conf.font_scale;
     if (is_btas) {
         if (!is_hourglass)
             ui_menu_draw();
@@ -314,15 +310,15 @@ void ui::draw() {
             last_reset = false;
             ui_menu_draw();
             post_draw();
-            if (!conf::tas_mode)
+            if (!conf.tas_mode)
                 return;
         }
     }
-    if (conf::tas_no_info)
+    if (conf.tas_no_info)
         return;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::SetNextWindowPos(ImVec2((float)conf::pos[0], (float)conf::pos[1]), ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImVec2((float)conf::size[0], (float)conf::size[1]), ImGuiCond_Once);
+    ImGui::SetNextWindowPos(ImVec2((float)conf.pos[0], (float)conf.pos[1]), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2((float)conf.size[0], (float)conf.size[1]), ImGuiCond_Once);
     auto flags =
         ImGuiWindowFlags_NoTitleBar |
         (is_hourglass

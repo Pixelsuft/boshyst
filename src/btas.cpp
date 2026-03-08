@@ -352,7 +352,7 @@ void btas::pre_init() {
     temp = 0x24;
     WPM(mem::get_base() + 0x386fb, &temp, 1);
     WPM(mem::get_base() + 0x3a4e9, &temp, 1);
-    if (!conf::rng_patches)
+    if (!conf.rng_patches)
         return;
     // Force 0 rng for engine shit not related to the game
     const uint8_t rng_buf[] = {0x31, 0xc0, 0x90, 0x90, 0x90};
@@ -830,7 +830,7 @@ static void exec_event(BTasEvent& ev) {
     }
     case 9: {
         // God mode fix
-        conf::god = ev.click.x == 0 ? false : true;
+        conf.god = ev.click.x == 0 ? false : true;
         break;
     }
     }
@@ -1161,8 +1161,8 @@ void btas::draw_tab() {
             repl_index = 0;
         }
         ImGui::Checkbox("Reset game on replay", &reset_on_replay);
-        ImGui::Checkbox("God mode", &conf::god);
-        ImGui::Checkbox("Hide info window", &conf::tas_no_info);
+        ImGui::Checkbox("God mode", &conf.god);
+        ImGui::Checkbox("Hide info window", &conf.tas_no_info);
         ImGui::InputText("Replay name", export_buf, MAX_PATH);
         ImGui::Checkbox("Export hash checks", &export_hash);
         if (ImGui::Button("Reset")) {

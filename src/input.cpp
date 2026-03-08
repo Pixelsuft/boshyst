@@ -15,7 +15,7 @@
 
 using std::cout;
 
-namespace conf {
+namespace config {
 extern std::map<int, std::vector<InputEvent>> mb;
 }
 extern HWND hwnd;
@@ -35,9 +35,9 @@ static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
         p->y = (long)(p->y * (float)h / 480.f);
         return ClientToScreen(hwnd, p);
     }
-    if (!conf::emu_mouse && (!show_menu || conf::tas_mode))
+    if (!conf.emu_mouse && (!show_menu || conf.tas_mode))
         return GetCursorPosOrig(p);
-    if (show_menu && !conf::emu_mouse) {
+    if (show_menu && !conf.emu_mouse) {
         p->x = -100;
         p->y = -100;
     } else {
@@ -51,7 +51,7 @@ SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
     if (is_btas)
         return btas::TasGetKeyState(k);
-    if (show_menu && !conf::tas_mode && !conf::input_in_menu)
+    if (show_menu && !conf.tas_mode && !conf.input_in_menu)
         return 0;
     return GetKeyStateOrig(k);
 }
@@ -60,7 +60,7 @@ SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 static SHORT __stdcall GetAsyncKeyStateHook(int k) {
     if (is_btas)
         return btas::TasGetKeyState(k);
-    if (show_menu && !conf::tas_mode && !conf::input_in_menu)
+    if (show_menu && !conf.tas_mode && !conf.input_in_menu)
         return 0;
     return GetAsyncKeyStateOrig(k);
 }
@@ -72,7 +72,7 @@ bool input_tick() {
     int w, h;
     get_win_size(w, h);
     // TODO: better way to handle??? (BTAS way?) (still need to be compatible with hourglass)
-    for (auto it = conf::mb.begin(); it != conf::mb.end(); it++) {
+    for (auto it = config::mb.begin(); it != config::mb.end(); it++) {
         if (JustKeyState(it->first) == 1) {
             // cout << "sus_click\n";
             for (auto eit = it->second.begin(); eit != it->second.end(); eit++) {
@@ -96,7 +96,7 @@ bool input_tick() {
                     if (file.is_open()) {
                         state_load(&file);
                         pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-                        if (conf::reset_rng) {
+                        if (conf.reset_rng) {
                             pState.RandomSeed = prev_seed;
                             ret = true;
                         }

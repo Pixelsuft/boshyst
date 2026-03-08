@@ -17,10 +17,8 @@
 
 using std::cout;
 
-namespace conf {
+namespace config {
 extern std::string cap_cmd;
-extern int cap_start;
-extern int cap_cnt;
 } // namespace conf
 extern bool last_reset;
 
@@ -94,14 +92,14 @@ void rec::init(void* dev) {
     }
     std::string command = "";
     // Yea it's ugly
-    while (conf::cap_cmd.size() > 0) {
-        if (starts_with(conf::cap_cmd, "$SIZE")) {
+    while (config::cap_cmd.size() > 0) {
+        if (starts_with(config::cap_cmd, "$SIZE")) {
             command += to_str(ws.first) + "x" + to_str(ws.second);
-            conf::cap_cmd = conf::cap_cmd.substr(5);
+            config::cap_cmd = config::cap_cmd.substr(5);
             continue;
         }
-        command += conf::cap_cmd[0];
-        conf::cap_cmd = conf::cap_cmd.substr(1);
+        command += config::cap_cmd[0];
+        config::cap_cmd = config::cap_cmd.substr(1);
     }
     std::cout << command << '\n';
     hChildStdinRead = nullptr;
@@ -132,7 +130,7 @@ void rec::cap(void* dev) {
         return;
     if (dev == nullptr) {
         BOOL success;
-        if (conf::old_rec) {
+        if (conf.old_rec) {
             success = BitBlt(memdc, 0, 0, ws.first, ws.second, srcdc, 0, 0, SRCCOPY | CAPTUREBLT);
         } else {
             success = PrintWindow(hwnd, memdc, PW_CLIENTONLY);
@@ -202,10 +200,10 @@ void rec::stop(void* dev) {
 }
 
 void rec::rec_tick(void* dev) {
-    conf::cur_mouse_checked = false;
-    if (!conf::allow_render)
+    conf.cur_mouse_checked = false;
+    if (!conf.allow_render)
         return;
-    if (conf::cap_start == 0 && conf::cap_cnt == 0) {
+    if (conf.cap_start == 0 && conf.cap_cnt == 0) {
         // Special case
         char buf[32];
         int ret = GetWindowTextA(hwnd, buf, 32);
@@ -231,14 +229,14 @@ void rec::rec_tick(void* dev) {
     static int cur_total = 0;
     static int cur_cnt = 0;
     cur_total++;
-    if (cur_total == conf::cap_start) {
+    if (cur_total == conf.cap_start) {
         rec::init(dev);
         rec::cap(dev);
         cur_cnt++;
     } else if (cur_cnt > 0) {
         rec::cap(dev);
         cur_cnt++;
-        if (cur_cnt == conf::cap_cnt) {
+        if (cur_cnt == conf.cap_cnt) {
             rec::stop(dev);
             cur_cnt = 0;
         }

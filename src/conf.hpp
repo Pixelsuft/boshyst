@@ -1,43 +1,51 @@
 #pragma once
 
-namespace conf {
-extern float font_scale;
-extern int pos[2];
-extern int size[2];
-extern int full_size[2];
-extern int force_size[2];
-extern int menu_hotkey;
-extern int rapid_bind;
-extern int hitbox_level;
-extern bool no_vp;
-extern bool no_sh;
-extern bool no_ps;
-extern bool cap_au;
-extern bool no_au;
-extern bool au_mth;
-extern bool old_rec;
-extern bool god;
-extern bool menu;
-extern bool keep_save;
-extern bool no_cmove;
-extern bool draw_cursor;
-extern bool emu_mouse;
-extern bool cur_mouse_checked;
-extern bool allow_render;
-extern bool direct_render;
-extern bool tas_mode;
-extern bool first_run;
-extern bool tp_on_click;
-extern bool skip_msg;
-extern bool input_in_menu;
-extern bool no_trans;
-extern bool pixel_filter;
-extern bool force_gdi;
-extern bool hg_instant;
-extern bool tas_no_info;
-extern bool rng_patches;
-extern bool reset_rng;
-extern bool no_encryption;
+class Config {
+public:
+    float font_scale;
+    int pos[2];
+    int size[2];
+    int full_size[2];
+    int force_size[2];
+    int menu_hotkey;
+    int rapid_bind;
+    int hitbox_level;
+    int cap_start;
+    int cap_cnt;
+    bool no_vp;
+    bool no_sh;
+    bool no_ps;
+    bool cap_au;
+    bool no_au;
+    bool au_mth;
+    bool old_rec;
+    bool god;
+    bool menu;
+    bool keep_save;
+    bool no_cmove;
+    bool draw_cursor;
+    bool emu_mouse;
+    bool cur_mouse_checked;
+    bool allow_render;
+    bool direct_render;
+    bool tas_mode;
+    bool first_run;
+    bool tp_on_click;
+    bool skip_msg;
+    bool input_in_menu;
+    bool no_trans;
+    bool pixel_filter;
+    bool force_gdi;
+    bool hg_instant;
+    bool tas_no_info;
+    bool rng_patches;
+    bool reset_rng;
+    bool no_encryption;
+};
+
+extern Config conf;
+
+namespace config {
 
 void read();
 } // namespace conf

@@ -65,7 +65,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
-        if (conf::tas_mode && !is_btas)
+        if (conf.tas_mode && !is_btas)
             io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
         io.IniFilename = nullptr;
@@ -77,7 +77,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {
 #endif
     }
     // Render before we draw our GUI
-    if (conf::direct_render)
+    if (conf.direct_render)
         rec::rec_tick(pDevice);
 
     ImGui_ImplDX9_NewFrame();
@@ -93,7 +93,7 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {
 
 static long __stdcall hkSetSamplerState(LPDIRECT3DDEVICE9 pDevice, DWORD Sampler,
                                         D3DSAMPLERSTATETYPE Type, DWORD Value) {
-    if (conf::pixel_filter && Sampler == 0 &&
+    if (conf.pixel_filter && Sampler == 0 &&
         (Type == D3DSAMP_MAGFILTER || Type == D3DSAMP_MINFILTER))
         return oSetSamplerState(pDevice, Sampler, Type, D3DTEXF_POINT);
     return oSetSamplerState(pDevice, Sampler, Type, Value);
@@ -103,13 +103,13 @@ static long __stdcall hkStretchRect(LPDIRECT3DDEVICE9 pDevice, IDirect3DSurface9
                                     const RECT* pSrcR, IDirect3DSurface9* pDst, const RECT* pDstR,
                                     D3DTEXTUREFILTERTYPE Filter) {
     return oStretchRect(pDevice, pSrc, pSrcR, pDst, pDstR,
-                        conf::pixel_filter ? D3DTEXF_POINT : Filter);
+                        conf.pixel_filter ? D3DTEXF_POINT : Filter);
 }
 
 void try_to_hook_graphics() {
     if (gr_hooked)
         return;
-    if (is_hourglass && !conf::hg_instant) {
+    if (is_hourglass && !conf.hg_instant) {
         // Somewhy hourglass freezes after logo when initing during logo scene
         int cur_scene = get_scene_id();
         if (cur_scene < 1 || cur_scene > 59)
@@ -117,7 +117,7 @@ void try_to_hook_graphics() {
     }
     gr_hooked = true;
     if (GetModuleHandleA("mmf2d3d9.dll") == nullptr) {
-        conf::direct_render = false;
+        conf.direct_render = false;
 #ifndef _DEBUG
         ass::show_err("Boshyst menu only supports Direct3D 9 mode, you are using a different one");
 #endif
@@ -193,9 +193,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             AllocConsole();
             freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
         }
-        conf::read();
+        config::read();
         if (is_btas || is_hourglass)
-            conf::tas_mode = true;
+            conf.tas_mode = true;
         app_entry(nullptr);
         break;
     case DLL_THREAD_ATTACH:
