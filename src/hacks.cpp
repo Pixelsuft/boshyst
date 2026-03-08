@@ -520,6 +520,11 @@ static int __stdcall FindBestModeCallbackHook(int* candidate, DisplaySearchCrite
     return 0;
 }
 
+static int WINAPI WSAStartupHook(WORD wVersionRequired, void* lpWSAData) {
+    cout << "Failing WSAStartup\n";
+    return 10092L;
+}
+
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
@@ -541,8 +546,7 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         // TODO: hook mmfs2 dll funcs directly here
         audio_init();
         enable_hook();
-    }
-    if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
+    } else if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
         // Disable thread creation as early as possible (for better stability)
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb202), buf, 5,
                                &bW) != 0 &&
@@ -550,8 +554,9 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1,
                                &bW) != 0 &&
             bW == 1);
-    }
-    if (is_btas && c_ends_with(lpLibFileName, "Yaso.mfx")) {
+        hook(mem::addr("WSAStartup", "ws2_32.dll"), WSAStartupHook);
+        enable_hook();
+    } else if (is_btas && c_ends_with(lpLibFileName, "Yaso.mfx")) {
         hook(mem::addr("InternetGetConnectedState", "wininet.dll"), InternetGetConnectedStateHook);
         hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
         enable_hook();
@@ -878,16 +883,6 @@ void init_game_loop() {
     // Actually might be useful for normal mod menu
     if (is_btas || !is_hourglass)
         hook(mem::get_base() + 0x47140, GetCollidingObjectListHook, &GetCollidingObjectListOrig);
-    // Patch to support loading unencrypted save files
-    if (1) {
-        SuperINI_Crypt = (decltype(SuperINI_Crypt))(mem::get_base("INI++.mfx") + 0x15681);
-        DWORD bW;
-        size_t addr = (size_t)((uint64_t)SuperINI_CryptChecked -
-                               ((uint64_t)(mem::get_base("INI++.mfx") + 0x1a5f7) + 5));
-        ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1a5f7 + 1), &addr, 4,
-                               &bW) &&
-            bW == 4);
-    }
     enable_hook();
 }
 
@@ -951,5 +946,15 @@ void init_simple_hacks() {
     // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
+    // Patch to support loading unencrypted save files
+    if (1) {
+        SuperINI_Crypt = (decltype(SuperINI_Crypt))(mem::get_base("INI++.mfx") + 0x15681);
+        DWORD bW;
+        size_t addr = (size_t)((uint64_t)SuperINI_CryptChecked -
+                               ((uint64_t)(mem::get_base("INI++.mfx") + 0x1a5f7) + 5));
+        ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1a5f7 + 1), &addr, 4,
+                               &bW) &&
+            bW == 4);
+    }
     init_temp_saves();
 }

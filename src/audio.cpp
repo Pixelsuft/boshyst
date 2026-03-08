@@ -1,4 +1,3 @@
-#include "ass.hpp"
 #include "btas.hpp"
 #include "conf.hpp"
 #include "fs.hpp"

@@ -5,12 +5,10 @@
 #include "fs.hpp"
 #include "ghidra_headers.h"
 #include "hook.hpp"
-#include "init.hpp"
 #include "mem.hpp"
 #include "ui.hpp"
 #include "utils.hpp"
 #include <Windows.h>
-#include <ctime>
 #include <vector>
 #include <map>
 #include <iostream>

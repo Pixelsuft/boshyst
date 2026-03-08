@@ -58,7 +58,7 @@ bool force_gdi;
 bool pixel_filter;
 bool hg_instant;
 bool tas_no_info;
-bool no_rng_patches;
+bool rng_patches;
 bool reset_rng;
 bool no_encryption;
 } // namespace conf
@@ -289,7 +289,7 @@ void conf::read() {
     cap_cnt = 0;
     rapid_bind = -1;
     first_run = false;
-    tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi = no_rng_patches = no_sh =
+    tas_mode = skip_msg = god = no_vp = old_rec = no_au = force_gdi = rng_patches = no_sh =
         keep_save = no_trans = no_ps = au_mth = cap_au = tas_no_info = reset_rng = no_cmove =
             draw_cursor = emu_mouse = allow_render = hg_instant = no_encryption = false;
     direct_render = true;
@@ -368,8 +368,8 @@ void conf::read() {
             is_replay = read_int(line) != 0;
         else if (starts_with(line, "tas_no_info="))
             tas_no_info = read_int(line) != 0;
-        else if (starts_with(line, "tas_no_rng_patches="))
-            no_rng_patches = read_int(line) != 0;
+        else if (starts_with(line, "rng_patches="))
+            rng_patches = read_int(line) != 0;
         else if (starts_with(line, "allow_render="))
             allow_render = read_int(line) != 0;
         else if (starts_with(line, "direct_render="))

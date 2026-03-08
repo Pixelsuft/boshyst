@@ -35,7 +35,7 @@ extern bool pixel_filter;
 extern bool force_gdi;
 extern bool hg_instant;
 extern bool tas_no_info;
-extern bool no_rng_patches;
+extern bool rng_patches;
 extern bool reset_rng;
 extern bool no_encryption;
 

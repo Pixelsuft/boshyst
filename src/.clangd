@@ -4,6 +4,8 @@ CompileFlags:
     - "-I../minhook/include"
     - "-I../kiero"
     - "-D_DEBUG"
-    - "-std=c++11"
+    - "-std=c++14"
+    - "-fms-compatibility-version=19"
+    - "-m32"
 Completion:
   HeaderInsertion: Never
