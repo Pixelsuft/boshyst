@@ -239,7 +239,7 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
     if (strcmp(cap, "I Wanna Be The Boshy") == 0) {
-        next_white = true;
+        // next_white = true;
         // This happens only when chaning/resetting scene lul
         audio_stop(); // Yeah it's hacky (for performance)
         if (capturing)
@@ -297,6 +297,15 @@ static int __stdcall UpdateGameFrameHook() {
             btas::init();
     }
     try_to_hook_graphics();
+    if (next_white && is_btas) {
+        next_white = false;
+        auto ret = UpdateGameFrameOrig();
+        btas::on_after_update();
+        if (!fast_forward_skip)
+            ProcessFrameRendering();
+        return ret;
+    }
+    next_white = false;
 
     if (is_btas && btas::on_before_update()) {
         // Paused, need to manually render
@@ -330,6 +339,7 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     auto ret = UpdateGameFrameOrig();
+    next_white = ret != 0;
 
     if (audio_timer_hooked && !next_white) {
         static int audio_fake_timer = 0;
@@ -373,7 +383,6 @@ static int __stdcall UpdateGameFrameHook() {
     if (!conf.direct_render)
         rec::rec_tick(nullptr);
 
-    next_white = false;
     last_upd2 = false;
     return ret;
 }
