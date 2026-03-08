@@ -118,7 +118,7 @@ static int gen_uid(unsigned long mytime) {
     return last_uid++;
 }
 
-static unsigned long audio_get_time() { return btas::get_hg_time(); }
+static unsigned long audio_get_time() { return btas::get_time(); }
 
 static void setup_fixed_header(WavHeader& h, uint16_t channels, uint16_t bits) {
     h.channels = channels;

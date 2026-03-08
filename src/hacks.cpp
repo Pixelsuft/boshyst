@@ -330,9 +330,10 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     auto ret = UpdateGameFrameOrig();
-
-    if (audio_timer_hooked)
+    if (audio_timer_hooked) {
+        // TODO: actually at virtual 50ms delay
         AudioTimerCallback(1337228, 0, 0, 0, 0);
+    }
 
     if (!is_btas && !show_menu && conf.tp_on_click && MyKeyState(VK_LBUTTON)) {
         // Teleport player with mouse
@@ -357,7 +358,7 @@ static int __stdcall UpdateGameFrameHook() {
         }
     }
 
-    if (is_btas) {
+    if (is_btas && !next_white) {
         btas::on_after_update();
         // Still like to maually render in btas mode
         if (!fast_forward_skip)
