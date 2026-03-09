@@ -346,7 +346,9 @@ static int __stdcall UpdateGameFrameHook() {
         audio_fake_timer += 20;
         if (audio_fake_timer >= 50) {
             audio_fake_timer -= 50;
+            btas::offset_time(-audio_fake_timer);
             AudioTimerCallback(1337228, 0, 0, 0, 0);
+            btas::offset_time(audio_fake_timer);
         }
     }
 

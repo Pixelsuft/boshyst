@@ -964,6 +964,8 @@ void btas::on_after_update() {
 
 unsigned long btas::get_time() { return st.time; }
 
+void btas::offset_time(int offset) { st.time += offset; }
+
 void btas::on_key(int k, bool pressed) {
     auto it = std::lower_bound(binds.begin(), binds.end(), k,
                                [](const BTasBind& b, int key) { return b.key > key; });

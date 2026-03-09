@@ -15,7 +15,7 @@ short TasGetKeyState(int k);
 bool on_before_update();
 void on_after_update();
 unsigned long get_time();
-unsigned long get_hg_time();
+void offset_time(int offset);
 void read_setting(const std::string& line, const std::string& line_orig);
 void pre_init();
 void init();
