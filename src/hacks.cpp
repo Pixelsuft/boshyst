@@ -1011,8 +1011,8 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
     // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
-    hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);
-    Get_CStr = (decltype(Get_CStr))(mem::get_base("INI++.mfx") + 0x32f0);
+    // hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);
+    // Get_CStr = (decltype(Get_CStr))(mem::get_base("INI++.mfx") + 0x32f0);
     // Patch to support loading unencrypted save files
     if (1) {
         SuperINI_Crypt = (decltype(SuperINI_Crypt))(mem::get_base("INI++.mfx") + 0x15681);
