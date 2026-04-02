@@ -12,11 +12,12 @@ Inject-x86 boshyst.dll "I Wanna Be The Boshy.exe"
 Menu should be opened (toggled by Insert as a default bind).
 ## Cold start (BTAS) (experimental)
 Just also put [BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/btas.exe) into the game folder and launch the game via it. <br />
-Open the config to see binds.
+Open the config to see binds. <br />
 Known problems:
- - State doesn't remeber global vars (breaks in-game save logic, also some visual stuff which game thinks is locked)
+ - State doesn't remeber global vars (breaks in-game save logic, also some visual stuff which game thinks is locked, but this is also likely because INI++.mfx does not support states)
  - RNG seed desyncs (also might be caused by changing visual settings)
  - Hitbox desyncs (TODO: research why DirBlur x3.fx affects that)
+ - Some input problems (you can shoot right after loading a state even if you shot right before saving; pressing C after load won't work => desyncs)
  - May crash when loading a state (seems to be memory corruption, also happens without BTAS, would be really difficult to fix)
 ## Building and running
 For testing, just build the DLL using Visual Studio and inject it into the game process (`boshyst.conf` config will be created is in the game dir). <br />

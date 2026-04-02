@@ -127,6 +127,7 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
         return NULL;
     char buf[MAX_PATH];
     if (c_ends_with(_fn, ".ini")) {
+        // cout << "file open: " << _fn << ((dw_access & GENERIC_WRITE) ? " (write)" : " (read)") << std::endl;
         // Use temp files when needed
         strcpy(buf, _fn);
         size_t l = strlen(buf);
@@ -553,7 +554,20 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         cout << "Failing to load mmf2d3d8.dll\n";
         return nullptr;
     }
-    auto ret = LoadLibraryAOrig(lpLibFileName);
+    HMODULE ret;
+    if (0 && c_ends_with(lpLibFileName, ".mfx")) {
+        std::string new_path = "";
+        char* p = (char*)lpLibFileName + strlen(lpLibFileName) - 1;
+        while (*p != '\\' && *p != '/') {
+            new_path = *p + new_path;
+            p--;
+        }
+        new_path = std::string("e:\\games\\iwbtb\\dump3\\") + new_path;
+        cout << "loading " << new_path << "\n";
+        ret = LoadLibraryAOrig(new_path.c_str());
+    }
+    else
+        ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
     uint8_t temp = 0xeb;
     const uint8_t buf[] = {0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
@@ -925,6 +939,39 @@ void init_temp_saves() {
     DeleteFileA("SaveFile3.tmp.ini");
 }
 
+static const char* (__fastcall* Get_CStr)(void* param_1);
+static int __cdecl Ini_Item_Compare(void* param_1, void* param_2) {
+    // test
+    auto a = Get_CStr(param_1);
+    auto b = Get_CStr(param_2);
+    if (strcmp(a, "gastly") == 0) {
+        return 0;
+    }
+    return 1;
+#if 0
+    auto a = Get_CStr(param_1);
+    auto b = Get_CStr(param_2);
+    static std::vector<std::string> test_vec;
+    auto sa = std::string(a);
+    if (std::find(test_vec.begin(), test_vec.end(), sa) == test_vec.end()) {
+        test_vec.push_back(sa);
+        cout << sa << '\n';
+    }
+    // cout << "compare " << a << " and " << b << "\n";
+    return 0
+#endif
+}
+
+void* (__thiscall* IniState_GetValueOrig)(void* pthis, void* pOutValue, void* p2);
+void* __fastcall IniState_GetValueHook(void* pthis, void* edx, void* pOutValue, void* p2) {
+    auto ret = IniState_GetValueOrig(pthis, pOutValue, p2);
+    auto a = Get_CStr(p2);
+    if (strcmp(a, "gastly") == 0) {
+        cout << "got: " << Get_CStr(ret) << std::endl;
+    }
+    return ret;
+}
+
 void init_simple_hacks() {
     // First-frame init
     input_init();
@@ -963,6 +1010,9 @@ void init_simple_hacks() {
     // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
+    // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
+    hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);
+    Get_CStr = (decltype(Get_CStr))(mem::get_base("INI++.mfx") + 0x32f0);
     // Patch to support loading unencrypted save files
     if (1) {
         SuperINI_Crypt = (decltype(SuperINI_Crypt))(mem::get_base("INI++.mfx") + 0x15681);
