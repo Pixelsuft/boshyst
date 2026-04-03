@@ -207,6 +207,7 @@ static void import_replay(const std::string& path) {
         // cout << idx << ' ' << ev.frame << ' ' << ev.click.x << ' ' << ev.click.y << std::endl;
         st.ev.push_back(ev);
     }
+    init_temp_saves();
     is_replay = true;
     last_msg = "Replay imported";
 }
@@ -1154,7 +1155,7 @@ void btas::draw_tab() {
             repl_holding.clear();
             st.clear_arr();
             st.clear();
-            init_temp_saves();
+            // init_temp_saves();
             last_msg = "Restarting game";
             pState.rhNextFrame = 4; // Restart flag
             pState.rhNextFrameData = 0;

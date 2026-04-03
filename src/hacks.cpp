@@ -991,7 +991,7 @@ static short __stdcall HandleRunObjectIniHook(void* pthis) {
 
 static int(__stdcall* CreateRunObjectIniOrig)(size_t pObject, size_t pEditData, int dummy);
 static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, int dummy) {
-    if (conf.tas_save_slot_fix < 1 || conf.tas_save_slot_fix > 3 || (!b_loading_saving_state))
+    if (conf.tas_save_slot_fix < 1 || conf.tas_save_slot_fix > 3 || !b_loading_saving_state)
         return CreateRunObjectIniOrig(pObject, pEditData, dummy);
     bool fixed = false;
     std::string def_fp = (char*)(pEditData + 0x16);
@@ -1069,5 +1069,6 @@ void init_simple_hacks() {
                                &bW) &&
             bW == 4);
     }
-    init_temp_saves();
+    if (!is_btas)
+        init_temp_saves();
 }
