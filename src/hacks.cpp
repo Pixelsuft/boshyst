@@ -96,9 +96,9 @@ static int(__cdecl* _stricmpOrig)(const char* s1, const char* s2) = nullptr;
 static int __cdecl _stricmpHook(const char* s1, const char* s2) {
     // DirBlur x3.fx fucks up collision for some reason
     if (conf.no_sh && (strcmp(s1, "CS_SinWave2.fx") == 0 || strcmp(s1, "DirBlur x3.fx") == 0 ||
-                        strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 ||
-                        strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 ||
-                        strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
+                       strcmp(s1, "DropShadow.fx") == 0 || strcmp(s1, "FlipX.fx") == 0 ||
+                       strcmp(s1, "Mosaic.fx") == 0 || strcmp(s1, "Outline.fx") == 0 ||
+                       strcmp(s1, "PT_BlurAndAngle.fx") == 0)) {
         // shaders
         // Extra: Add, Invert, Sub, Mono, Blend, XOR, OR, AND
         // cout << "!!!: " << s1 << " " << s2 << '\n';
@@ -127,8 +127,8 @@ static HANDLE __stdcall CreateFileHook(LPCSTR _fn, DWORD dw_access, DWORD share_
         return NULL;
     char buf[MAX_PATH];
     if (c_ends_with(_fn, ".ini")) {
-        // cout << "file open: " << _fn << ((dw_access & GENERIC_WRITE) ? " (write)" : " (read)") << std::endl;
-        // Use temp files when needed
+        // cout << "file open: " << _fn << ((dw_access & GENERIC_WRITE) ? " (write)" : " (read)") <<
+        // std::endl; Use temp files when needed
         strcpy(buf, _fn);
         size_t l = strlen(buf);
         strcpy(buf + l - 4, ".tmp.ini");
@@ -147,9 +147,10 @@ static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, in
                                     void* creationParam, ushort creationFlags, uint initialDir,
                                     int layerIndex) {
     if (objectInfoID == 243) {
-        //if (MyKeyState('D'))
-            return -1;
-        cout << "obj " << objectInfoID << '\n';
+        // Somewhy game spams this (kinda INI++) object
+        // blocking it reduces ammount of crashes
+        // cout << "save object spam prevented" << '\n';
+        return -1;
     }
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam,
                                 creationFlags, initialDir, layerIndex);
@@ -570,8 +571,7 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         new_path = std::string("e:\\games\\iwbtb\\dump3\\") + new_path;
         cout << "loading " << new_path << "\n";
         ret = LoadLibraryAOrig(new_path.c_str());
-    }
-    else
+    } else
         ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
     uint8_t temp = 0xeb;
@@ -944,7 +944,7 @@ void init_temp_saves() {
     DeleteFileA("SaveFile3.tmp.ini");
 }
 
-static const char* (__fastcall* Get_CStr)(void* param_1);
+static const char*(__fastcall* Get_CStr)(void* param_1);
 static int __cdecl Ini_Item_Compare(void* param_1, void* param_2) {
     // test
     auto a = Get_CStr(param_1);
@@ -967,7 +967,7 @@ static int __cdecl Ini_Item_Compare(void* param_1, void* param_2) {
 #endif
 }
 
-void* (__thiscall* IniState_GetValueOrig)(void* pthis, void* pOutValue, void* p2);
+void*(__thiscall* IniState_GetValueOrig)(void* pthis, void* pOutValue, void* p2);
 void* __fastcall IniState_GetValueHook(void* pthis, void* edx, void* pOutValue, void* p2) {
     auto ret = IniState_GetValueOrig(pthis, pOutValue, p2);
     auto a = Get_CStr(p2);
@@ -977,7 +977,7 @@ void* __fastcall IniState_GetValueHook(void* pthis, void* edx, void* pOutValue, 
     return ret;
 }
 
-static short __stdcall DisplayRunObjectIniHook(void* pthis) {
+static short __stdcall HandleRunObjectIniHook(void* pthis) {
     size_t me = (size_t)pthis;
     if (JustKeyState('U') == 1) {
         cout << "d\n";
@@ -989,23 +989,27 @@ static short __stdcall DisplayRunObjectIniHook(void* pthis) {
     return 0;
 }
 
-static int (__stdcall* CreateRunObjectIniOrig)(size_t pObject, size_t pEditData, int dummy);
+static int(__stdcall* CreateRunObjectIniOrig)(size_t pObject, size_t pEditData, int dummy);
 static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, int dummy) {
+    if (conf.tas_save_slot_fix < 1 || conf.tas_save_slot_fix > 3 || (!b_loading_saving_state))
+        return CreateRunObjectIniOrig(pObject, pEditData, dummy);
     bool fixed = false;
     std::string def_fp = (char*)(pEditData + 0x16);
-    if ((*(uint8_t*)(pEditData + 0x14) == 0 || 1) && def_fp != "onlineLicense.ini" &&
-        def_fp != "options.ini") {
-        *(uint8_t*)(pEditData + 0x14) = 1;
-        cout << "fixed " << def_fp << '\n';
-        strcpy((char*)(pEditData + 0x16), "SaveFile2.ini");
+    if (def_fp != "onlineLicense.ini" && def_fp != "options.ini") {
+        // cout << "fixing save slot\n";
         fixed = *(uint8_t*)(pEditData + 0x14) == 0;
+        *(uint8_t*)(pEditData + 0x14) = 1;
+        std::string need_fp = std::string("SaveFile") + to_str(conf.tas_save_slot_fix);
+        if (PathFileExistsA((need_fp + ".tmp.ini").c_str()))
+            strcpy((char*)(pEditData + 0x16), (need_fp + ".tmp.ini").c_str());
+        else
+            strcpy((char*)(pEditData + 0x16), (need_fp + ".ini").c_str());
     }
     auto ret = CreateRunObjectIniOrig(pObject, pEditData, dummy);
-    size_t ini = *(size_t*)(pObject + 0x168);
-    if (fixed) {
-        *(uint8_t*)(pEditData + 0x14) = 0;    
-    }
-    cout << "ini create " << (int)*(uint8_t*)(pEditData + 0x14) << '\n';
+    // size_t ini = *(size_t*)(pObject + 0x168);
+    if (fixed)
+        *(uint8_t*)(pEditData + 0x14) = 0;
+    // cout << "ini create " << (int)*(uint8_t*)(pEditData + 0x14) << '\n';
     return ret;
 }
 
@@ -1044,12 +1048,14 @@ void init_simple_hacks() {
     // &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
-    // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
+    if (conf.no_save_object_spamming)
+        hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
-    // hook(mem::addr("HandleRunObject", "INI++.mfx"), DisplayRunObjectIniHook);
-    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook, &CreateRunObjectIniOrig);
-    
+    // hook(mem::addr("HandleRunObject", "INI++.mfx"), HandleRunObjectIniHook);
+    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook,
+         &CreateRunObjectIniOrig);
+
     // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
     // hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);
     // Get_CStr = (decltype(Get_CStr))(mem::get_base("INI++.mfx") + 0x32f0);

@@ -14,7 +14,7 @@ Menu should be opened (toggled by Insert as a default bind).
 Just also put [BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/btas.exe) into the game folder and launch the game via it. <br />
 Open the config to see binds. <br />
 Known problems:
- - Save files forgetting after loading a state (breaks in-game save logic, also some visual stuff which game thinks is locked) (can be fixed: TODO)
+ - Save files forgetting after loading a state (breaks in-game save logic, also some visual stuff which game thinks is locked) (can be fixed: see `tas_save_slot_fix` in config)
  - RNG seed desyncs (also might be caused by changing visual settings)
  - Hitbox desyncs (TODO: research why DirBlur x3.fx affects that)
  - Some input problems (you can shoot right after loading a state even if you shot right before saving; pressing C right after load won't work => desyncs)

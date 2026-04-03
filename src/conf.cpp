@@ -10,8 +10,8 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 #undef max
 #undef min
@@ -22,7 +22,7 @@ using std::string;
 namespace config {
 std::map<int, std::vector<InputEvent>> mb;
 string cap_cmd;
-} // namespace conf
+} // namespace config
 
 Config conf;
 extern std::string unicode_to_utf8(wchar_t* buf, bool autofree);
@@ -151,11 +151,14 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
     ASS(file.write_line("disable_perspective = 0 // Disable background distortion"));
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
+    ASS(file.write_line("no_save_object_spamming = 0 // Might reduce ammount of crashes when loading a state"));
     ASS(file.write_line(
         "keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(
         "no_encryption = 0 // No save encryption (breaks saves without using mod menu)"));
     ASS(file.write_line(""));
+    ASS(file.write_line("tas_save_slot_fix = 0 // Fix save slot (1, 2 or 3) by forcing to load "
+                        "SaveFileX.ini (or tmp) when loading state"));
     ASS(file.write_line("tas_force_size = 0, 0 // You can force window size to be higher than you "
                         "monitor resolution"));
     ASS(file.write_line("tas_force_gdi = 0 // Force software renderer (doesnt support UI)"));
@@ -251,12 +254,12 @@ void config::read() {
     conf.cap_cnt = 0;
     conf.rapid_bind = -1;
     conf.first_run = false;
+    conf.tas_save_slot_fix = 0;
     conf.tas_mode = conf.skip_msg = conf.god = conf.no_vp = conf.old_rec = conf.no_au =
         conf.force_gdi = conf.rng_patches = conf.no_sh = conf.keep_save = conf.no_trans =
             conf.no_ps = conf.au_mth = conf.cap_au = conf.tas_no_info = conf.reset_rng =
                 conf.no_cmove = conf.draw_cursor = conf.emu_mouse = conf.allow_render =
-                    conf.hg_instant =
-                    conf.no_encryption = false;
+                    conf.hg_instant = conf.no_encryption = conf.no_save_object_spamming = false;
     conf.direct_render = true;
     conf.cur_mouse_checked = false;
     conf.tp_on_click = conf.input_in_menu = false;
@@ -311,6 +314,8 @@ void config::read() {
             conf.menu = read_int(line) != 0;
         else if (starts_with(line, "keep_save="))
             conf.keep_save = read_int(line) != 0;
+        else if (starts_with(line, "no_save_object_spamming="))
+            conf.no_save_object_spamming = read_int(line) != 0;
         else if (starts_with(line, "no_encryption="))
             conf.no_encryption = read_int(line) != 0;
         else if (starts_with(line, "no_mouse_move="))
@@ -321,6 +326,8 @@ void config::read() {
             conf.emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "reset_rng="))
             conf.reset_rng = read_int(line) != 0;
+        else if (starts_with(line, "tas_save_slot_fix="))
+            conf.tas_save_slot_fix = read_int(line);
         else if (starts_with(line, "tas_force_gdi="))
             conf.force_gdi = read_int(line) != 0;
         else if (starts_with(line, "tas_disable_audio="))

@@ -6,6 +6,7 @@ CompileFlags:
     - "-D_DEBUG"
     - "-std=c++14"
     - "-fms-compatibility-version=19"
+    - "-Wno-microsoft-cast"
     - "-m32"
 Completion:
   HeaderInsertion: Never
