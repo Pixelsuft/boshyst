@@ -146,6 +146,11 @@ static int(__cdecl* CreateObjectOrig)(ushort parentHandle, ushort objectInfoID, 
 static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY,
                                     void* creationParam, ushort creationFlags, uint initialDir,
                                     int layerIndex) {
+    if (objectInfoID == 243) {
+        //if (MyKeyState('D'))
+            return -1;
+        cout << "obj " << objectInfoID << '\n';
+    }
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam,
                                 creationFlags, initialDir, layerIndex);
     // if (is_btas && objectInfoID == 106 && ret != -1)
@@ -972,6 +977,38 @@ void* __fastcall IniState_GetValueHook(void* pthis, void* edx, void* pOutValue, 
     return ret;
 }
 
+static short __stdcall DisplayRunObjectIniHook(void* pthis) {
+    size_t me = (size_t)pthis;
+    if (JustKeyState('U') == 1) {
+        cout << "d\n";
+        short(__stdcall * actionOpenDialog)(void*, long, long) =
+            decltype(actionOpenDialog)(mem::get_base("INI++.mfx") + 0xae32);
+        int(__stdcall * doBox)(void*) = decltype(doBox)(mem::get_base("INI++.mfx") + 0xaddb);
+        doBox(pthis);
+    }
+    return 0;
+}
+
+static int (__stdcall* CreateRunObjectIniOrig)(size_t pObject, size_t pEditData, int dummy);
+static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, int dummy) {
+    bool fixed = false;
+    std::string def_fp = (char*)(pEditData + 0x16);
+    if ((*(uint8_t*)(pEditData + 0x14) == 0 || 1) && def_fp != "onlineLicense.ini" &&
+        def_fp != "options.ini") {
+        *(uint8_t*)(pEditData + 0x14) = 1;
+        cout << "fixed " << def_fp << '\n';
+        strcpy((char*)(pEditData + 0x16), "SaveFile2.ini");
+        fixed = *(uint8_t*)(pEditData + 0x14) == 0;
+    }
+    auto ret = CreateRunObjectIniOrig(pObject, pEditData, dummy);
+    size_t ini = *(size_t*)(pObject + 0x168);
+    if (fixed) {
+        *(uint8_t*)(pEditData + 0x14) = 0;    
+    }
+    cout << "ini create " << (int)*(uint8_t*)(pEditData + 0x14) << '\n';
+    return ret;
+}
+
 void init_simple_hacks() {
     // First-frame init
     input_init();
@@ -1010,6 +1047,9 @@ void init_simple_hacks() {
     // hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
+    // hook(mem::addr("HandleRunObject", "INI++.mfx"), DisplayRunObjectIniHook);
+    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook, &CreateRunObjectIniOrig);
+    
     // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
     // hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);
     // Get_CStr = (decltype(Get_CStr))(mem::get_base("INI++.mfx") + 0x32f0);
