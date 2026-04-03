@@ -94,7 +94,9 @@ bool input_tick() {
                     RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
                     short prev_seed = pState.RandomSeed;
                     if (file.is_open()) {
+                        b_loading_saving_state = true;
                         state_load(&file);
+                        b_loading_saving_state = false;
                         pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
                         if (conf.reset_rng) {
                             pState.RandomSeed = prev_seed;
