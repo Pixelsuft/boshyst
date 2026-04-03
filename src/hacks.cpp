@@ -981,10 +981,12 @@ static short __stdcall HandleRunObjectIniHook(void* pthis) {
     size_t me = (size_t)pthis;
     if (JustKeyState('U') == 1) {
         cout << "d\n";
+        /*
         short(__stdcall * actionOpenDialog)(void*, long, long) =
             decltype(actionOpenDialog)(mem::get_base("INI++.mfx") + 0xae32);
         int(__stdcall * doBox)(void*) = decltype(doBox)(mem::get_base("INI++.mfx") + 0xaddb);
         doBox(pthis);
+        */
     }
     return 0;
 }
