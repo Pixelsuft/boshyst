@@ -18,7 +18,7 @@
 #include <vector>
 #undef max
 #undef min
-#define STATE_VER 2
+#define STATE_VER 3
 
 using std::cout;
 using std::string;
@@ -120,6 +120,8 @@ struct BTasState {
     int time;
     // Save value not saved
     int c1;
+    // Re-record count
+    int rerecords;
     // Save RNG seed for sure
     short seed;
 
@@ -142,6 +144,7 @@ struct BTasState {
         m_pos[0] = m_pos[1] = -100;
         seed = 0;
         c1 = 0;
+        rerecords = 0;
     }
 };
 
@@ -192,6 +195,8 @@ static void import_replay(const std::string& path) {
     while (f.read_line(line)) {
         if (starts_with(line, "total: "))
             st.total = std::atoi(line.substr(7).c_str());
+        else if (starts_with(line, "rerecords: "))
+            st.rerecords = std::atoi(line.substr(11).c_str());
         else if (starts_with(line, "data: "))
             break;
     }
@@ -221,6 +226,7 @@ static void export_replay(const std::string& path) {
     }
     ASS(f.write_line("brep"));
     ASS(f.write_line(string("total: ") + to_str(st.total)));
+    ASS(f.write_line(string("rerecords: ") + to_str(st.rerecords)));
     ASS(f.write_line("data: "));
     for (auto it = st.ev.begin(); it != st.ev.end(); it++) {
         BTasEvent& ev = *it;
@@ -510,6 +516,7 @@ static void b_state_save(int slot) {
     write_bin(f, st.frame);
     write_bin(f, st.sc_frame);
     write_bin(f, st.total);
+    write_bin(f, st.rerecords);
     write_bin(f, st.cur_pos[0]);
     write_bin(f, st.cur_pos[1]);
     write_bin(f, st.last_pos[0]);
@@ -562,7 +569,7 @@ static void b_state_load(int slot, bool from_loop) {
     ASS(memcmp(buf, "btas", 4) == 0);
     int st_ver;
     load_bin(f, st_ver);
-    if (st_ver != STATE_VER) {
+    if (st_ver < 2 || st_ver > STATE_VER) {
         last_msg = "Wrong state version";
         return;
     }
@@ -592,6 +599,11 @@ static void b_state_load(int slot, bool from_loop) {
         load_bin(f, dummy); // frame
         load_bin(f, dummy); // sc frame
         load_bin(f, st.total);
+        if (st_ver > 2) {
+            int temp_rec;
+            load_bin(f, temp_rec);
+            st.rerecords = std::max(temp_rec, st.rerecords) + 1;
+        }
         load_bin(f, dummy); // cur pos
         load_bin(f, dummy);
         load_bin(f, dummy); // last_pos
@@ -622,6 +634,11 @@ static void b_state_load(int slot, bool from_loop) {
         load_bin(f, st.frame);
         load_bin(f, st.sc_frame);
         load_bin(f, st.total);
+        if (st_ver > 2) {
+            int temp_rec;
+            load_bin(f, temp_rec);
+            st.rerecords = std::max(temp_rec, st.rerecords) + 1;
+        }
         load_bin(f, st.cur_pos[0]);
         load_bin(f, st.cur_pos[1]);
         load_bin(f, st.last_pos[0]);
@@ -1062,6 +1079,7 @@ void btas::on_key(int k, bool pressed) {
 
 void btas::draw_info() {
     ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, get_state().frameCount, st.sc_frame);
+    ImGui::Text("Re-records: %i", st.rerecords);
 
     ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
     ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);
