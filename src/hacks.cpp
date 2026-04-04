@@ -82,6 +82,7 @@ static int __cdecl randHook() {
         // if (ret != RAND_MAX)
         //    return ret;
         // I don't think it's good to call orig rand
+        cout << "warn: game used rand()\n";
         return 0;
     }
     if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (RAND_MAX + 1)))
@@ -631,12 +632,15 @@ static time_t __cdecl timeHook(time_t* tloc) {
     return (time_t)btas::get_time();
 }
 
+static void (__cdecl* _ftimeOrig)(struct my_timeb* timeptr);
 static void __cdecl _ftimeHook(struct my_timeb* timeptr) {
+    // IDK but calling orig _ftime fixes the crash
+    _ftimeOrig(timeptr);
     if (timeptr) {
         timeptr->time = (time_t)btas::get_time() / 1000;
         timeptr->millitm = (unsigned short)(btas::get_time() % 1000);
-        timeptr->timezone = 0;
-        timeptr->dstflag = 0;
+        // timeptr->timezone = 0;
+        // timeptr->dstflag = 0;
     }
 }
 
@@ -876,7 +880,7 @@ void init_game_loop() {
         else {
             hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
             hook(mem::addr("time", "msvcrt.dll"), timeHook);
-            hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
+            hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook, &_ftimeOrig);
             hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
         }
         hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
