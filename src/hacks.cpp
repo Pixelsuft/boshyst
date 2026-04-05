@@ -47,7 +47,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
                                                              LPARAM lParam);
 
 struct my_timeb {
-    time_t time;
+    __time32_t time;
     unsigned short millitm;
     short timezone;
     short dstflag;
@@ -562,16 +562,17 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         return nullptr;
     }
     HMODULE ret;
-    if (0 && c_ends_with(lpLibFileName, ".mfx")) {
+    if (0 && c_ends_with(lpLibFileName, "Select.mfx")) {
+        static int cnt = 0;
         std::string new_path = "";
         char* p = (char*)lpLibFileName + strlen(lpLibFileName) - 1;
         while (*p != '\\' && *p != '/') {
             new_path = *p + new_path;
             p--;
         }
-        new_path = std::string("e:\\games\\iwbtb\\dump3\\") + new_path;
-        cout << "loading " << new_path << "\n";
+        new_path = std::string("e:\\games\\iwbtb\\dump2\\") + new_path;
         ret = LoadLibraryAOrig(new_path.c_str());
+        cout << ++cnt << ") loading " << new_path << " -> " << ret << "\n";
     } else
         ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
@@ -632,15 +633,12 @@ static time_t __cdecl timeHook(time_t* tloc) {
     return (time_t)btas::get_time();
 }
 
-static void (__cdecl* _ftimeOrig)(struct my_timeb* timeptr);
 static void __cdecl _ftimeHook(struct my_timeb* timeptr) {
-    // IDK but calling orig _ftime fixes the crash
-    _ftimeOrig(timeptr);
     if (timeptr) {
-        timeptr->time = (time_t)btas::get_time() / 1000;
+        timeptr->time = (__time32_t)btas::get_time() / 1000;
         timeptr->millitm = (unsigned short)(btas::get_time() % 1000);
-        // timeptr->timezone = 0;
-        // timeptr->dstflag = 0;
+        timeptr->timezone = 0;
+        timeptr->dstflag = 0;
     }
 }
 
@@ -880,7 +878,7 @@ void init_game_loop() {
         else {
             hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
             hook(mem::addr("time", "msvcrt.dll"), timeHook);
-            hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook, &_ftimeOrig);
+            hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
             hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
         }
         hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
@@ -1050,8 +1048,7 @@ void init_simple_hacks() {
     hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
-    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision,
-    // &fpCheckSpriteCollision);
+    hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision, &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     if (conf.no_save_object_spamming)
