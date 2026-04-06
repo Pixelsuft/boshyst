@@ -177,9 +177,9 @@ bool is_paused = true;
 bool is_replay = false;
 bool b_loading_saving_state = false;
 
-static RunHeader& get_state() { return **(RunHeader**)(mem::get_base() + 0x59a9c); }
+static RunHeader* get_state() { return *(RunHeader**)(mem::get_base() + 0x59a9c); }
 
-static GlobalStats& get_stats() { return **(GlobalStats**)(mem::get_base() + 0x59a98); }
+static GlobalStats* get_stats() { return *(GlobalStats**)(mem::get_base() + 0x59a98); }
 
 static void import_replay(const std::string& path) {
     // Import it
@@ -448,8 +448,8 @@ static void fill_timers_fix() {
     // TODO: why so many timers if used much less?
     if (!timers_fix)
         return;
-    GlobalStats& gStats = get_stats();
-    EventGroup* eventPtr = gStats.pEventGroups;
+    GlobalStats* gStats = get_stats();
+    EventGroup* eventPtr = gStats->pEventGroups;
     while (eventPtr->length != 0) {
         ConditionHeader* cond = (ConditionHeader*)&eventPtr->condStart;
         for (int i = (int)eventPtr->eventCount; i != 0; i--) {
@@ -474,8 +474,8 @@ static void import_timers_fix() {
         return;
     }
     auto it = st.timer_conds.begin();
-    GlobalStats& gStats = get_stats();
-    EventGroup* eventPtr = gStats.pEventGroups;
+    GlobalStats* gStats = get_stats();
+    EventGroup* eventPtr = gStats->pEventGroups;
     while (eventPtr->length != 0) {
         ConditionHeader* cond = (ConditionHeader*)&eventPtr->condStart;
         for (int i = (int)eventPtr->eventCount; i != 0; i--) {
@@ -509,7 +509,7 @@ static void b_state_save(int slot) {
             "Failed to open file for writing to save state " + std::to_string((long long)slot);
         return;
     }
-    RunHeader& pState = get_state();
+    RunHeader* pState = get_state();
     ASS(f.write("btas", 4));
     write_bin(f, (int)STATE_VER);
     write_bin(f, st.scene);
@@ -541,7 +541,7 @@ static void b_state_save(int slot) {
 }
 
 static void b_state_load(int slot, bool from_loop) {
-    RunHeader& pState = get_state();
+    RunHeader* pState = get_state();
     string path = string("state") + to_str(slot) + ".bstate";
     bfs::File f(path, 0);
     if (!f.is_open()) {
@@ -555,8 +555,8 @@ static void b_state_load(int slot, bool from_loop) {
         repl_holding.clear();
         need_scene_state_slot = slot;
         last_msg = "Restarting game";
-        pState.rhNextFrame = 4; // Restart flag
-        pState.rhNextFrameData = 0;
+        pState->rhNextFrame = 4; // Restart flag
+        pState->rhNextFrameData = 0;
         st.frame = st.sc_frame = 0;
         st.seed = 0;
         st.time = 0;
@@ -582,8 +582,8 @@ static void b_state_load(int slot, bool from_loop) {
         // last_msg = string("Scene ID mismatch (") + to_str(scene_id) + " instead of " +
         // to_str(get_scene_id()) + ")";
         last_msg = string("Loading scene ") + to_str(scene_id);
-        pState.rhNextFrame = 3;                     // Set scene flag
-        pState.rhNextFrameData = scene_id | 0x8000; // Scene ID
+        pState->rhNextFrame = 3;                     // Set scene flag
+        pState->rhNextFrameData = scene_id | 0x8000; // Scene ID
         ExecuteTriggeredEvent(0xfffefffd);
         // Same
         return;
@@ -664,11 +664,11 @@ static void b_state_load(int slot, bool from_loop) {
         trim_current_state();
         // Fix internal state load bug when dynamic sprites lose collision
         // TODO: also do this in normal mode?
-        if (pState.objectList == nullptr)
+        if (pState->objectList == nullptr)
             last_msg = "Failed to fix sprites: objectList is nullptr WTF";
         else {
-            for (int i = 0; i < pState.activeObjectCount; i++) {
-                ObjectHeader* obj = pState.objectList[i * 2];
+            for (int i = 0; i < pState->activeObjectCount; i++) {
+                ObjectHeader* obj = pState->objectList[i * 2];
                 if (!obj || !(obj->flags) || !obj->spriteHandle)
                     continue;
                 // Force mask recalculation
@@ -676,7 +676,7 @@ static void b_state_load(int slot, bool from_loop) {
             }
         }
         import_timers_fix();
-        pState.lastFrameScore = st.c1;
+        pState->lastFrameScore = st.c1;
         // pState.RandomSeed = st.seed;
     }
     // pState.rhNextFrame = 0;
@@ -691,12 +691,12 @@ void btas::reg_obj(int handle) {
     // unused
     if (b_loading_saving_state && 0) {
         cout << "bullet reg\n";
-        RunHeader& pState = get_state();
-        auto obj = pState.objectList[handle * 2];
+        RunHeader* pState = get_state();
+        auto obj = pState->objectList[handle * 2];
     }
     if (0) {
-        RunHeader& pState = get_state();
-        auto& obj = *pState.objectList[handle * 2];
+        RunHeader* pState = get_state();
+        auto& obj = *pState->objectList[handle * 2];
         auto& s = *obj.spriteHandle;
         cout << "launch " << handle << " " << s.flags << " " << s.layer << " " << s.numChildren
              << " " << s.textureHandleA << " " << s.textureHandleB << " " << s.zOrder << " "
@@ -763,7 +763,7 @@ short btas::TasGetKeyState(int k) {
 
 static void exec_event(BTasEvent& ev) {
     // Used for replay or temp events
-    RunHeader& pState = get_state();
+    RunHeader* pState = get_state();
     switch (ev.idx) {
     case 1: {
         // Key down
@@ -843,7 +843,7 @@ static void exec_event(BTasEvent& ev) {
 bool btas::on_before_update() {
     now = timeGetTimeOrig();
 
-    RunHeader& pState = get_state();
+    RunHeader* pState = get_state();
     if (need_scene_state_slot != -1) {
         // cout << "load state\n";
         b_state_load(need_scene_state_slot, true);
@@ -855,18 +855,18 @@ bool btas::on_before_update() {
         st.sc_frame = 0;
     st.scene = cur_scene;
     // Ok we have no frame drops
-    pState.frameSkipAccumulator = 0;
-    pState.subTickStep = 1;
+    pState->frameSkipAccumulator = 0;
+    pState->subTickStep = 1;
     // cout << pState.frameStatus << std::endl;
     if (is_paused && !next_step) {
         // we are paused
-        pState.isPaused = true;
+        pState->isPaused = true;
         return true;
     }
-    pState.isPaused = false;
+    pState->isPaused = false;
     // Sync seed for sure
     ushort temp_seed = (ushort)st.seed;
-    pState.RandomSeed = *(short*)&temp_seed;
+    pState->RandomSeed = *(short*)&temp_seed;
     if (is_replay) {
         for (; repl_index < (int)st.ev.size(); repl_index++) {
             BTasEvent& ev = st.ev[repl_index];
@@ -930,12 +930,12 @@ bool btas::on_before_update() {
 }
 
 void btas::on_after_update() {
-    RunHeader& pState = get_state();
+    RunHeader* pState = get_state();
     if (last_upd) {
         last_upd = false;
         // Time advance
-        st.c1 = pState.lastFrameScore;
-        st.seed = (int)*(ushort*)&pState.RandomSeed;
+        st.c1 = pState->lastFrameScore;
+        st.seed = (int)*(ushort*)&pState->RandomSeed;
         st.frame++;
         // cout << st.frame << " " << st.seed << std::endl;
         st.sc_frame++;
@@ -1078,7 +1078,8 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-    ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, get_state().frameCount, st.sc_frame);
+    ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, get_state()->frameCount,
+                st.sc_frame);
     ImGui::Text("Re-records: %i", st.rerecords);
 
     ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
@@ -1146,7 +1147,7 @@ void btas::draw_tab() {
     // GetClientRect(::hwnd, &test);
     // cout << test.right << "x" << test.bottom << '\n';
     if (ImGui::CollapsingHeader("BTas", ImGuiTreeNodeFlags_DefaultOpen)) {
-        RunHeader& pState = get_state();
+        RunHeader* pState = get_state();
         ImGui::Checkbox("Paused", &is_paused);
         ImGui::Checkbox("Fast forward", &fast_forward);
         if (ImGui::Checkbox("Replay mode", &is_replay)) {
@@ -1175,8 +1176,8 @@ void btas::draw_tab() {
             st.clear();
             // init_temp_saves();
             last_msg = "Restarting game";
-            pState.rhNextFrame = 4; // Restart flag
-            pState.rhNextFrameData = 0;
+            pState->rhNextFrame = 4; // Restart flag
+            pState->rhNextFrameData = 0;
             ExecuteTriggeredEvent(0xfffefffd);
         }
         ImGui::SameLine();

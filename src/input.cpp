@@ -51,7 +51,7 @@ SHORT(__stdcall* GetKeyStateOrig)(int k);
 static SHORT __stdcall GetKeyStateHook(int k) {
     if (is_btas)
         return btas::TasGetKeyState(k);
-    if (show_menu && !conf.tas_mode && !conf.input_in_menu)
+    if ((show_menu && !conf.tas_mode && !conf.input_in_menu) || b_loading_saving_state)
         return 0;
     return GetKeyStateOrig(k);
 }
@@ -60,7 +60,7 @@ SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 static SHORT __stdcall GetAsyncKeyStateHook(int k) {
     if (is_btas)
         return btas::TasGetKeyState(k);
-    if (show_menu && !conf.tas_mode && !conf.input_in_menu)
+    if ((show_menu && !conf.tas_mode && !conf.input_in_menu) || b_loading_saving_state)
         return 0;
     return GetAsyncKeyStateOrig(k);
 }
@@ -91,17 +91,16 @@ bool input_tick() {
                     }
                 } else if (eit->type == eit->LOAD) {
                     bfs::File file(*eit->state.fn, 0);
-                    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-                    short prev_seed = pState.RandomSeed;
+                    short prev_seed = conf.reset_rng ? (*(RunHeader**)(mem::get_base() + 0x59a9c))->RandomSeed : 0;
                     if (file.is_open()) {
                         b_loading_saving_state = true;
                         state_load(&file);
                         b_loading_saving_state = false;
-                        pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
                         if (conf.reset_rng) {
-                            pState.RandomSeed = prev_seed;
-                            ret = true;
+                            // cout << "reset rng\n";
+                            (*(RunHeader**)(mem::get_base() + 0x59a9c))->RandomSeed = prev_seed;
                         }
+                        ret = true;
                         // pState.rhNextFrame = 0x65;
                     }
                 }
