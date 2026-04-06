@@ -1003,11 +1003,7 @@ static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, in
         // cout << "fixing save slot\n";
         fixed = *(uint8_t*)(pEditData + 0x14) == 0;
         *(uint8_t*)(pEditData + 0x14) = 1;
-        std::string need_fp = std::string("SaveFile") + to_str(conf.save_slot_fix);
-        if (PathFileExistsA((need_fp + ".tmp.ini").c_str()))
-            strcpy((char*)(pEditData + 0x16), (need_fp + ".tmp.ini").c_str());
-        else
-            strcpy((char*)(pEditData + 0x16), (need_fp + ".ini").c_str());
+        strcpy((char*)(pEditData + 0x16), (need_fp + ".ini").c_str());
     }
     auto ret = CreateRunObjectIniOrig(pObject, pEditData, dummy);
     // size_t ini = *(size_t*)(pObject + 0x168);
