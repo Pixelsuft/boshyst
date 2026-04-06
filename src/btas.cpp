@@ -212,7 +212,6 @@ static void import_replay(const std::string& path) {
         // cout << idx << ' ' << ev.frame << ' ' << ev.click.x << ' ' << ev.click.y << std::endl;
         st.ev.push_back(ev);
     }
-    init_temp_saves();
     is_replay = true;
     last_msg = "Replay imported";
 }
@@ -623,8 +622,6 @@ static void b_state_load(int slot, bool from_loop) {
         load_bin(f, st.ev);
         if (reset_on_replay) {
             repl_holding.clear();
-            // Delete temporary saves
-            init_temp_saves();
         }
         repl_index = 0;
         if (st.frame != 0)
@@ -864,6 +861,8 @@ bool btas::on_before_update() {
         return true;
     }
     pState->isPaused = false;
+    if (st.frame == 0)
+        init_temp_saves();
     // Sync seed for sure
     ushort temp_seed = (ushort)st.seed;
     pState->RandomSeed = *(short*)&temp_seed;
