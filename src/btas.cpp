@@ -539,7 +539,7 @@ static void b_state_save(int slot) {
     last_msg = string("State ") + to_str(slot) + " saved";
 }
 
-static void b_state_load(int slot, bool from_loop) {
+static void b_state_load(int slot) {
     RunHeader* pState = get_state();
     string path = string("state") + to_str(slot) + ".bstate";
     bfs::File f(path, 0);
@@ -547,7 +547,7 @@ static void b_state_load(int slot, bool from_loop) {
         last_msg = "Failed to open file for reading to load state " + to_str(slot);
         return;
     }
-    if (is_replay && reset_on_replay && !from_loop && st.frame != 0) {
+    if (is_replay && reset_on_replay && (st.frame != 0 || get_scene_id() != 0)) {
         // Need to restart game before replay
         st.prev.clear();
         st.ev.clear();
@@ -587,6 +587,7 @@ static void b_state_load(int slot, bool from_loop) {
         // Same
         return;
     }
+    need_scene_state_slot = -1;
     last_msg = "";
     if (is_replay) {
         // Don't need to load anything except some useful info and events
@@ -843,9 +844,8 @@ bool btas::on_before_update() {
     RunHeader* pState = get_state();
     if (need_scene_state_slot != -1) {
         // cout << "load state\n";
-        b_state_load(need_scene_state_slot, true);
+        b_state_load(need_scene_state_slot);
         repl_index = 0;
-        need_scene_state_slot = -1;
     }
     int cur_scene = get_scene_id();
     if (cur_scene != st.scene)
@@ -1055,7 +1055,7 @@ void btas::on_key(int k, bool pressed) {
         case 7: {
             // State load
             if (!show_menu && pressed && !bind.down)
-                b_state_load(bind.state.slot, false);
+                b_state_load(bind.state.slot);
             break;
         }
         case 8: {
