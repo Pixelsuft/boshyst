@@ -1089,10 +1089,10 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-    ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total,
+    ImGui::Text("Frames%s: %i / %i, %i, %i", is_replay ? " [PLAY]" : "", st.frame, st.total,
                 get_state()->frameCount,
                 st.sc_frame);
-    ImGui::Text("Re-records %s: %i", is_replay ? "|>" : "o", st.rerecords);
+    ImGui::Text("Re-records: %i", st.rerecords);
 #ifdef _DEBUG
     ImGui::Text("Replay index: %i", repl_index);
 #endif
