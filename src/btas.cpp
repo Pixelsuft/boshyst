@@ -846,6 +846,8 @@ bool btas::on_before_update() {
         // cout << "load state\n";
         b_state_load(need_scene_state_slot);
         repl_index = 0;
+        is_paused = true;
+        next_step = false;
     }
     int cur_scene = get_scene_id();
     if (cur_scene != st.scene)

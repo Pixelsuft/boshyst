@@ -995,7 +995,7 @@ static short __stdcall HandleRunObjectIniHook(void* pthis) {
 
 static int(__stdcall* CreateRunObjectIniOrig)(size_t pObject, size_t pEditData, int dummy);
 static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, int dummy) {
-    if (conf.tas_save_slot_fix < 1 || conf.tas_save_slot_fix > 3 || !b_loading_saving_state)
+    if (conf.save_slot_fix < 1 || conf.save_slot_fix > 3 || !b_loading_saving_state)
         return CreateRunObjectIniOrig(pObject, pEditData, dummy);
     bool fixed = false;
     std::string def_fp = (char*)(pEditData + 0x16);
@@ -1003,7 +1003,7 @@ static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, in
         // cout << "fixing save slot\n";
         fixed = *(uint8_t*)(pEditData + 0x14) == 0;
         *(uint8_t*)(pEditData + 0x14) = 1;
-        std::string need_fp = std::string("SaveFile") + to_str(conf.tas_save_slot_fix);
+        std::string need_fp = std::string("SaveFile") + to_str(conf.save_slot_fix);
         if (PathFileExistsA((need_fp + ".tmp.ini").c_str()))
             strcpy((char*)(pEditData + 0x16), (need_fp + ".tmp.ini").c_str());
         else
