@@ -180,14 +180,14 @@ void update_save_encryption() {
 
 const char* get_scene_name() {
     // TODO: mem::get_base()?
-    GlobalStats& gStats = **(GlobalStats**)(0x459a98);
-    return (gStats.sceneName && *gStats.sceneName) ? gStats.sceneName : "Unknown";
+    GlobalStats* gStats = *(GlobalStats**)(0x459a98);
+    return (gStats->sceneName && *gStats->sceneName) ? gStats->sceneName : "Unknown";
 }
 
 int get_scene_id() {
     // TODO: mem::get_base()?
-    RunApp& gState = **(RunApp**)0x0459a94;
-    return gState.rhCurrentFrame;
+    RunApp* gState = *(RunApp**)0x0459a94;
+    return gState->rhCurrentFrame;
 }
 
 static void* get_player_by_id(int idx) {
@@ -300,9 +300,9 @@ static int get_player_handle(int s) {
 
 void* get_player_ptr(int s) {
     int handle = get_player_handle(s);
-    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-    if (handle != -1 && handle < pState.activeObjectCount) {
-        auto ret = pState.objectList[handle * 2];
+    RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+    if (handle != -1 && handle < pState->activeObjectCount) {
+        auto ret = pState->objectList[handle * 2];
         if (ret && (ret->xPos > 60000 || ret->yPos == 0)) // Died
             return nullptr;
         return ret;
