@@ -627,6 +627,10 @@ static void b_state_load(int slot) {
         repl_index = 0;
         if (st.frame != 0)
             last_msg = "Running replay not from the start, may desync";
+        repl_holding = st.prev;
+        //cout << "prev:\n";
+        //for (auto val : st.prev)
+        //    cout << val << '\n';
     } else {
         st.scene = scene_id;
         load_bin(f, st.frame);
@@ -765,14 +769,20 @@ static void exec_event(BTasEvent& ev) {
     switch (ev.idx) {
     case 1: {
         // Key down
-        repl_holding.push_back(ev.key.k);
+        auto it = std::find(repl_holding.begin(), repl_holding.end(), ev.key.k);
+        // cout << "down: " << ev.key.k << "\n";
+        ASS(it == repl_holding.end());
+        if (it == repl_holding.end())
+            repl_holding.push_back(ev.key.k);
         break;
     }
     case 2: {
         // Key up
         auto it = std::find(repl_holding.begin(), repl_holding.end(), ev.key.k);
+        // cout << "up: " << ev.key.k << "\n";
         ASS(it != repl_holding.end());
-        repl_holding.erase(it);
+        if (it != repl_holding.end())
+            repl_holding.erase(it);
         break;
     }
     case 3: {
@@ -1079,9 +1089,13 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
-    ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total, get_state()->frameCount,
+    ImGui::Text("Frames: %i / %i, %i, %i", st.frame, st.total,
+                get_state()->frameCount,
                 st.sc_frame);
-    ImGui::Text("Re-records: %i", st.rerecords);
+    ImGui::Text("Re-records %s: %i", is_replay ? "|>" : "o", st.rerecords);
+#ifdef _DEBUG
+    ImGui::Text("Replay index: %i", repl_index);
+#endif
 
     ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);
     ImGui::Text("Delta: (%i, %i)", st.cur_pos[0] - st.last_pos[0], st.cur_pos[1] - st.last_pos[1]);
