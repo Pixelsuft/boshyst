@@ -151,7 +151,8 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("disable_transitions = 0 // Disable transition when using teleporter"));
     ASS(file.write_line("disable_perspective = 0 // Disable background distortion"));
     ASS(file.write_line("skip_messageboxes = 0 // Don't show message boxes from the game"));
-    ASS(file.write_line("no_save_object_spamming = 0 // Might reduce ammount of crashes when loading a state"));
+    ASS(file.write_line(
+        "no_save_object_spamming = 0 // Might reduce ammount of crashes when loading a state"));
     ASS(file.write_line(
         "keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(

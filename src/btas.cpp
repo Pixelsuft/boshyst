@@ -629,9 +629,9 @@ static void b_state_load(int slot) {
         if (st.frame != 0)
             last_msg = "Running replay not from the start, may desync";
         repl_holding = st.prev;
-        //cout << "prev:\n";
-        //for (auto val : st.prev)
-        //    cout << val << '\n';
+        // cout << "prev:\n";
+        // for (auto val : st.prev)
+        //     cout << val << '\n';
     } else {
         st.scene = scene_id;
         load_bin(f, st.frame);
@@ -1091,8 +1091,7 @@ void btas::on_key(int k, bool pressed) {
 
 void btas::draw_info() {
     ImGui::Text("Frames%s: %i / %i, %i, %i", is_replay ? " [PLAY]" : "", st.frame, st.total,
-                get_state()->frameCount,
-                st.sc_frame);
+                get_state()->frameCount, st.sc_frame);
     ImGui::Text("Re-records: %i", st.rerecords);
 #ifdef _DEBUG
     ImGui::Text("Replay index: %i", repl_index);

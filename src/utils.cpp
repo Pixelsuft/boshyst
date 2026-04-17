@@ -98,8 +98,13 @@ static HMODULE GetSxSModuleHandle(const char* targetPart) {
 */
 
 size_t mem::get_base() {
+#if !defined(_DEBUG)
+    return 0x400000;
+#else
+    // Ok this might be useless
     static auto def_ret = (size_t)GetModuleHandleW(nullptr);
     return def_ret;
+#endif
 }
 
 size_t mem::get_base(const char* obj_name) {

@@ -336,12 +336,11 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     auto ret = UpdateGameFrameOrig();
-    bool changed = ret != 0;
 
     if (audio_timer_hooked) {
         // TODO: conf::tas_better_precise_audio
         if (1) {
-            AudioTimerCallback(1337228, 0, 0, 0, 0);        
+            AudioTimerCallback(1337228, 0, 0, 0, 0);
         } else {
             static int audio_fake_timer = 0;
             audio_fake_timer += 20;
@@ -350,7 +349,7 @@ static int __stdcall UpdateGameFrameHook() {
                 btas::offset_time(-audio_fake_timer);
                 AudioTimerCallback(1337228, 0, 0, 0, 0);
                 btas::offset_time(audio_fake_timer);
-            }        
+            }
         }
     }
 
@@ -913,7 +912,7 @@ void init_game_loop() {
         hook(mem::addr("timeKillEvent", "winmm.dll"), timeKillEventHook, &timeKillEventOrig);
     }
     // Actually might be useful for normal mod menu
-    if (is_btas || !is_hourglass)
+    if (!is_btas && !is_hourglass)
         hook(mem::get_base() + 0x47140, GetCollidingObjectListHook, &GetCollidingObjectListOrig);
     enable_hook();
 }
@@ -997,7 +996,8 @@ static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, in
         // cout << "fixing save slot\n";
         fixed = *(uint8_t*)(pEditData + 0x14) == 0;
         *(uint8_t*)(pEditData + 0x14) = 1;
-        strcpy((char*)(pEditData + 0x16), (std::string("SaveFile") + to_str(conf.save_slot_fix) + ".ini").c_str());
+        strcpy((char*)(pEditData + 0x16),
+               (std::string("SaveFile") + to_str(conf.save_slot_fix) + ".ini").c_str());
     }
     auto ret = CreateRunObjectIniOrig(pObject, pEditData, dummy);
     // size_t ini = *(size_t*)(pObject + 0x168);
@@ -1038,7 +1038,8 @@ void init_simple_hacks() {
     hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
-    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision, &fpCheckSpriteCollision);
+    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision,
+    // &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     if (conf.no_save_object_spamming)

@@ -8,8 +8,8 @@
 #include "init.hpp"
 #include "input.hpp"
 #include "mem.hpp"
-#include "utils.hpp"
 #include "rec.hpp"
+#include "utils.hpp"
 #include <Windows.h>
 #include <cstdint>
 #include <imgui.h>

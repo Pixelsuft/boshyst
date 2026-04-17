@@ -50,4 +50,4 @@ extern Config conf;
 namespace config {
 
 void read();
-} // namespace conf
+} // namespace config

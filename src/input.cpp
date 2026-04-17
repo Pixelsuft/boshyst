@@ -9,9 +9,9 @@
 #include "ui.hpp"
 #include "utils.hpp"
 #include <Windows.h>
-#include <vector>
-#include <map>
 #include <iostream>
+#include <map>
+#include <vector>
 
 using std::cout;
 
@@ -91,7 +91,9 @@ bool input_tick() {
                     }
                 } else if (eit->type == eit->LOAD) {
                     bfs::File file(*eit->state.fn, 0);
-                    short prev_seed = conf.reset_rng ? (*(RunHeader**)(mem::get_base() + 0x59a9c))->RandomSeed : 0;
+                    short prev_seed = conf.reset_rng
+                                          ? (*(RunHeader**)(mem::get_base() + 0x59a9c))->RandomSeed
+                                          : 0;
                     if (file.is_open()) {
                         b_loading_saving_state = true;
                         state_load(&file);

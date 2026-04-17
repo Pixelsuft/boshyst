@@ -19,7 +19,7 @@ using std::cout;
 
 namespace config {
 extern std::string cap_cmd;
-} // namespace conf
+} // namespace config
 extern bool last_reset;
 
 extern HWND hwnd;
