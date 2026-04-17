@@ -691,44 +691,6 @@ static MMRESULT __stdcall timeKillEventHook(UINT uTimerID) {
 static void(__cdecl* DestroyObjectOrig)(int handle);
 static void __cdecl DestroyObjectHook(int handle) { DestroyObjectOrig(handle); }
 
-typedef int(__fastcall* tCheckSpriteCollision)(
-    void* pRunHeader,           // ECX
-    SpriteHandle* sprite,       // EDX
-    void* pObjectAndEventList,  // Stack + 0x04
-    ObjectHeader* pSrc,         // Stack + 0x08
-    void** pOutput,             // Stack + 0x0C
-    float srcAngle,             // Stack + 0x10
-    int srcX,                   // Stack + 0x14
-    int srcY,                   // Stack + 0x18
-    float kindaRot,             // Stack + 0x1C (often used as 'scale' in MMF2)
-    float scaleX,               // Stack + 0x20
-    float scaleY,               // Stack + 0x24
-    unsigned int collisionFlags // Stack + 0x28 (implied by the uint uVar1 logic)
-);
-
-static tCheckSpriteCollision fpCheckSpriteCollision = nullptr;
-
-// Detour function
-static int __fastcall DetourCheckSpriteCollision(void* pRunHeader, SpriteHandle* sprite,
-                                                 void* pObjectAndEventList, ObjectHeader* pSrc,
-                                                 void** pOutput, float srcAngle, int srcX, int srcY,
-                                                 float kindaRot, float scaleX, float scaleY,
-                                                 unsigned int collisionFlags) {
-    if (pSrc == nullptr || pRunHeader == nullptr) {
-        return 0;
-    }
-    auto ret =
-        fpCheckSpriteCollision(pRunHeader, sprite, pObjectAndEventList, pSrc, pOutput, srcAngle,
-                               srcX, srcY, kindaRot, scaleX, scaleY, collisionFlags);
-
-    if (ret > 0)
-        cout << ret << ": " << sprite->flags << " " << pSrc->oiHandle << " " << pSrc->collisionFlags
-             << " " << srcAngle << " " << kindaRot << " " << srcX << " " << scaleX << " "
-             << collisionFlags << std::endl;
-
-    return ret;
-}
-
 static int(__cdecl* GetCollidingObjectListOrig)(ObjectHeader*, uint, uint, float, float, int, int,
                                                 ObjectHeader***, int);
 static int __cdecl GetCollidingObjectListHook(ObjectHeader* obj, uint angle, uint scale,
@@ -917,17 +879,6 @@ void init_game_loop() {
     enable_hook();
 }
 
-static int(__cdecl* strcmpOrig)(const char* s1, const char* s2) = nullptr;
-static int __cdecl strcmpHook(const char* s1, const char* s2) {
-    // CostumBullets, Peers, stuff, trail
-    if (s1) {
-        cout << "hook: " << s1 << " vs " << s2 << std::endl;
-    }
-    return -1;
-    auto ret = strcmpOrig(s1, s2);
-    return ret;
-}
-
 void init_temp_saves() {
     // Cleanup temp files
     DeleteFileA("onlineLicense.tmp.ini");
@@ -939,6 +890,7 @@ void init_temp_saves() {
     DeleteFileA("SaveFile3.tmp.ini");
 }
 
+/*
 static const char*(__fastcall* Get_CStr)(void* param_1);
 static int __cdecl Ini_Item_Compare(void* param_1, void* param_2) {
     // test
@@ -971,6 +923,7 @@ void* __fastcall IniState_GetValueHook(void* pthis, void* edx, void* pOutValue, 
     }
     return ret;
 }
+*/
 
 static short __stdcall HandleRunObjectIniHook(void* pthis) {
     size_t me = (size_t)pthis;
@@ -1031,15 +984,12 @@ void init_simple_hacks() {
     hook(mem::addr("DisplayRunObject", "Perspective.mfx"), DisplayRunObjectPHook,
          &DisplayRunObjectPOrig);
     hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
-    // hook(mem::addr("strcmp", "MSVCR90.dll"), strcmpHook, &strcmpOrig);
     hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
     hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
     hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);
     hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
-    // hook(mem::get_base("mmfs2.dll") + 0x138a0, DetourCheckSpriteCollision,
-    // &fpCheckSpriteCollision);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     if (conf.no_save_object_spamming)
