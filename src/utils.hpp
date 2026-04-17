@@ -37,9 +37,6 @@ static bool c_starts_with(const char* str, const char* start) {
     return memcmp(str, start, el) == 0;
 }
 
-extern bool capturing;
-extern bool next_white;
-
 bool MyKeyState(int k);
 int JustKeyState(int k);
 wchar_t* utf8_to_unicode(const std::string& utf8);

@@ -247,7 +247,6 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
         return SetWindowTextAOrig(hwnd, cap);
     last_reset = true;
     if (strcmp(cap, "I Wanna Be The Boshy") == 0) {
-        // next_white = true;
         // This happens only when chaning/resetting scene lul
         audio_stop(); // Yeah it's hacky (for performance)
         if (capturing)
@@ -305,15 +304,6 @@ static int __stdcall UpdateGameFrameHook() {
             btas::init();
     }
     try_to_hook_graphics();
-    if (next_white && is_btas) {
-        next_white = false;
-        auto ret = UpdateGameFrameOrig();
-        btas::on_after_update();
-        if (!fast_forward_skip)
-            ProcessFrameRendering();
-        return ret;
-    }
-    next_white = false;
 
     if (is_btas && btas::on_before_update()) {
         // Paused, need to manually render
@@ -335,9 +325,8 @@ static int __stdcall UpdateGameFrameHook() {
 
     static int spawn_x = 0;
     static int spawn_y = 0;
-    if (0 && next_white) {
+    if (0) {
         // Used, used to get player spawn pos
-        next_white = false;
         auto pp = (ObjectHeader*)get_player_ptr(get_scene_id());
         if (pp) {
             cout << get_scene_id() << ": (" << pp->xPos << ", " << pp->yPos << ")" << std::endl;
@@ -347,16 +336,21 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     auto ret = UpdateGameFrameOrig();
-    next_white = ret != 0;
+    bool changed = ret != 0;
 
-    if (audio_timer_hooked && !next_white) {
-        static int audio_fake_timer = 0;
-        audio_fake_timer += 20;
-        if (audio_fake_timer >= 50) {
-            audio_fake_timer -= 50;
-            btas::offset_time(-audio_fake_timer);
-            AudioTimerCallback(1337228, 0, 0, 0, 0);
-            btas::offset_time(audio_fake_timer);
+    if (audio_timer_hooked) {
+        // TODO: conf::tas_better_precise_audio
+        if (1) {
+            AudioTimerCallback(1337228, 0, 0, 0, 0);        
+        } else {
+            static int audio_fake_timer = 0;
+            audio_fake_timer += 20;
+            if (audio_fake_timer >= 50) {
+                audio_fake_timer -= 50;
+                btas::offset_time(-audio_fake_timer);
+                AudioTimerCallback(1337228, 0, 0, 0, 0);
+                btas::offset_time(audio_fake_timer);
+            }        
         }
     }
 
@@ -383,7 +377,7 @@ static int __stdcall UpdateGameFrameHook() {
         }
     }
 
-    if (is_btas && !next_white) {
+    if (is_btas) {
         btas::on_after_update();
         // Still like to maually render in btas mode
         if (!fast_forward_skip)

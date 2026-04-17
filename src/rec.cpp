@@ -36,7 +36,6 @@ static PROCESS_INFORMATION pi;
 static std::vector<BYTE> data_buffer;
 static BITMAPINFO bmi;
 static std::pair<int, int> ws;
-bool next_white = false;
 bool capturing = false;
 
 extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
@@ -126,8 +125,6 @@ void rec::init(void* dev) {
 }
 
 void rec::cap(void* dev) {
-    if (next_white)
-        return;
     if (dev == nullptr) {
         BOOL success;
         if (conf.old_rec) {

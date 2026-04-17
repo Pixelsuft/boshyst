@@ -308,6 +308,7 @@ void btas::pre_init() {
     DWORD bW;
     // Disable automatic frame rendering
     WPM(mem::get_base() + 0x1dcc1, buf, 5);
+    WPM(mem::get_base() + 0x365ec, &temp, 1); // Unreachable anyway
     // Disable timers when moving window to prevent desync
     WPM(mem::get_base() + 0x4b74, buf, 5);
     WPM(mem::get_base() + 0x4b6d, buf, 5);

@@ -9,6 +9,7 @@
 #include "input.hpp"
 #include "mem.hpp"
 #include "utils.hpp"
+#include "rec.hpp"
 #include <Windows.h>
 #include <cstdint>
 #include <imgui.h>
