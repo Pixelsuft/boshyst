@@ -21,6 +21,10 @@ template <typename T> inline std::string to_str(T x) {
 #endif
 }
 
+static inline bool startsWith(const std::string& str, const std::string& prefix) {
+    return str.rfind(prefix, 0) == 0;
+}
+
 static bool c_ends_with(const char* str, const char* end) {
     size_t sl = strlen(str);
     size_t el = strlen(end);
