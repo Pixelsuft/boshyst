@@ -190,7 +190,10 @@ static void import_replay(const std::string& path) {
         return;
     }
     string line;
-    ASS(f.read_line(line) && startsWith(line, "-4,brep2"));
+    if (!f.read_line(line) || !startsWith(line, "-4,brep,2")) {
+        last_msg = "Invalid replay file";
+        return;
+    }
     st.clear_arr();
     st.clear();
     while (f.read_line(line)) {
@@ -205,37 +208,41 @@ static void import_replay(const std::string& path) {
         BTasEvent ev;
         const char* p = line.c_str();
         char* end;
-        ev.idx = (uint8_t)std::strtol(p, &end, 10);
+        ev.frame = std::strtol(p, &end, 10);
         if (end == p || *end != ',') {
-            last_msg = "Invalid data - IDX";
+            last_msg = "Invalid Frame";
             return;
         }
         p = end + 1;
-        ev.frame = std::strtol(p, &end, 10);
+        ev.idx = (uint8_t)std::strtol(p, &end, 10);
         if (end == p || *end != ',') {
-            last_msg = "Invalid data - Frame";
+            last_msg = "Invalid IDX";
             return;
         }
         p = end + 1;
         ev.click.x = std::strtol(p, &end, 10);
         bool long_repl = ev.idx == 5 || ev.idx == 6;
         if (end == p || (long_repl && *end != ',')) {
-            last_msg = "Invalid data - X";
+            last_msg = "Invalid X";
             return;
         }
         if (long_repl) {
             p = end + 1;
             ev.click.y = std::strtol(p, &end, 10);
             if (end == p) {
-                last_msg = "Invalid data - Y";
+                last_msg = "Invalid Y";
                 return;
             }
         }
         if (!st.ev.empty() && (st.ev.end() - 1)->frame > ev.frame) {
-            last_msg = "Invalid data - Order";
+            last_msg = "Invalid order";
             return;
         }
         st.ev.push_back(ev);
+    }
+    if (!st.ev.empty() && (st.ev.end() - 1)->frame > st.total) {
+        last_msg = "Invalid total frame counter";
+        return;
     }
     is_replay = true;
     last_msg = "Replay imported";
@@ -248,7 +255,7 @@ static void export_replay(const std::string& path) {
         last_msg = "Failed to open file for writing replay";
         return;
     }
-    ASS(f.write_line("-4,brep2"));
+    ASS(f.write_line("-4,brep,2"));
     ASS(f.write_line(string("-3,total,") + to_str(st.total)));
     ASS(f.write_line(string("-2,rerecords,") + to_str(st.rerecords)));
     ASS(f.write_line("-1,data,"));
@@ -256,13 +263,12 @@ static void export_replay(const std::string& path) {
         BTasEvent& ev = *it;
         if (!export_hash && (ev.idx == 3 || ev.idx == 4))
             continue;
-        if (ev.idx == 1 || ev.idx == 2 || ev.idx == 3 || ev.idx == 4 || ev.idx == 7 ||
-            ev.idx == 8 || ev.idx == 9) {
-            ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," +
-                             to_str(ev.click.x)));
+        if (ev.idx == 5 || ev.idx == 6) {
+            ASS(f.write_line(to_str(ev.frame) + ',' + to_str((int)ev.idx) + ',' +
+                             to_str(ev.click.x) + ',' + to_str(ev.click.y)));
         } else {
-            ASS(f.write_line(to_str((int)ev.idx) + "," + to_str(ev.frame) + "," +
-                             to_str(ev.click.x) + "," + to_str(ev.click.y)));
+            ASS(f.write_line(to_str(ev.frame) + ',' + to_str((int)ev.idx) + ',' +
+                             to_str(ev.click.x)));
         }
     }
     last_msg = "Replay exported";
