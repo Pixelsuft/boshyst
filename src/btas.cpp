@@ -18,7 +18,7 @@
 #include <vector>
 #undef max
 #undef min
-#define STATE_VER 3
+#define STATE_VER 4
 
 using std::cout;
 using std::string;
@@ -169,6 +169,7 @@ static bool reset_on_replay = false;
 static int repl_index = 0;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
+static bool fix_needed = false; // TODO: remove when everything is fixed
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -573,6 +574,7 @@ static void b_state_load(int slot) {
         last_msg = "Wrong state version";
         return;
     }
+    fix_needed = st_ver < 4;
     int scene_id;
     load_bin(f, scene_id);
     if (!is_replay && scene_id != get_scene_id()) {
@@ -941,7 +943,7 @@ bool btas::on_before_update() {
     return false;
 }
 
-void btas::on_after_update() {
+void btas::on_after_update(bool switched) {
     RunHeader* pState = get_state();
     if (last_upd) {
         last_upd = false;
@@ -949,6 +951,13 @@ void btas::on_after_update() {
         st.c1 = pState->lastFrameScore;
         st.seed = (int)*(ushort*)&pState->RandomSeed;
         st.frame++;
+        if (fix_needed && switched && is_replay) {
+            for (size_t i = 0; i < st.ev.size(); i++) {
+                if (st.ev[i].frame >= st.frame)
+                    st.ev[i].frame++;
+            }
+            st.total++;
+        }
         // cout << st.frame << " " << st.seed << std::endl;
         st.sc_frame++;
         st.total = std::max(st.total, st.frame);
@@ -1090,6 +1099,8 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
+    if (fix_needed)
+        ImGui::Text("Fixing old replay");
     ImGui::Text("Frames%s: %i / %i, %i, %i", is_replay ? " [PLAY]" : "", st.frame, st.total,
                 get_state()->frameCount, st.sc_frame);
     ImGui::Text("Re-records: %i", st.rerecords);

@@ -90,16 +90,16 @@ void rec::init(void* dev) {
         pBackBuffer->Release();
     }
     std::string command = "";
+    std::string temp_cmd = config::cap_cmd;
     // Yea it's ugly
-    // FIXME: don't modify config
-    while (config::cap_cmd.size() > 0) {
-        if (starts_with(config::cap_cmd, "$SIZE")) {
+    while (temp_cmd.size() > 0) {
+        if (starts_with(temp_cmd, "$SIZE")) {
             command += to_str(ws.first) + "x" + to_str(ws.second);
-            config::cap_cmd = config::cap_cmd.substr(5);
+            temp_cmd = temp_cmd.substr(5);
             continue;
         }
-        command += config::cap_cmd[0];
-        config::cap_cmd = config::cap_cmd.substr(1);
+        command += temp_cmd[0];
+        temp_cmd = temp_cmd.substr(1);
     }
     std::cout << command << '\n';
     hChildStdinRead = nullptr;

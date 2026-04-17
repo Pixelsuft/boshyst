@@ -309,7 +309,7 @@ static int __stdcall UpdateGameFrameHook() {
         // Paused, need to manually render
         auto ret = UpdateGameFrameOrig();
         ProcessFrameRendering();
-        btas::on_after_update();
+        btas::on_after_update(false);
         if (!conf.direct_render)
             rec::rec_tick(nullptr);
         last_upd2 = false;
@@ -377,7 +377,7 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     if (is_btas) {
-        btas::on_after_update();
+        btas::on_after_update(ret != 0);
         // Still like to maually render in btas mode
         if (!fast_forward_skip)
             ProcessFrameRendering();
