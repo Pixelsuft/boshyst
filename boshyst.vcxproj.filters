@@ -21,19 +21,16 @@
     <ClCompile Include="kiero\kiero.cpp">
       <Filter>external</Filter>
     </ClCompile>
-    <ClCompile Include="minhook\src\buffer.c">
+    <ClCompile Include="minhook\src\buffer.cpp">
       <Filter>external</Filter>
     </ClCompile>
-    <ClCompile Include="minhook\src\hook.c">
+    <ClCompile Include="minhook\src\hook.cpp">
       <Filter>external</Filter>
     </ClCompile>
-    <ClCompile Include="minhook\src\trampoline.c">
+    <ClCompile Include="minhook\src\trampoline.cpp">
       <Filter>external</Filter>
     </ClCompile>
-    <ClCompile Include="minhook\src\hde\hde64.c">
-      <Filter>external</Filter>
-    </ClCompile>
-    <ClCompile Include="minhook\src\hde\hde32.c">
+    <ClCompile Include="minhook\src\hde\hde32.cpp">
       <Filter>external</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui_widgets.cpp">

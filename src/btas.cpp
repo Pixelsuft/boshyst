@@ -1196,7 +1196,7 @@ void btas::draw_tab() {
             ExecuteTriggeredEvent(0xfffefffd);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Export") && st.frame != 0)
+        if (st.frame != 0 && ImGui::Button("Export"))
             export_replay(string(export_buf) + ".breplay");
         if (st.frame == 0)
             ImGui::SameLine();

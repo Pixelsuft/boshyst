@@ -91,6 +91,7 @@ void rec::init(void* dev) {
     }
     std::string command = "";
     // Yea it's ugly
+    // FIXME: don't modify config
     while (config::cap_cmd.size() > 0) {
         if (starts_with(config::cap_cmd, "$SIZE")) {
             command += to_str(ws.first) + "x" + to_str(ws.second);
