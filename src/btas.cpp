@@ -765,9 +765,10 @@ unsigned int btas::get_rng(unsigned int maxv) {
                                [](const IntPair& a, int range) { return a.a > range; });
     unsigned int ret;
     // Do we have value for that range (maxv) in our queue?
-    if (it == st.rng_buf.end() || it->a != (int)maxv)
+    if (it == st.rng_buf.end() || it->a != (int)maxv) {
         ret = RandomOrig(maxv);
-    else {
+    } else {
+        RandomOrig(maxv); // For consistency
         // Return our value
         ret = (unsigned int)it->b;
         st.rng_buf.erase(it);
