@@ -205,6 +205,8 @@ static void import_replay(const std::string& path) {
             break;
     }
     while (f.read_line(line)) {
+        if (line.size() < 2)
+            continue;
         BTasEvent ev;
         const char* p = line.c_str();
         char* end;
@@ -1279,17 +1281,25 @@ void btas::draw_tab() {
         if (show_rng && !st.rng_buf.empty()) {
             // Show our RNG queue
             int cur_range = -1;
+            int cur_cnt = 0;
             string cur_str;
             for (auto it = st.rng_buf.begin(); it != st.rng_buf.end(); it++) {
                 if (it->a != cur_range) {
-                    if (cur_range != -1)
-                        ImGui::TextUnformatted(cur_str.substr(0, cur_str.size() - 2).c_str());
+                    if (cur_range != -1) {
+                        cur_str.resize(cur_str.size() - 2);
+                        ImGui::TextUnformatted(
+                            (to_str(cur_range) + " (" + to_str(cur_cnt) + "): " + cur_str).c_str());
+                    }
                     cur_range = it->a;
-                    cur_str = to_str(cur_range) + ": ";
+                    cur_str.clear();
+                    cur_cnt = 0;
                 }
                 cur_str += to_str(it->b) + ", ";
+                cur_cnt++;
             }
-            ImGui::TextUnformatted(cur_str.substr(0, cur_str.size() - 2).c_str());
+            cur_str.resize(cur_str.size() - 2);
+            ImGui::TextUnformatted(
+                (to_str(cur_range) + " (" + to_str(cur_cnt) + "): " + cur_str).c_str());
         }
         static int time_val = 0;
         if (ImGui::InputInt("New time", &time_val))
