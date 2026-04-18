@@ -874,6 +874,7 @@ static void exec_event(BTasEvent& ev) {
     }
     case 8: {
         // Set current time (only useful before any frames?)
+        cout << "time change: " << st.time << " -> " << ev.tm.val << '\n';
         st.time = ev.tm.val;
         break;
     }
@@ -1140,6 +1141,7 @@ void btas::draw_info() {
     ImGui::Text("Re-records: %i", st.rerecords);
 #ifdef _DEBUG
     ImGui::Text("Replay index: %i", repl_index);
+    ImGui::Text("System time: %i", (int)st.time);
 #endif
 
     ImGui::Text("Pos: (%i, %i)", st.cur_pos[0], st.cur_pos[1]);

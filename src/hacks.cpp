@@ -158,7 +158,7 @@ static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, in
     } else if (objectInfoID == 269 && conf.hitbox_level > 0) {
         // Nyan cat trail
         return -1;
-    } else if (1) {
+    } else if (0) {
         // 7105 269 6756x1231
         cout << "create object " << parentHandle << ' ' << objectInfoID << ' ' << posX << 'x'
              << posY << '\n';
