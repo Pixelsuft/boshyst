@@ -854,6 +854,7 @@ static void exec_event(BTasEvent& ev) {
     }
     case 6: {
         // Push RNG value for range in our queue
+        // TODO: optimize?
         st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
         std::stable_sort(st.rng_buf.begin(), st.rng_buf.end(),
                   [](const IntPair& a, const IntPair& b) { return a.a > b.a; });
