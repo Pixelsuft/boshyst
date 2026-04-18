@@ -857,7 +857,7 @@ static void exec_event(BTasEvent& ev) {
         // TODO: optimize?
         st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
         std::stable_sort(st.rng_buf.begin(), st.rng_buf.end(),
-                  [](const IntPair& a, const IntPair& b) { return a.a > b.a; });
+                         [](const IntPair& a, const IntPair& b) { return a.a > b.a; });
         break;
     }
     case 7: {

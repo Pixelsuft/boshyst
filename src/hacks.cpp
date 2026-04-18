@@ -113,6 +113,9 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
         // no teleport effects
         return -1;
     }
+    /*else if (conf.hitbox_level > 0 && strlen(s1) > 1) {
+        cout << "test str: " << s1 << '\n';
+    }*/
     // menuChosen, NameTags, jump, doublejump, teleporting, save, Save, shoot, shooot, restart,
     // KillAll, killboss
     auto ret = _stricmpOrig(s1, s2);
@@ -152,6 +155,13 @@ static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, in
         // blocking it reduces ammount of crashes
         // cout << "save object spam prevented" << '\n';
         return -1;
+    } else if (objectInfoID == 269 && conf.hitbox_level > 0) {
+        // Nyan cat trail
+        return -1;
+    } else if (1) {
+        // 7105 269 6756x1231
+        cout << "create object " << parentHandle << ' ' << objectInfoID << ' ' << posX << 'x'
+             << posY << '\n';
     }
     auto ret = CreateObjectOrig(parentHandle, objectInfoID, posX, posY, creationParam,
                                 creationFlags, initialDir, layerIndex);
@@ -964,7 +974,8 @@ void init_simple_hacks() {
     // First-frame init
     input_init();
     if (conf.cap_au)
-        ASS(CreateDirectoryW(L"temp_audio", nullptr) != 0 || GetLastError() == ERROR_ALREADY_EXISTS);
+        ASS(CreateDirectoryW(L"temp_audio", nullptr) != 0 ||
+            GetLastError() == ERROR_ALREADY_EXISTS);
     if (!is_hourglass && (is_btas || !conf.tas_mode)) {
         // hook(mem::get_base() + 0x43e30, MainWindowProcHook, &MainWindowProcOrig);
         // hook(mem::get_base() + 0x41ba0, EditWindowProcHook, &EditWindowProcOrig);
@@ -993,7 +1004,8 @@ void init_simple_hacks() {
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
-    hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
+    if (!is_btas)
+        hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
     if (conf.no_save_object_spamming)
         hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);

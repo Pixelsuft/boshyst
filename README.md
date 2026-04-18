@@ -15,8 +15,8 @@ Just also put [BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/head
 Open the config to see binds. <br />
 Known problems:
  - Save files forgetting after loading a state (breaks in-game save logic, also some visual stuff which game thinks is locked) (can be fixed: see `tas_save_slot_fix` in config)
- - RNG seed desyncs (also might be caused by changing visual settings)
- - Hitbox desyncs (TODO: research why `DirBlur x3.fx` affects that)
+ - RNG seed desyncs (also might be caused by changing visual settings) (TODO: somehow add option to disable shaders without affecting RNG)
+ - Hitbox desyncs (TODO: research why `DirBlur x3.fx` affects that, might be caused RNG)
  - Some input problems (you can shoot right after loading a state even if you shot right before saving; pressing C right after load won't work => desyncs)
  - ~~May crash when loading a state (seems to be memory corruption, also happens without BTAS, would be really difficult to fix) (seems to be using software render with `MESA` + `WineD3D` reduces ammount of crashes)~~ seems to be our bug (hopefully) fixed by using pointers instead of references for decompiled game structs for some reason
 ## Building and running
