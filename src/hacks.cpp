@@ -405,10 +405,10 @@ static unsigned int __cdecl RandomHook(unsigned int maxv) {
     // Main random func
     unsigned int ret;
     if (is_btas)
-        return btas::get_rng(maxv);
+        ret = btas::get_rng(maxv);
     else if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (int)maxv)) {
         if (fix_rng_val == 100.f)
-            ret = maxv - 1;
+            ret = (maxv != 0) ? (maxv - 1) : 0;
         else
             ret = (unsigned int)((float)maxv * fix_rng_val / 100.f);
     } else

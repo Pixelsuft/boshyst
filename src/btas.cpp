@@ -1064,7 +1064,8 @@ void btas::on_key(int k, bool pressed) {
                 if (show_menu)
                     break;
                 ASS(eit == holding.end()); // Single binds are allowed only
-                holding.push_back(bind.mapper.k);
+                if (eit == holding.end())
+                    holding.push_back(bind.mapper.k);
             } else if (eit != holding.end()) {
                 // if (eit != holding.end())
                 holding.erase(eit);
