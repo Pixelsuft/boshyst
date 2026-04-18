@@ -963,6 +963,8 @@ static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, in
 void init_simple_hacks() {
     // First-frame init
     input_init();
+    if (conf.cap_au)
+        ASS(CreateDirectoryW(L"temp_audio", nullptr) != 0 || GetLastError() == ERROR_ALREADY_EXISTS);
     if (!is_hourglass && (is_btas || !conf.tas_mode)) {
         // hook(mem::get_base() + 0x43e30, MainWindowProcHook, &MainWindowProcOrig);
         // hook(mem::get_base() + 0x41ba0, EditWindowProcHook, &EditWindowProcOrig);

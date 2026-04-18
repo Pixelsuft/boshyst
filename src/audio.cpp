@@ -173,15 +173,15 @@ void on_audio_destroy() {
     if (g_history.empty())
         return;
 
-    bfs::File filterFile("temp_filters.txt", 1);
-    bfs::File batFile("amerge.bat", 1);
+    bfs::File filterFile("audio_filters.txt", 1);
+    bfs::File batFile("audio_merge.bat", 1);
 
     std::string filters = "";
     std::string mix = "";
 
     for (size_t i = 0; i < g_history.size(); ++i) {
         auto& c = g_history[i];
-        std::string fn = "audio_" + to_str(c.startTime) + "_" + to_str(c.idx) + ".wav";
+        std::string fn = "temp_audio/audio_" + to_str(c.startTime) + "_" + to_str(c.idx) + ".wav";
         std::string finalLabel = "[final" + to_str(i) + "]";
         double totalDuration =
             (c.endTime > c.startTime) ? (double)(c.endTime - c.startTime) / 1000.0 : 0.0;
@@ -230,7 +230,7 @@ void on_audio_destroy() {
     filters += mix + "amix=inputs=" + to_str(g_history.size()) + ":normalize=0[out]";
 
     // FFmpeg 2026 syntax: -/filter_complex reads from file
-    std::string batContent = "@echo off\nffmpeg -y -/filter_complex temp_filters.txt -map "
+    std::string batContent = "@echo off\nffmpeg -y -/filter_complex audio_filters.txt -map "
                              "\"[out]\" -ar 48000 output.wav\npause";
 
     filterFile.write(filters.c_str(), filters.size());
@@ -242,7 +242,7 @@ void on_audio_destroy() {
 static void reinit_wav(AudioCapture& cap) {
     auto cur_time = audio_get_time();
     auto idx = gen_uid(cur_time);
-    string fn = "audio_" + to_str(cur_time) + "_" + to_str(idx) + ".wav";
+    string fn = "temp_audio\\audio_" + to_str(cur_time) + "_" + to_str(idx) + ".wav";
     cap.file = bfs::File(fn, 1);
     cap.file.write((char*)&cap.h, sizeof(WavHeader));
     cap.bytesWritten = 0;
