@@ -194,8 +194,15 @@ static void import_replay(const std::string& path) {
         last_msg = "Invalid replay file";
         return;
     }
-    st.clear_arr();
-    st.clear();
+    if (st.frame == 0) {
+        st.clear_arr();
+        st.clear();    
+    } else {
+        repl_holding = st.prev;
+        st.ev.clear();
+        st.temp_ev.clear();
+        st.timer_conds.clear();
+    }
     while (f.read_line(line)) {
         if (starts_with(line, "-3,total,"))
             st.total = std::atoi(line.substr(9).c_str());
@@ -246,6 +253,7 @@ static void import_replay(const std::string& path) {
         last_msg = "Invalid total frame counter";
         return;
     }
+    repl_index = 0;
     is_replay = true;
     last_msg = "Replay imported";
 }
@@ -1246,9 +1254,14 @@ void btas::draw_tab() {
         ImGui::SameLine();
         if (st.frame != 0 && ImGui::Button("Export"))
             export_replay(string(export_buf) + ".breplay");
-        if (st.frame == 0)
+#ifdef _DEBUG
+        const bool show_import_button = true;
+#else
+        const bool show_import_button = st.frame == 0;
+#endif
+        if (show_import_button)
             ImGui::SameLine();
-        if (st.frame == 0 && ImGui::Button("Import"))
+        if (show_import_button && ImGui::Button("Import"))
             import_replay(string(export_buf) + ".breplay");
         ImGui::Checkbox("Timer conditions fix", &timers_fix);
         static int rval[3] = {0, 0, 0};
