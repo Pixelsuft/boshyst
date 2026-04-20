@@ -357,6 +357,7 @@ void btas::pre_init() {
     // Disable CRun_SyncFrameRate, MsgWaitForMultipleObjects and some other sync stuff when needed
     // WPM(mem::get_base() + 0x365db, buf, 5);
     // WPM(mem::get_base() + 0x36630, buf, 5);
+    WPM(mem::get_base() + 0x1d6d7, buf, 6);
     WPM(mem::get_base() + 0x4659f, buf, 5);
     WPM(mem::get_base() + 0x2a74, buf, 2);
     WPM(mem::get_base() + 0x2a49, &temp, 1);
