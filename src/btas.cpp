@@ -26,9 +26,7 @@ using std::string;
 extern HANDLE hproc;
 extern HWND hwnd;
 extern HWND mhwnd;
-extern SHORT(__stdcall* GetAsyncKeyStateOrig)(int k);
 extern DWORD(__stdcall* timeGetTimeOrig)();
-extern int(__stdcall* UpdateGameFrameOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 extern unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
@@ -800,12 +798,8 @@ unsigned int btas::get_rng(unsigned int maxv) {
 short btas::TasGetKeyState(int k) {
     if (!last_upd)
         return 0;
-    if (is_replay) {
-        auto eit = std::find(repl_holding.begin(), repl_holding.end(), k);
-        return (eit == repl_holding.end()) ? 0 : -32767;
-    }
-    auto eit = std::find(holding.begin(), holding.end(), k);
-    return (eit == holding.end()) ? 0 : -32767;
+    auto eit = std::find(st.prev.begin(), st.prev.end(), k);
+    return (eit == st.prev.end()) ? 0 : -32767;
 }
 
 static void exec_event(BTasEvent& ev) {
