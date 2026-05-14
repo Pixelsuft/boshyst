@@ -30,7 +30,9 @@ extern DWORD(__stdcall* timeGetTimeOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 extern unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
-void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
+static int (__cdecl* MMF2_ProcessHotkeys)(HWND hMainWnd, int isAltPressed, short virtualKey,
+                                       void* pAccTable);
+    void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
 
 struct BTasBind {
     union {
@@ -339,6 +341,7 @@ void btas::pre_init() {
     cout << "btas pre-init\n";
     DestroyObject = (decltype(DestroyObject))(mem::get_base() + 0x1e710);
     ExecuteTriggeredEvent = (decltype(ExecuteTriggeredEvent))(mem::get_base() + 0x47cb0);
+    MMF2_ProcessHotkeys = (decltype(MMF2_ProcessHotkeys))(mem::get_base() + 0x40570);
     const uint8_t buf[] = {0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
     const uint8_t joy_patch[] = {0x31, 0xC0, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
                                  0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
@@ -884,6 +887,18 @@ static void exec_event(BTasEvent& ev) {
     case 9: {
         // God mode fix
         conf.god = ev.click.x == 0 ? false : true;
+        break;
+    }
+    case 10: {
+        // Sound stop/resume bind
+        RunApp* gState = *(RunApp**)0x0459a94;
+        st.prev.push_back(VK_CONTROL);
+        bool prev_last_upd = last_upd;
+        last_upd = true;
+        MMF2_ProcessHotkeys(hwnd, 0, (short)'S', gState->pKeyTable);
+        last_upd = prev_last_upd;
+        st.prev.pop_back();
+        cout << "audio event\n";
         break;
     }
     }
