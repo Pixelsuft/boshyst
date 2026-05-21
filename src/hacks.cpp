@@ -258,7 +258,7 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     last_reset = true;
     if (strcmp(cap, "I Wanna Be The Boshy") == 0) {
         // This happens only when chaning/resetting scene lul
-        audio_stop(); // Yeah it's hacky (for performance)
+        audio_stop(); // Yeah it's hacky (for performance). TODO: proper audio decording
         if (capturing)
             return FALSE;
     }

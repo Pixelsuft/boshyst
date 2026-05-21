@@ -22,8 +22,6 @@ void init();
 void draw_info();
 void draw_tab();
 void on_key(int k, bool pressed);
-void reg_obj(int handle);
-void unreg_obj(int handle);
 void my_mouse_pos(long& x, long& y);
 unsigned int get_rng(unsigned int maxv);
 } // namespace btas

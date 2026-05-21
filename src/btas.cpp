@@ -30,9 +30,9 @@ extern DWORD(__stdcall* timeGetTimeOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 extern unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static void(__cdecl* DestroyObject)(int handleIndex, int destroyMode);
-static int (__cdecl* MMF2_ProcessHotkeys)(HWND hMainWnd, int isAltPressed, short virtualKey,
-                                       void* pAccTable);
-    void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
+static int(__cdecl* MMF2_ProcessHotkeys)(HWND hMainWnd, int isAltPressed, short virtualKey,
+                                         void* pAccTable);
+void(__cdecl* ExecuteTriggeredEvent)(unsigned int p);
 
 struct BTasBind {
     union {
@@ -196,7 +196,7 @@ static void import_replay(const std::string& path) {
     }
     if (st.frame == 0) {
         st.clear_arr();
-        st.clear();    
+        st.clear();
     } else {
         repl_holding = st.prev;
         st.ev.clear();
@@ -243,13 +243,13 @@ static void import_replay(const std::string& path) {
                 return;
             }
         }
-        if (!st.ev.empty() && (st.ev.end() - 1)->frame > ev.frame) {
+        if (!st.ev.empty() && st.ev.back().frame > ev.frame) {
             last_msg = "Invalid order";
             return;
         }
         st.ev.push_back(ev);
     }
-    if (!st.ev.empty() && (st.ev.end() - 1)->frame > st.total) {
+    if (!st.ev.empty() && st.ev.back().frame > st.total) {
         last_msg = "Invalid total frame counter";
         return;
     }
@@ -397,6 +397,7 @@ void btas::pre_init() {
     WPM(mem::get_base() + 0x3a4e9, &temp, 1);
     if (!conf.rng_patches)
         return;
+    cout << "DEPRECATED rng patches\n";
     // Force 0 rng for engine shit not related to the game
     const uint8_t rng_buf[] = {0x31, 0xc0, 0x90, 0x90, 0x90};
     // Bouncing ball?
@@ -457,8 +458,8 @@ void btas::init() {
 static void trim_current_state() {
     st.total = st.frame;
     // Hacky way to trim events from st.total to st.frame
-    while (!st.ev.empty() && (st.ev.end() - 1)->frame >= st.frame)
-        st.ev.erase(st.ev.end() - 1);
+    while (!st.ev.empty() && st.ev.back().frame >= st.frame)
+        st.ev.pop_back();
 }
 
 template <typename T> static void write_bin(bfs::File& f, const std::vector<T>& data) {
@@ -734,42 +735,6 @@ static void b_state_load(int slot) {
         last_msg = string("State ") + to_str(slot) + " loaded (" + last_msg + ")";
 }
 
-void btas::reg_obj(int handle) {
-    // unused
-    if (b_loading_saving_state && 0) {
-        cout << "bullet reg\n";
-        RunHeader* pState = get_state();
-        auto obj = pState->objectList[handle * 2];
-    }
-    if (0) {
-        RunHeader* pState = get_state();
-        auto& obj = *pState->objectList[handle * 2];
-        auto& s = *obj.spriteHandle;
-        cout << "launch " << handle << " " << s.flags << " " << s.layer << " " << s.numChildren
-             << " " << s.textureHandleA << " " << s.textureHandleB << " " << s.zOrder << " "
-             << std::endl;
-        // obj->movementType = 13
-        // void(__cdecl * MMF2_RefreshObject)(ObjectHeader*);
-        // MMF2_RefreshObject = (decltype(MMF2_RefreshObject))0x401870;
-        // MMF2_RefreshObject(obj);
-        // obj->nextSelectedHandle = -1;
-        // TODO: bullet warn!!!!!!!! 4479e8
-        // TODO: research
-        // should trigger destruction at 0411ed1
-
-        // renderGroup = 2
-        // upd cb 41EA60
-        // important 401eb6 RefreshObjectVisuals DestroyObjectInstance(refs)
-        // 40211e for showing boshyhitbox
-        // TODO: 420aa6 ui set to remove anim
-        // 042e530 - player coll with objs
-    }
-}
-
-void btas::unreg_obj(int handle) {
-    // unused
-}
-
 unsigned int btas::get_rng(unsigned int maxv) {
     if (maxv == 0 || maxv == 1)
         return 0;
@@ -891,7 +856,7 @@ static void exec_event(BTasEvent& ev) {
     }
     case 10: {
         // Sound stop/resume bind
-        RunApp* gState = *(RunApp**)0x0459a94;
+        RunApp* gState = *(RunApp**)(mem::get_base() + 0x59a94);
         st.prev.push_back(VK_CONTROL);
         bool prev_last_upd = last_upd;
         last_upd = true;
