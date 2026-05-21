@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <imgui.h>
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 #undef max
 #undef min
@@ -162,13 +163,13 @@ static int need_scene_state_slot = -1;
 static bool timers_fix = true;
 static bool next_step = false;
 static bool slowmo = false;
-bool last_upd = false;
-bool last_upd2 = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
 static bool fix_needed = false; // TODO: remove when everything is fixed
+bool last_upd = false;
+bool last_upd2 = false;
 
 bool is_btas = false;
 bool fast_forward = false;
@@ -456,9 +457,10 @@ void btas::init() {
 
 static void trim_current_state() {
     st.total = st.frame;
-    // Hacky way to trim events from st.total to st.frame
-    while (!st.ev.empty() && st.ev.back().frame >= st.frame)
-        st.ev.pop_back();
+    auto it = std::lower_bound(st.ev.begin(), st.ev.end(), st.frame,
+                               [](const BTasEvent& e, int f) { return e.frame < f; });
+    if (it != st.ev.end())
+        st.ev.erase(it, st.ev.end());
 }
 
 template <typename T> static void write_bin(bfs::File& f, const std::vector<T>& data) {
