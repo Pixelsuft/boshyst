@@ -491,6 +491,7 @@ template <typename T> static void load_bin(bfs::File& f, T& data) { ASS(f.read(&
 
 static void fill_timers_fix() {
     // FIXME: why so many timers if used much less?
+    // TODO: maybe use more proper version??? https://github.com/Pixelsuft/overfusion/blob/main/tools/timer_fix.cpp
     if (!timers_fix)
         return;
     GlobalStats* gStats = get_stats();
