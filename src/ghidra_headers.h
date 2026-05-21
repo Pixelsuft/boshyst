@@ -1,24 +1,25 @@
-#include <cstdint>
+#pragma once
 #include <Windows.h>
+#include <cstdint>
 
-typedef unsigned char   undefined;
+typedef unsigned char undefined;
 
-typedef unsigned char    byte;
-typedef unsigned int    dword;
+typedef unsigned char byte;
+typedef unsigned int dword;
 
-typedef long long    longlong;
-typedef unsigned char    uchar;
-typedef unsigned int    uint;
-typedef unsigned long long    uint16;
-typedef unsigned long    ulong;
-typedef unsigned char    undefined1;
-typedef unsigned short    undefined2;
-typedef unsigned int    undefined3;
-typedef unsigned int    undefined4;
-typedef unsigned long long    undefined8;
-typedef unsigned short    ushort;
-typedef unsigned short    wchar16;
-typedef unsigned short    word;
+typedef long long longlong;
+typedef unsigned char uchar;
+typedef unsigned int uint;
+typedef unsigned long long uint16;
+typedef unsigned long ulong;
+typedef unsigned char undefined1;
+typedef unsigned short undefined2;
+typedef unsigned int undefined3;
+typedef unsigned int undefined4;
+typedef unsigned long long undefined8;
+typedef unsigned short ushort;
+typedef unsigned short wchar16;
+typedef unsigned short word;
 typedef struct ActionHeader ActionHeader, *PActionHeader;
 
 struct ActionHeader {
@@ -397,10 +398,10 @@ struct AnimController {
     int loopCount;
     int currentFrame;
     int lastAnimID;
-    ushort *pImageData;
+    ushort* pImageData;
     int currentFrameIdx;
     uint lastImageHandle;
-    byte *subFrameTimer;
+    byte* subFrameTimer;
     int field9_0x24;
     uint currentDirection;
     uint targetDirection;
@@ -536,7 +537,7 @@ struct EventGroup {
 typedef struct EngineState EngineState, *PEngineState;
 
 struct EngineState {
-    undefined **field0_0x0;
+    undefined** field0_0x0;
     undefined field1_0x4;
     undefined field2_0x5;
     undefined field3_0x6;
@@ -1429,13 +1430,13 @@ struct EngineState {
     undefined field890_0x37d;
     undefined field891_0x37e;
     undefined field892_0x37f;
-    uint *numLoadedExtensions;
+    uint* numLoadedExtensions;
 };
 
 typedef struct EventContext EventContext, *PEventContext;
 
 struct EventContext {
-    void *nextContext;
+    void* nextContext;
     char targetName;
     undefined field2_0x5;
     undefined field3_0x6;
@@ -1521,14 +1522,14 @@ typedef struct SpriteHandle SpriteHandle, *PSpriteHandle;
 
 #pragma pack(push, 2)
 struct RunHeader {
-    void *hMainEngine;
+    void* hMainEngine;
     undefined4 field1_0x4;
     undefined4 pAudioDriver;
     HWND hMainWnd;
     HWND hDisplayWnd;
     HWND hMainWin;
-    struct RunApp *pApp;
-    undefined4 *frameSpeedConst;
+    struct RunApp* pApp;
+    undefined4* frameSpeedConst;
     int currentScrollY;
     undefined field9_0x24;
     undefined field10_0x25;
@@ -1558,11 +1559,11 @@ struct RunHeader {
     undefined field34_0x52;
     undefined field35_0x53;
     int field36_0x54;
-    struct ObjectHeader *pObjectListHead;
+    struct ObjectHeader* pObjectListHead;
     int field38_0x5c;
     int field39_0x60;
     int field40_0x64;
-    int timerEventTablePtr; /* Created by retype action */
+    int timerEventTablePtr;  /* Created by retype action */
     int systemEventTablePtr; /* Created by retype action */
     undefined field43_0x70;
     undefined field44_0x71;
@@ -1578,7 +1579,7 @@ struct RunHeader {
     undefined field54_0x81;
     undefined field55_0x82;
     undefined field56_0x83;
-    int *rhEventGroupPtr;
+    int* rhEventGroupPtr;
     int eventBankPtr;
     undefined field59_0x8c;
     undefined field60_0x8d;
@@ -1586,10 +1587,10 @@ struct RunHeader {
     undefined field62_0x8f;
     int field63_0x90;
     uint unk789;
-    struct ObjectHeader **selectionStackCurrent;
-    struct ObjectHeader **selectionStackLimit;
-    struct ObjectHeader **lastTime;
-    struct ObjectHeader **oldFrameDeltaTime;
+    struct ObjectHeader** selectionStackCurrent;
+    struct ObjectHeader** selectionStackLimit;
+    struct ObjectHeader** lastTime;
+    struct ObjectHeader** oldFrameDeltaTime;
     int levelWidth;
     int levelHeight;
     int currentViewportX;
@@ -1665,13 +1666,13 @@ struct RunHeader {
     undefined field141_0x12a;
     undefined field142_0x12b;
     int field143_0x12c;
-    struct ObjectHeader **eventQueueBase;
-    struct ObjectHeader **selectionStackCurrent2;
-    struct ObjectHeader **pEventQueueTail;
+    struct ObjectHeader** eventQueueBase;
+    struct ObjectHeader** selectionStackCurrent2;
+    struct ObjectHeader** pEventQueueTail;
     int queueWasModified;
     int actionLoopCount; /* Created by retype action */
     int recursiveActionPassCount;
-    undefined *postActionCallback;
+    undefined* postActionCallback;
     byte rhVBLDelta;
     byte rhVBLCount;
     undefined field153_0x14e;
@@ -1683,10 +1684,10 @@ struct RunHeader {
     undefined2 lastKeyPressed;
     undefined field160_0x162;
     undefined field161_0x163;
-    uint selectionStackPrev; /* Created by retype action */
-    struct ObjectHeader **selectionStackBase; /* Created by retype action */
-    int selectionDepth; /* Created by retype action */
-    undefined1 lastMousePos; /* Created by retype action */
+    uint selectionStackPrev;                  /* Created by retype action */
+    struct ObjectHeader** selectionStackBase; /* Created by retype action */
+    int selectionDepth;                       /* Created by retype action */
+    undefined1 lastMousePos;                  /* Created by retype action */
     undefined field166_0x171;
     undefined field167_0x172;
     undefined field168_0x173;
@@ -1764,7 +1765,7 @@ struct RunHeader {
     undefined field240_0x1f3;
     undefined field241_0x1f4;
     undefined field242_0x1f5;
-    struct RunApp *field243_0x1f6;
+    struct RunApp* field243_0x1f6;
     undefined field244_0x1fa;
     undefined field245_0x1fb;
     undefined field246_0x1fc;
@@ -2113,37 +2114,37 @@ struct RunHeader {
     undefined field589_0x359;
     undefined field590_0x35a;
     undefined field591_0x35b;
-    undefined *f_AssignUpdate;
-    undefined *field593_0x360;
-    undefined *field594_0x364;
-    undefined1 *field595_0x368;
-    undefined1 *field596_0x36c;
-    undefined1 *field597_0x370;
-    undefined *field598_0x374;
-    undefined1 *field599_0x378;
-    undefined1 *field600_0x37c;
-    undefined *field601_0x380;
-    undefined1 *field602_0x384;
-    undefined1 *field603_0x388;
-    undefined *field604_0x38c;
-    undefined *field605_0x390;
-    undefined1 *field606_0x394;
-    undefined1 *field607_0x398;
+    undefined* f_AssignUpdate;
+    undefined* field593_0x360;
+    undefined* field594_0x364;
+    undefined1* field595_0x368;
+    undefined1* field596_0x36c;
+    undefined1* field597_0x370;
+    undefined* field598_0x374;
+    undefined1* field599_0x378;
+    undefined1* field600_0x37c;
+    undefined* field601_0x380;
+    undefined1* field602_0x384;
+    undefined1* field603_0x388;
+    undefined* field604_0x38c;
+    undefined* field605_0x390;
+    undefined1* field606_0x394;
+    undefined1* field607_0x398;
     undefined field608_0x39c;
     undefined field609_0x39d;
     undefined field610_0x39e;
     undefined field611_0x39f;
-    undefined1 *field612_0x3a0;
+    undefined1* field612_0x3a0;
     undefined field613_0x3a4;
     undefined field614_0x3a5;
     undefined field615_0x3a6;
     undefined field616_0x3a7;
-    undefined1 *field617_0x3a8;
-    undefined1 *field618_0x3ac;
-    undefined1 *field619_0x3b0;
-    undefined1 *field620_0x3b4;
-    undefined1 *field621_0x3b8;
-    undefined *field622_0x3bc;
+    undefined1* field617_0x3a8;
+    undefined1* field618_0x3ac;
+    undefined1* field619_0x3b0;
+    undefined1* field620_0x3b4;
+    undefined1* field621_0x3b8;
+    undefined* field622_0x3bc;
     undefined field623_0x3c0;
     undefined field624_0x3c1;
     undefined field625_0x3c2;
@@ -2172,26 +2173,26 @@ struct RunHeader {
     undefined field648_0x3d9;
     undefined field649_0x3da;
     undefined field650_0x3db;
-    undefined1 *field651_0x3dc;
-    undefined1 *field652_0x3e0;
-    undefined1 *field653_0x3e4;
-    undefined1 *field654_0x3e8;
-    undefined *field655_0x3ec;
-    undefined *field656_0x3f0;
-    undefined1 *field657_0x3f4;
-    undefined1 *field658_0x3f8;
-    undefined1 *field659_0x3fc;
-    undefined4 *hMainFrame;
-    struct ActionHeader *currentActionSelection;
+    undefined1* field651_0x3dc;
+    undefined1* field652_0x3e0;
+    undefined1* field653_0x3e4;
+    undefined1* field654_0x3e8;
+    undefined* field655_0x3ec;
+    undefined* field656_0x3f0;
+    undefined1* field657_0x3f4;
+    undefined1* field658_0x3f8;
+    undefined1* field659_0x3fc;
+    undefined4* hMainFrame;
+    struct ActionHeader* currentActionSelection;
     undefined4 isResuming;
-    char *activeTargetName;
+    char* activeTargetName;
     int lastPauseFrame;
     int complexEventCount;
     short conditionStatus;
     undefined field667_0x41a;
     undefined field668_0x41b;
     undefined4 field669_0x41c;
-    void *savedFilePath;
+    void* savedFilePath;
     undefined field671_0x424;
     undefined field672_0x425;
     undefined field673_0x426;
@@ -2207,7 +2208,7 @@ struct RunHeader {
     int field683_0x430;
     short extRoutineMode;
     undefined2 rhSaveFlag;
-    void *pExtData;
+    void* pExtData;
     int lastSaveFrame;
     undefined4 physicsMultiplier;
     undefined4 field689_0x444;
@@ -2253,7 +2254,7 @@ struct RunHeader {
     undefined2 objectCreationFlag;
     short field730_0x486;
     LPSTR field731_0x488;
-    void *eventContextList;
+    void* eventContextList;
     undefined field733_0x490;
     undefined field734_0x491;
     undefined field735_0x492;
@@ -2263,7 +2264,7 @@ struct RunHeader {
     undefined field739_0x499;
     undefined field740_0x49a;
     undefined field741_0x49b;
-    undefined *field742_0x49c;
+    undefined* field742_0x49c;
     undefined field743_0x4a0;
     undefined field744_0x4a1;
     undefined field745_0x4a2;
@@ -2273,13 +2274,13 @@ struct RunHeader {
     undefined field749_0x4a9;
     undefined field750_0x4aa;
     undefined field751_0x4ab;
-    undefined *field752_0x4ac;
+    undefined* field752_0x4ac;
     int field753_0x4b0;
     undefined field754_0x4b4;
     undefined field755_0x4b5;
     undefined field756_0x4b6;
     undefined field757_0x4b7;
-    struct ObjectHeader **lastObjListIter;
+    struct ObjectHeader** lastObjListIter;
     short extraObjectsCreated;
     undefined field760_0x4be;
     undefined field761_0x4bf;
@@ -2296,13 +2297,13 @@ struct RunHeader {
     int subTickStep;
     int frameSkipAccumulator;
     int frameDelay;
-    void *field775_0x4e4;
-    void *field776_0x4e8;
+    void* field775_0x4e4;
+    void* field776_0x4e8;
     int field777_0x4ec;
     short collisionCleanupTailHandle;
     undefined1 requiresActionProtection;
     undefined field780_0x4f3;
-    undefined4 *hInstance;
+    undefined4* hInstance;
     undefined field782_0x4f8;
     undefined field783_0x4f9;
     undefined field784_0x4fa;
@@ -2327,12 +2328,12 @@ struct RunHeader {
     undefined field803_0x52a;
     undefined field804_0x52b;
     int stackPtr;
-    void **currentExpressionPtr;
+    void** currentExpressionPtr;
     undefined1 valueStack; /* Created by retype action */
     undefined field808_0x535;
     undefined field809_0x536;
     undefined field810_0x537;
-    int *pResultValues;
+    int* pResultValues;
     undefined field812_0x53c;
     undefined field813_0x53d;
     undefined field814_0x53e;
@@ -5408,7 +5409,7 @@ struct RunHeader {
     undefined field3884_0x1165;
     undefined field3885_0x1166;
     undefined field3886_0x1167;
-    uint *pendingDestructionBitmap;
+    uint* pendingDestructionBitmap;
     undefined field3888_0x116c;
     undefined field3889_0x116d;
     undefined field3890_0x116e;
@@ -5674,7 +5675,7 @@ struct RunHeader {
     undefined field4150_0x1275;
     undefined field4151_0x1276;
     undefined field4152_0x1277;
-    struct ObjectHeader **objectList;
+    struct ObjectHeader** objectList;
 };
 
 #pragma pack(pop)
@@ -5684,7 +5685,7 @@ struct ObjectHeader {
     short nextSelectedHandle;
     short size;
     short firstInstanceHandle;
-    struct RunRecord *pRunRecord;
+    struct RunRecord* pRunRecord;
     short type;
     short version;
     ushort parentID;
@@ -5693,17 +5694,17 @@ struct ObjectHeader {
     short prevInstanceHandle;
     ushort renderGroup; /* Created by retype action */
     short deletionDelayCounter;
-    struct ObjectHeader *pObjectInfo;
-    undefined1 *eventTriggerTable;
+    struct ObjectHeader* pObjectInfo;
+    undefined1* eventTriggerTable;
     undefined field15_0x24;
     undefined field16_0x25;
     undefined field17_0x26;
     undefined field18_0x27;
     int prevSelectedState;
-    void *currentSelectedState;
+    void* currentSelectedState;
     int currentInterval;
     int initialAnimation; /* Created by retype action */
-    byte *pCurrentNode;
+    byte* pCurrentNode;
     undefined field24_0x3c;
     undefined field25_0x3d;
     undefined field26_0x3e;
@@ -5712,7 +5713,7 @@ struct ObjectHeader {
     undefined field29_0x41;
     undefined field30_0x42;
     undefined field31_0x43;
-    struct MovementController *movementControllerPtr;
+    struct MovementController* movementControllerPtr;
     int xVelocity;
     int xPos;
     int yVelocity;
@@ -5733,8 +5734,8 @@ struct ObjectHeader {
     int alterableVariablesOffset;
     uint layer;
     int logicData;
-    undefined *fnRender;
-    undefined *fnUpdatePos;
+    undefined* fnRender;
+    undefined* fnUpdatePos;
     ushort internalFlags;
     undefined2 maskDestructionLink;
     undefined1 collisionData; /* Created by retype action */
@@ -5768,13 +5769,13 @@ struct ObjectHeader {
     undefined4 movementControllerPtr2;
     int animControlleroffset;
     int hoAdpOffset;
-    void *mvtTickHandler;
-    undefined *pAnimUpdateProc;
+    void* mvtTickHandler;
+    undefined* pAnimUpdateProc;
     short pathSpeed;
     short pathFlags;
     uint movementType;
-    int *hoMovementInterface;
-    struct SpriteHandle *spriteHandle;
+    int* hoMovementInterface;
+    struct SpriteHandle* spriteHandle;
     int resetMode;
     int angle;
     float hoScaleX;
@@ -5789,7 +5790,7 @@ struct ObjectHeader {
     short collisionFlags;
     undefined4 redrawFlag;
     uint lastRenderX;
-    int *lastRenderY;
+    int* lastRenderY;
     int lastAngle;
     float lastScale;
     short field112_0x114;
@@ -5798,8 +5799,8 @@ struct ObjectHeader {
     int rcBoundaryTop;
     int rcBoundaryRight;
     int rcBoundaryBottom;
-    undefined4 *pAnimTimer;
-    undefined4 *field119_0x12c;
+    undefined4* pAnimTimer;
+    undefined4* field119_0x12c;
     undefined4 xPositionAccurate;
     undefined4 yPositionAccurate;
     int frameID;
@@ -5840,29 +5841,29 @@ struct ObjectHeader {
     undefined field157_0x168;
     undefined field158_0x169;
     undefined1 collisionGridDirty; /* Created by retype action */
-    undefined1 isTransformDirty; /* Created by retype action */
+    undefined1 isTransformDirty;   /* Created by retype action */
     short isHitboxDirty;
     uint hoType;
     undefined4 field163_0x172;
     undefined4 isStationary;
     int field165_0x17a;
     uint movementState;
-    struct ObjectHeader *pParent;
+    struct ObjectHeader* pParent;
     int moveTimer;
     uint moveInterval;
     int deceleration;
-    int *subYPos;
+    int* subYPos;
     int targetXPos;
-    int *ownerUID;
+    int* ownerUID;
     int currentFrameIndex;
-    byte *pDataBuffer;
+    byte* pDataBuffer;
     int stateType;
-    ushort *pAnimationHeader;
+    ushort* pAnimationHeader;
     uint timerOffset;
     int previousXPos;
-    int *previousYPos;
+    int* previousYPos;
     int nodePauseTimer;
-    char *hoPathEventLabel;
+    char* hoPathEventLabel;
     undefined field183_0x1c2;
     undefined field184_0x1c3;
     undefined field185_0x1c4;
@@ -5912,7 +5913,7 @@ struct ObjectHeader {
     undefined field229_0x1f0;
     undefined field230_0x1f1;
     undefined4 field231_0x1f2;
-    struct RunApp *field232_0x1f6;
+    struct RunApp* field232_0x1f6;
     undefined field233_0x1fa;
     undefined field234_0x1fb;
     int pCounterData;
@@ -5956,7 +5957,7 @@ struct ObjectHeader {
     undefined field273_0x22b;
     undefined1 isSafeToDelete; /* Created by retype action */
     undefined field275_0x22d;
-    void *field276_0x22e;
+    void* field276_0x22e;
 };
 
 struct RunApp {
@@ -6056,8 +6057,8 @@ struct RunApp {
     int TotalFramesCount;
     uint FrameRate;
     int field95_0x7c;
-    char *szAppName;
-    char *field97_0x84;
+    char* szAppName;
+    char* field97_0x84;
     undefined1 field98_0x88;
     undefined field99_0x89;
     undefined field100_0x8a;
@@ -6068,17 +6069,17 @@ struct RunApp {
     undefined field105_0x95;
     undefined field106_0x96;
     undefined field107_0x97;
-    char *szTempPath;
+    char* szTempPath;
     int hAppData;
     int field110_0xa0;
-    char *defaultSavePath;
+    char* defaultSavePath;
     undefined1 field112_0xa8;
     undefined field113_0xa9;
     undefined field114_0xaa;
     undefined field115_0xab;
     HICON field116_0xac;
     HMENU hMenu;
-    byte *pKeyTable;
+    byte* pKeyTable;
     undefined1 pMenuShortcutBuffer; /* Created by retype action */
     undefined field120_0xb9;
     undefined field121_0xba;
@@ -6093,7 +6094,7 @@ struct RunApp {
     undefined field130_0xca;
     undefined field131_0xcb;
     int field132_0xcc;
-    int *pFrameOffsets;
+    int* pFrameOffsets;
     int frameNamePtrSUS;
     int nExtensionCount;
     int extTable;
@@ -6224,7 +6225,7 @@ struct RunApp {
     undefined field261_0x169;
     undefined field262_0x16a;
     undefined field263_0x16b;
-    char *stringPoolHeader;
+    char* stringPoolHeader;
     undefined field265_0x170;
     undefined field266_0x171;
     undefined field267_0x172;
@@ -6251,7 +6252,7 @@ struct RunApp {
     undefined field288_0x1a5;
     undefined field289_0x1a6;
     undefined field290_0x1a7;
-    struct RunApp *pParentApp;
+    struct RunApp* pParentApp;
     int field292_0x1ac;
     uint appFlags;
     int field294_0x1b4;
@@ -6269,11 +6270,11 @@ struct RunApp {
     int frameActionType;
     undefined1 firstFrameMaybe;
     undefined3 field308_0x1e9;
-    uint rhCurrentFrame; /* Created by retype action */
+    uint rhCurrentFrame;    /* Created by retype action */
     uint rhCurrentFrameOld; /* Created by retype action */
     undefined1 field311_0x1f4;
     undefined field312_0x1f5;
-    undefined *field313_0x1f6;
+    undefined* field313_0x1f6;
     ushort Flags;
     uint isTransitioning; /* Created by retype action */
     undefined field316_0x200;
@@ -6290,12 +6291,12 @@ struct RunApp {
     uint bInheritGlobalValues;
     uint bArrayInitialized;
     uint bStringTableInit;
-    void *JoystickStatus;
-    void *pGlobalStrings; /* Created by retype action */
-    void *pGlobalValues; /* Created by retype action */
-    ushort *pInitialArrayData;
+    void* JoystickStatus;
+    void* pGlobalStrings; /* Created by retype action */
+    void* pGlobalValues;  /* Created by retype action */
+    ushort* pInitialArrayData;
     uint nArrayElements;
-    void *pActiveArray;
+    void* pActiveArray;
     undefined1 field336_0x26c;
     undefined field337_0x26d;
     undefined field338_0x26e;
@@ -6304,14 +6305,14 @@ struct RunApp {
     undefined field341_0x271;
     undefined field342_0x272;
     undefined field343_0x273;
-    int *pRawStringTable;
+    int* pRawStringTable;
     int stringTableCount; /* Created by retype action */
-    void *pStringTable;
+    void* pStringTable;
     undefined field347_0x280;
     undefined field348_0x281;
     undefined field349_0x282;
     undefined field350_0x283;
-    DWORD *pGlobalStringTable;
+    DWORD* pGlobalStringTable;
     undefined field352_0x288;
     undefined field353_0x289;
     undefined field354_0x28a;
@@ -6388,7 +6389,7 @@ struct RunApp {
     undefined field425_0x2d1;
     undefined field426_0x2d2;
     undefined field427_0x2d3;
-    void *field428_0x2d4;
+    void* field428_0x2d4;
     undefined field429_0x2d8;
     undefined field430_0x2d9;
     undefined field431_0x2da;
@@ -6518,7 +6519,7 @@ struct RunApp {
     undefined field555_0x356;
     undefined field556_0x357;
     int nFrameTimerRecursion;
-    void *pInputBuffer;
+    void* pInputBuffer;
     undefined4 field559_0x360;
     undefined field560_0x364;
     undefined field561_0x365;
@@ -6541,15 +6542,15 @@ struct RunApp {
     undefined field578_0x379;
     undefined field579_0x37a;
     undefined field580_0x37b;
-    byte *pAspectRatioProps;
-    uint *pExtensionMetadata;
-    void *field583_0x384;
+    byte* pAspectRatioProps;
+    uint* pExtensionMetadata;
+    void* field583_0x384;
     undefined field584_0x388;
     bool field585_0x389;
 };
 
 struct ExtensionData {
-    struct RunHeader *pRH;
+    struct RunHeader* pRH;
     int currentKbdState;
     undefined field2_0x8;
     undefined field3_0x9;
@@ -7056,7 +7057,7 @@ struct ExtensionData {
     undefined field504_0x201;
     undefined field505_0x202;
     undefined field506_0x203;
-    void *field507_0x204;
+    void* field507_0x204;
     uint field508_0x208;
     int field509_0x20c;
     undefined field510_0x210;
@@ -7544,7 +7545,7 @@ struct SpriteHandle {
     undefined field167_0xb6;
     undefined field168_0xb7;
     int numChildren;
-    struct SpriteHandle **pChildrenArray;
+    struct SpriteHandle** pChildrenArray;
 };
 
 typedef struct GlobalStats GlobalStats, *PGlobalStats;
@@ -7556,15 +7557,15 @@ struct GlobalStats {
     int field1_0x4;
     uint frameBackColor;
     uint frameFlags;
-    char *sceneName;
-    LOGPALETTE *field5_0x14;
+    char* sceneName;
+    LOGPALETTE* field5_0x14;
     int field6_0x18;
     int currentScrollX;
     int currentScrollY;
     int prevScrollX;
     int prevScrollY;
     int numLayers;
-    struct LayerData *pLayerArray; /* Created by retype action */
+    struct LayerData* pLayerArray; /* Created by retype action */
     undefined field13_0x34;
     undefined field14_0x35;
     undefined field15_0x36;
@@ -7606,7 +7607,7 @@ struct GlobalStats {
     int pTransitionInterface;
     uint TotalFrames;
     undefined4 frameTimer;
-    struct RunHeader *pRunHeader;
+    struct RunHeader* pRunHeader;
     EventGroup* pEventGroups; /* Created by retype action */
     undefined field59_0x84;
     undefined field60_0x85;
@@ -8628,7 +8629,7 @@ struct GlobalStats {
     undefined field1076_0x47d;
     undefined field1077_0x47e;
     undefined field1078_0x47f;
-    struct ObjectHeader *pObjectList;
+    struct ObjectHeader* pObjectList;
     undefined field1080_0x484;
     undefined field1081_0x485;
     undefined field1082_0x486;
@@ -9716,7 +9717,7 @@ struct GlobalStats {
     undefined field2164_0x8ca;
     undefined field2165_0x8cb;
     uint field2166_0x8cc;
-    struct ObjectHeader **field2167_0x8d0;
+    struct ObjectHeader** field2167_0x8d0;
     char field2168_0x8d4;
     undefined field2169_0x8d5;
     undefined field2170_0x8d6;
@@ -9837,14 +9838,14 @@ struct GlobalStats {
     undefined field2285_0x96d;
     undefined field2286_0x96e;
     undefined field2287_0x96f;
-    uint *field2288_0x970;
-    int *field2289_0x974;
-    int *field2290_0x978;
+    uint* field2288_0x970;
+    int* field2289_0x974;
+    int* field2290_0x978;
     undefined1 field2291_0x97c;
     char field2292_0x97d;
     undefined field2293_0x97e;
     undefined field2294_0x97f;
-    void *d3dDevice;
+    void* d3dDevice;
     int pSpriteManager;
 };
 
@@ -9957,7 +9958,7 @@ struct MMF2_Event {
     undefined field23_0x21;
     undefined field24_0x22;
     undefined field25_0x23;
-    uint *pGlobalData;
+    uint* pGlobalData;
 };
 
 typedef struct MMF2_Object MMF2_Object, *PMMF2_Object;
@@ -10004,7 +10005,7 @@ struct MMF2_Object {
     undefined field38_0x2f;
     int field39_0x30;
     int field40_0x34;
-    byte *field41_0x38;
+    byte* field41_0x38;
     undefined field42_0x3c;
     undefined field43_0x3d;
     undefined field44_0x3e;
@@ -10026,7 +10027,7 @@ struct MMF2_Object {
     undefined field60_0x51;
     undefined field61_0x52;
     undefined field62_0x53;
-    int *posY;
+    int* posY;
     int field64_0x58;
     int field65_0x5c;
     int field66_0x60;
@@ -10275,16 +10276,16 @@ struct MMF2_Object {
     int field309_0x18e;
     int field310_0x192;
     int field311_0x196;
-    int *field312_0x19a;
+    int* field312_0x19a;
     int currentFrameIndex;
-    byte *pDataBuffer;
+    byte* pDataBuffer;
     int stateType;
-    ushort *field316_0x1aa;
+    ushort* field316_0x1aa;
     uint timerOffset;
     undefined4 field318_0x1b2;
     undefined4 field319_0x1b6;
     int field320_0x1ba;
-    char *field321_0x1be;
+    char* field321_0x1be;
 };
 
 typedef struct MovementData MovementData, *PMovementData;
@@ -10337,7 +10338,7 @@ struct ObjectInfo {
     undefined field15_0x11;
     undefined field16_0x12;
     undefined field17_0x13;
-    struct MovementController *pMovementBank;
+    struct MovementController* pMovementBank;
 };
 
 struct DisplaySearchCriteria {

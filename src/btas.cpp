@@ -178,9 +178,9 @@ bool is_paused = true;
 bool is_replay = false;
 bool b_loading_saving_state = false;
 
-static RunHeader* get_state() { return *(RunHeader**)(mem::get_base() + 0x59a9c); }
+inline RunHeader* get_state() { return *(RunHeader**)(mem::get_base() + 0x59a9c); }
 
-static GlobalStats* get_stats() { return *(GlobalStats**)(mem::get_base() + 0x59a98); }
+inline GlobalStats* get_stats() { return *(GlobalStats**)(mem::get_base() + 0x59a98); }
 
 static void import_replay(const std::string& path) {
     // Import it
@@ -491,7 +491,8 @@ template <typename T> static void load_bin(bfs::File& f, T& data) { ASS(f.read(&
 
 static void fill_timers_fix() {
     // FIXME: why so many timers if used much less?
-    // TODO: maybe use more proper version??? https://github.com/Pixelsuft/overfusion/blob/main/tools/timer_fix.cpp
+    // TODO: maybe use more proper version???
+    // https://github.com/Pixelsuft/overfusion/blob/main/tools/timer_fix.cpp
     if (!timers_fix)
         return;
     GlobalStats* gStats = get_stats();

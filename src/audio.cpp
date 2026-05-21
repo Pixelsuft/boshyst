@@ -108,11 +108,11 @@ static tApplyVolumeToBuffer fpApplyVolumeToBuffer = nullptr;
 static Unlock_t fpUnlock = nullptr;
 static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
 static int last_uid = 0;
-static unsigned long last_time = 0;
+static unsigned long a_last_time = 0;
 
 static int gen_uid(unsigned long mytime) {
-    if (mytime != last_time) {
-        last_time = mytime;
+    if (mytime != a_last_time) {
+        a_last_time = mytime;
         last_uid = 0;
     }
     return last_uid++;
