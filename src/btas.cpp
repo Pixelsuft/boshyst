@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <imgui.h>
 #include <iostream>
-#include <unordered_map>
 #include <vector>
 #undef max
 #undef min
@@ -489,7 +488,7 @@ template <typename T> static void load_bin(bfs::File& f, std::vector<T>& data) {
 template <typename T> static void load_bin(bfs::File& f, T& data) { ASS(f.read(&data, sizeof(T))); }
 
 static void fill_timers_fix() {
-    // TODO: why so many timers if used much less?
+    // FIXME: why so many timers if used much less?
     if (!timers_fix)
         return;
     GlobalStats* gStats = get_stats();

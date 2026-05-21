@@ -184,23 +184,21 @@ void update_save_encryption() {
 }
 
 const char* get_scene_name() {
-    // TODO: mem::get_base()?
-    GlobalStats* gStats = *(GlobalStats**)(0x459a98);
+    GlobalStats* gStats = *(GlobalStats**)(mem::get_base() + 0x59a98);
     return (gStats->sceneName && *gStats->sceneName) ? gStats->sceneName : "Unknown";
 }
 
 int get_scene_id() {
-    // TODO: mem::get_base()?
-    RunApp* gState = *(RunApp**)0x0459a94;
+    RunApp* gState = *(RunApp**)(mem::get_base() + 0x59a94);
     return gState->rhCurrentFrame;
 }
 
-static void* get_player_by_id(int idx) {
+inline void* get_player_by_id(int idx) {
     const size_t offsets[] = {mem::get_base("Lacewing.mfx") + 0x2D680, 0x208, 0x1C, (size_t)idx, 0};
     return mem::ptr_from_offsets(offsets, sizeof(offsets) / 4);
 }
 
-static int get_player_handle(int s) {
+inline int get_player_handle(int s) {
     switch (s) {
     case 1:
         return 4;
