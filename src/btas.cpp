@@ -184,6 +184,7 @@ inline GlobalStats* get_stats() { return *(GlobalStats**)(mem::get_base() + 0x59
 
 static void import_replay(const std::string& path) {
     // Import it
+    last_msg = "";
     bfs::File f(path, 0);
     if (!f.is_open()) {
         last_msg = "Failed to open file for reading replay";
@@ -249,13 +250,17 @@ static void import_replay(const std::string& path) {
         }
         st.ev.push_back(ev);
     }
-    if (!st.ev.empty() && st.ev.back().frame > st.total) {
-        last_msg = "Invalid total frame counter";
-        return;
+    if (!st.ev.empty() && st.ev.back().frame >= st.total) {
+        last_msg = "Invalid total frame counter, fixed";
+        st.total = st.ev.back().frame + 1;
+        // return;
     }
     repl_index = 0;
     is_replay = true;
-    last_msg = "Replay imported";
+    if (last_msg.empty())
+        last_msg = "Replay imported";
+    else
+        last_msg = "Replay imported (" + last_msg + ")";
 }
 
 static void export_replay(const std::string& path) {

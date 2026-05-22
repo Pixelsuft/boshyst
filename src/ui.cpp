@@ -159,7 +159,8 @@ static void ui_menu_draw() {
                 conf.font_scale = mclamp(conf.font_scale, 0.01f, 10.f);
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
                 conf.font_scale = 1.f;
-            ImGui::Checkbox("TAS info window", &conf.tas_mode);
+            if (!is_btas)
+                ImGui::Checkbox("TAS info window", &conf.tas_mode);
             ImGui::Checkbox("Pixel filter", &conf.pixel_filter);
             ImGui::Checkbox("No viewport", &conf.no_vp);
             ImGui::Checkbox("No perspective", &conf.no_ps);
