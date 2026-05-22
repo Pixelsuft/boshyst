@@ -741,17 +741,20 @@ static HWND __stdcall CreateWindowExAHook(DWORD dwExStyle, LPCSTR lpClassName, L
                                           DWORD dwStyle, int X, int Y, int nWidth, int nHeight,
                                           HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
                                           LPVOID lpParam) {
-    if (lpClassName && strcmp(lpClassName, "Mf2MainClassTh") == 0) {
+    if (reinterpret_cast<size_t>(lpClassName) <= 0xFFFF)
+        return CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
+                                   nHeight, hWndParent, hMenu, hInstance, lpParam);
+    if (strcmp(lpClassName, "Mf2MainClassTh") == 0) {
         HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
                                        nHeight, hWndParent, hMenu, hInstance, lpParam);
         ::hwnd = ret;
         return ret;
-    } else if (lpClassName && strcmp(lpClassName, "Mf2EditClassTh") == 0) {
+    } else if (strcmp(lpClassName, "Mf2EditClassTh") == 0) {
         HWND ret = CreateWindowExAOrig(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
                                        nHeight, hWndParent, hMenu, hInstance, lpParam);
         ::mhwnd = ret;
         return ret;
-    } else if (!is_replay && lpClassName &&
+    } else if (!is_replay &&
                (strcmp(lpClassName, "EDIT") == 0 || strcmp(lpClassName, "COMBOBOX") == 0 ||
                 strcmp(lpClassName, "LISTBOX") == 0 ||
                 strcmp(lpClassName, "omgwtfbbqColorButton") == 0 ||
