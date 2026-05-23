@@ -1,4 +1,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DISABLE_DEBUG_TOOLS
+#define IMGUI_DISABLE_DEMO_WINDOWS
 #include "../imgui/backends/imgui_impl_dx9.cpp"
 #include "../imgui/backends/imgui_impl_win32.cpp"
 #include "../imgui/imgui.cpp"
