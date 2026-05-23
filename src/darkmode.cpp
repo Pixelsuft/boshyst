@@ -15,7 +15,6 @@
             GetProcAddress(win_shit.uxtheme_handle, MAKEINTRESOURCEA(func_ord)));                  \
         if (win_shit.func_name == nullptr) {                                                       \
             ass::show_err("WTF failed to load uxtheme.dll func " #func_name);                      \
-            FreeLibrary(win_shit.uxtheme_handle);                                                  \
             return true;                                                                           \
         }                                                                                          \
     } while (0)
@@ -146,7 +145,6 @@ bool fix_win32_theme() {
     };
     win_shit.user32_handle = GetModuleHandleW(L"user32.dll");
     if (win_shit.user32_handle == nullptr) {
-        // FreeLibrary(win_shit.uxtheme_handle);
         ass::show_err("WTF failed to load user32.dll");
         return false;
     };
