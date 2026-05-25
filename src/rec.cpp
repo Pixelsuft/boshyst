@@ -216,8 +216,10 @@ void rec::rec_tick(void* dev) {
             rec::stop(dev);
         }
         if (capturing) {
-            if (!is_btas || last_upd2)
+            if (!is_btas || last_upd2) {
+                last_upd2 = false;
                 rec::cap(dev);
+            }
         }
         return;
     }
