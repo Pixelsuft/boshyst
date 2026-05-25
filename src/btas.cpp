@@ -752,6 +752,19 @@ unsigned int btas::get_rng(unsigned int maxv) {
     // Do we have value for that range (maxv) in our queue?
     if (it == st.rng_buf.end() || it->a != (int)maxv) {
         ret = RandomOrig(maxv);
+#ifdef _DEBUG
+        if (is_replay && MyKeyState('T')) {
+            // cout << "TODO: put rng " << ret << "/" << maxv << " into events\n";
+            if (maxv == 30 || (maxv >= 4 && maxv <= 18)) {
+                BTasEvent ev;
+                ev.rng.range = maxv;
+                ev.rng.val = ret;
+                ev.idx = 6;
+                ev.frame = st.frame;
+                st.ev.insert(st.ev.begin() + repl_index++, ev);
+            }
+        }
+#endif
     } else {
         RandomOrig(maxv); // For consistency
         // Return our value
@@ -833,14 +846,18 @@ static void exec_event(BTasEvent& ev) {
     }
     case 6: {
         // Push RNG value for range in our queue
-        // TODO: optimize?
         st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
+        // TODO: optimize?
         std::stable_sort(st.rng_buf.begin(), st.rng_buf.end(),
                          [](const IntPair& a, const IntPair& b) { return a.a > b.a; });
         break;
     }
     case 7: {
         // Clear RNG range
+        if (ev.rng.range == 0) {
+            st.rng_buf.clear();
+            break;
+        }
         // TODO: optimize?
         while (1) {
             auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range,
