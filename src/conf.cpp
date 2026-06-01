@@ -157,8 +157,6 @@ static void create_default_config(const string& path) {
         "keep_save = 0 // Prevent overriding save files (use temporary ini files instead)"));
     ASS(file.write_line(
         "no_encryption = 0 // No save encryption (breaks saves without using mod menu)"));
-    ASS(file.write_line("save_slot_fix = 0 // Fix save slot (1, 2 or 3) by forcing to load "
-                        "SaveFileX.ini (or tmp) when loading state"));
     ASS(file.write_line(""));
     ASS(file.write_line("tas_force_size = 0, 0 // You can force window size to be higher than you "
                         "monitor resolution"));
@@ -255,7 +253,6 @@ void config::read() {
     conf.cap_cnt = 0;
     conf.rapid_bind = -1;
     conf.first_run = false;
-    conf.save_slot_fix = 0;
     conf.tas_mode = conf.skip_msg = conf.god = conf.no_vp = conf.old_rec = conf.no_au =
         conf.force_gdi = conf.rng_patches = conf.no_sh = conf.keep_save = conf.no_trans =
             conf.no_ps = conf.au_mth = conf.cap_au = conf.tas_no_info = conf.reset_rng =
@@ -327,8 +324,6 @@ void config::read() {
             conf.emu_mouse = read_int(line) != 0;
         else if (starts_with(line, "reset_rng="))
             conf.reset_rng = read_int(line) != 0;
-        else if (starts_with(line, "save_slot_fix="))
-            conf.save_slot_fix = read_int(line);
         else if (starts_with(line, "tas_force_gdi="))
             conf.force_gdi = read_int(line) != 0;
         else if (starts_with(line, "tas_disable_audio="))

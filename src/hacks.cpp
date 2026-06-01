@@ -954,16 +954,18 @@ static short __stdcall HandleRunObjectIniHook(void* pthis) {
 
 static int(__stdcall* CreateRunObjectIniOrig)(size_t pObject, size_t pEditData, int dummy);
 static int __stdcall CreateRunObjectIniHook(size_t pObject, size_t pEditData, int dummy) {
-    if (conf.save_slot_fix < 1 || conf.save_slot_fix > 3 || !b_loading_saving_state)
+    if (!b_loading_saving_state)
         return CreateRunObjectIniOrig(pObject, pEditData, dummy);
     bool fixed = false;
     std::string def_fp = (char*)(pEditData + 0x16);
     if (def_fp != "onlineLicense.ini" && def_fp != "options.ini") {
         // cout << "fixing save slot\n";
+        // cout << "started fix\n";
+        RunApp* gState = *(RunApp**)(mem::get_base() + 0x59a94);
+        // cout << "fixing: " << (char*)gState->pRawStringTable[0] << std::endl;
         fixed = *(uint8_t*)(pEditData + 0x14) == 0;
         *(uint8_t*)(pEditData + 0x14) = 1;
-        strcpy((char*)(pEditData + 0x16),
-               (std::string("SaveFile") + to_str(conf.save_slot_fix) + ".ini").c_str());
+        strcpy((char*)(pEditData + 0x16), (char*)gState->pRawStringTable[0]);
     }
     auto ret = CreateRunObjectIniOrig(pObject, pEditData, dummy);
     // size_t ini = *(size_t*)(pObject + 0x168);

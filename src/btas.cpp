@@ -754,15 +754,21 @@ unsigned int btas::get_rng(unsigned int maxv) {
         ret = RandomOrig(maxv);
 #ifdef _DEBUG
         if (is_replay && MyKeyState('T')) {
-            // cout << "TODO: put rng " << ret << "/" << maxv << " into events\n";
-            if (maxv == 30 || (maxv >= 4 && maxv <= 18)) {
+            if (maxv > 3) {
                 BTasEvent ev;
                 ev.rng.range = maxv;
                 ev.rng.val = ret;
                 ev.idx = 6;
                 ev.frame = st.frame;
                 st.ev.insert(st.ev.begin() + repl_index++, ev);
+                cout << "Inserted RNG (" << st.frame << "): " << ret << "/" << maxv << "\n";
             }
+        } else if (is_replay && MyKeyState('U')) {
+            if (maxv > 3) {
+                ret = maxv * 10;
+            }
+        } else if (is_replay && MyKeyState('J')) {
+            ret = 0;
         }
 #endif
     } else {

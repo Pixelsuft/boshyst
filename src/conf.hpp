@@ -12,7 +12,6 @@ public:
     int hitbox_level;
     int cap_start;
     int cap_cnt;
-    int save_slot_fix;
     bool no_vp;
     bool no_sh;
     bool no_ps;
