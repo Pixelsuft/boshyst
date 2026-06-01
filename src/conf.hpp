@@ -42,6 +42,7 @@ public:
     bool reset_rng;
     bool no_encryption;
     bool no_save_object_spamming;
+    bool admin_mode;
 };
 
 extern Config conf;

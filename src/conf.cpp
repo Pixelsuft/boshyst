@@ -141,6 +141,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("fullscreen_size = 0, 0 // Leave defaults for fullscreen mode (also use "
                         "-1, -1 for desktop resolution)"));
     ASS(file.write_line(""));
+    ASS(file.write_line("admin_mode = 0 // Admin mode"));
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
     ASS(file.write_line("hitbox_level = 0 // Can be changed to 1 or 2 to show default player"));
@@ -195,10 +196,10 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("bind = click, 75, 315.0, 406.0 // Click 'Select' button"));
     ASS(file.write_line("bind = click, 75, -100, -100 // Move mouse outside (so not clicking, just "
                         "move) of the window"));
-    ASS(file.write_line("# State saving/loading (useful for training)"));
-    ASS(file.write_line("bind = load, 70, example_state.mfs // 'F' to load state"));
-    ASS(file.write_line("bind = save, 71, example_state.mfs // 'G' to save state"));
-    ASS(file.write_line("bind = rapid, 66 // 'B' for rapid fire hack"));
+    ASS(file.write_line("# State saving/loading on 'G'/'H' (useful for training)"));
+    ASS(file.write_line("bind = load, 71, example_state.mfs // 'F' to load state"));
+    ASS(file.write_line("bind = save, 72, example_state.mfs // 'G' to save state"));
+    ASS(file.write_line("bind = rapid, 78 // 'N' for rapid fire hack"));
     ASS(file.write_line(""));
     ASS(file.write_line(
         "# Map BTAS keys: map, keyboard_key, mod (0 - None, 1 - Ctrl, 2 - Shift), ingame_key"));
@@ -253,11 +254,12 @@ void config::read() {
     conf.cap_cnt = 0;
     conf.rapid_bind = -1;
     conf.first_run = false;
-    conf.tas_mode = conf.skip_msg = conf.god = conf.no_vp = conf.old_rec = conf.no_au =
-        conf.force_gdi = conf.rng_patches = conf.no_sh = conf.keep_save = conf.no_trans =
-            conf.no_ps = conf.au_mth = conf.cap_au = conf.tas_no_info = conf.reset_rng =
-                conf.no_cmove = conf.draw_cursor = conf.emu_mouse = conf.allow_render =
-                    conf.hg_instant = conf.no_encryption = conf.no_save_object_spamming = false;
+    conf.tas_mode = conf.skip_msg = conf.god = conf.admin_mode = conf.no_vp = conf.old_rec =
+        conf.no_au = conf.force_gdi = conf.rng_patches = conf.no_sh = conf.keep_save =
+            conf.no_trans = conf.no_ps = conf.au_mth = conf.cap_au = conf.tas_no_info =
+                conf.reset_rng = conf.no_cmove = conf.draw_cursor = conf.emu_mouse =
+                    conf.allow_render = conf.hg_instant = conf.no_encryption =
+                        conf.no_save_object_spamming = false;
     conf.direct_render = true;
     conf.cur_mouse_checked = false;
     conf.tp_on_click = conf.input_in_menu = false;
@@ -286,6 +288,8 @@ void config::read() {
         // cout << "orig: " << line_orig << std::endl;
         if (starts_with(line, "god="))
             conf.god = read_int(line) != 0;
+        else if (starts_with(line, "admin_mode="))
+            conf.admin_mode = read_int(line) != 0;
         else if (starts_with(line, "teleport_with_mouse="))
             conf.tp_on_click = read_int(line) != 0;
         else if (starts_with(line, "tas_mode="))

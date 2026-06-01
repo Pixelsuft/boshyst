@@ -55,3 +55,4 @@ void init_game_loop();
 bool starts_with(const std::string& mainStr, const std::string& prefix);
 const char* get_scene_name();
 std::string get_config_path();
+void refresh_admin_mode();

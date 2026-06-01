@@ -444,3 +444,27 @@ bool state_load(bfs::File* file) {
     //  cout << "load ret: " << ret << "\n";
     return true;
 }
+
+void refresh_admin_mode() {
+    RunApp* gState = *(RunApp**)(mem::get_base() + 0x59a94);
+    char* ptr = (char*)gState->pRawStringTable[1];
+    if (ptr == nullptr || *ptr == '\0') {
+        if (!conf.admin_mode)
+            return;
+        void*(__cdecl * p_realloc)(void* _Block, size_t _Size);
+        p_realloc = (decltype(p_realloc))mem::addr("realloc", "msvcrt.dll");
+        ASS(p_realloc != nullptr);
+        ptr = (char*)p_realloc(ptr, 4);
+        ASS(ptr != nullptr);
+        gState->pRawStringTable[1] = (int)ptr;
+    }
+    if (!conf.admin_mode) {
+        ptr[0] = 'N';
+        ptr[1] = '\0';
+    } else {
+        ptr[0] = 'Y';
+        ptr[1] = 'e';
+        ptr[2] = 's';
+        ptr[3] = '\0';
+    }
+}

@@ -170,6 +170,9 @@ static void ui_menu_draw() {
                 conf.hitbox_level = std::max(conf.hitbox_level, 0);
         }
         if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
+            if (ImGui::Checkbox("Admin mode", &conf.admin_mode)) {
+                refresh_admin_mode();
+            }
             ImGui::Checkbox("God mode", &conf.god);
             ImGui::Checkbox("Teleport with mouse", &conf.tp_on_click);
             /*

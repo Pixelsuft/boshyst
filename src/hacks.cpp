@@ -330,7 +330,7 @@ static int __stdcall UpdateGameFrameHook() {
         return 0;
     ui::pre_update();
 
-    if (conf.rapid_bind != -1 && MyKeyState(conf.rapid_bind))
+    if (conf.rapid_bind != -1 && get_scene_id() > 1 && MyKeyState(conf.rapid_bind))
         launch_bullet(-1, -1, -1);
 
     static int spawn_x = 0;
@@ -1034,4 +1034,5 @@ void init_simple_hacks() {
     }
     if (!is_btas)
         init_temp_saves();
+    refresh_admin_mode();
 }
