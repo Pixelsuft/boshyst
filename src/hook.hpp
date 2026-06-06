@@ -16,3 +16,16 @@ inline void enable_hook() { ASS(MH_EnableHook(MH_ALL_HOOKS) == MH_OK); }
 template <typename T> inline void enable_hook(T target) {
     ASS(MH_EnableHook(reinterpret_cast<LPVOID>(target)) == MH_OK);
 }
+
+void _reg_iat(const char* dll, const char* func_name, void* pNewFunc, void** ppOriginal);
+
+inline void iat_hook(const char* dll, const char* func_name, LPVOID pDetour) {
+    _reg_iat(dll, func_name, pDetour, nullptr);
+}
+
+template <typename T>
+inline void iat_hook(const char* dll, const char* func_name, LPVOID pDetour, T* ppOriginal) {
+    _reg_iat(dll, func_name, pDetour, reinterpret_cast<LPVOID*>(ppOriginal));
+}
+
+void enable_iat();

@@ -394,6 +394,7 @@ void audio_init() {
     else
         SetFileInformationByHandlePtr = nullptr;
     */
+    // Let's use minhook here because the game uses ordinal import
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate,
          &fpDirectSoundCreate);
 }

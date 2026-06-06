@@ -114,7 +114,7 @@ bool input_tick() {
 
 void input_init() {
     SusProc = reinterpret_cast<decltype(SusProc)>(mem::get_base() + 0x41ba0);
-    hook(mem::addr("GetCursorPos", "user32.dll"), GetCursorPosHook, &GetCursorPosOrig);
-    hook(mem::addr("GetKeyState", "user32.dll"), GetKeyStateHook, &GetKeyStateOrig);
-    hook(mem::addr("GetAsyncKeyState", "user32.dll"), GetAsyncKeyStateHook, &GetAsyncKeyStateOrig);
+    iat_hook("user32.dll", "GetCursorPos", GetCursorPosHook, &GetCursorPosOrig);
+    iat_hook("user32.dll", "GetKeyState", GetKeyStateHook, &GetKeyStateOrig);
+    iat_hook("user32.dll", "GetAsyncKeyState", GetAsyncKeyStateHook, &GetAsyncKeyStateOrig);
 }

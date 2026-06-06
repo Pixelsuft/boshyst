@@ -555,29 +555,11 @@ static int WINAPI WSAStartupHook(WORD wVersionRequired, void* lpWSAData) {
 
 static HMODULE(__stdcall* LoadLibraryAOrig)(LPCSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
-    /*if (c_ends_with(lpLibFileName, "kcfloop.mfx") || c_ends_with(lpLibFileName, "ForEach.mfx")
-        || c_ends_with(lpLibFileName, "Select.mfx") || c_ends_with(lpLibFileName, "Layer.mfx")
-        || c_ends_with(lpLibFileName, "clickteam-movement-controller.mfx"))
-        lpLibFileName = "E:\\Games\\IWBTB\\dump\\Perspective.mfx";*/
-    // cout << "load hook: " << lpLibFileName << std::endl;
     if (is_btas && c_ends_with(lpLibFileName, "mmf2d3d8.dll")) {
         cout << "Failing to load mmf2d3d8.dll\n";
         return nullptr;
     }
-    HMODULE ret;
-    if (0 && c_ends_with(lpLibFileName, "Select.mfx")) {
-        static int cnt = 0;
-        std::string new_path = "";
-        char* p = (char*)lpLibFileName + strlen(lpLibFileName) - 1;
-        while (*p != '\\' && *p != '/') {
-            new_path = *p + new_path;
-            p--;
-        }
-        new_path = std::string("e:\\games\\iwbtb\\dump2\\") + new_path;
-        ret = LoadLibraryAOrig(new_path.c_str());
-        cout << ++cnt << ") loading " << new_path << " -> " << ret << "\n";
-    } else
-        ret = LoadLibraryAOrig(lpLibFileName);
+    HMODULE ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
     uint8_t temp = 0xeb;
     const uint8_t buf[] = {0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
@@ -595,20 +577,21 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
         ASS(WriteProcessMemory(hproc, (LPVOID)(mem::get_base("Lacewing.mfx") + 0xb209), &temp, 1,
                                &bW) != 0 &&
             bW == 1);
-        hook(mem::addr("WSAStartup", "ws2_32.dll"), WSAStartupHook);
-        enable_hook();
+        iat_hook("ws2_32.dll", "WSAStartup", WSAStartupHook);
     } else if (is_btas && c_ends_with(lpLibFileName, "Yaso.mfx")) {
-        hook(mem::addr("InternetGetConnectedState", "wininet.dll"), InternetGetConnectedStateHook);
-        hook(mem::addr("GetUserNameA", "advapi32.dll"), GetUserNameAHook);
-        enable_hook();
+        iat_hook("wininet.dll", "InternetGetConnectedState", InternetGetConnectedStateHook);
+        iat_hook("advapi32.dll", "GetUserNameA", GetUserNameAHook);
     }
+    enable_iat();
     return ret;
 }
 
 static HMODULE(__stdcall* LoadLibraryWOrig)(LPCWSTR lpLibFileName);
 static HMODULE __stdcall LoadLibraryWHook(LPCWSTR lpLibFileName) {
-    std::wcout << L"load w hook: " << lpLibFileName << L'\n';
-    return LoadLibraryWOrig(lpLibFileName);
+    // std::wcout << L"load w hook: " << lpLibFileName << L'\n';
+    HMODULE ret = LoadLibraryWOrig(lpLibFileName);
+    enable_iat();
+    return ret;
 }
 
 static HINSTANCE __stdcall ShellExecuteAHook(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile,
@@ -840,41 +823,40 @@ void init_game_loop() {
         reinterpret_cast<decltype(ProcessFrameRendering)>(mem::get_base() + 0x1ebf0);
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
+    iat_hook("kernel32.dll", "LoadLibraryA", LoadLibraryAHook, &LoadLibraryAOrig);
+    iat_hook("kernel32.dll", "LoadLibraryW", LoadLibraryWHook, &LoadLibraryWOrig);
     if (is_btas) {
         if (is_hourglass)
             timeGetTimeOrig = (decltype(timeGetTimeOrig))mem::addr("timeGetTime", "winmm.dll");
         else {
-            hook(mem::addr("timeGetTime", "winmm.dll"), timeGetTimeHook, &timeGetTimeOrig);
-            hook(mem::addr("time", "msvcrt.dll"), timeHook);
-            hook(mem::addr("_ftime", "msvcrt.dll"), _ftimeHook);
-            hook(mem::addr("GetTickCount", "kernel32.dll"), GetTickCountHook);
+            iat_hook("winmm.dll", "timeGetTime", timeGetTimeHook, &timeGetTimeOrig);
+            iat_hook("msvcrt.dll", "time", timeHook);
+            iat_hook("msvcrt.dll", "_ftime", _ftimeHook);
+            iat_hook("kernel32.dll", "GetTickCount", GetTickCountHook);
         }
-        hook(mem::addr("DragAcceptFiles", "shell32.dll"), DragAcceptFilesHook);
-        hook(mem::addr("ShellExecuteA", "shell32.dll"), ShellExecuteAHook);
-        hook(mem::addr("GetClientRect", "user32.dll"), GetClientRectHook, &GetClientRectOrig);
-        hook(mem::addr("AdjustWindowRectEx", "user32.dll"), AdjustWindowRectExHook,
-             &AdjustWindowRectExOrig);
-        hook(mem::addr("SetFocus", "user32.dll"), SetFocusHook);
-        hook(mem::addr("GetActiveWindow", "user32.dll"), GetActiveWindowHook);
-        hook(mem::addr("GetFocus", "user32.dll"), GetActiveWindowHook);
-        hook(mem::addr("CreateWindowExA", "user32.dll"), CreateWindowExAHook, &CreateWindowExAOrig);
-        hook(mem::addr("GetSystemMetrics", "user32.dll"), GetSystemMetricsHook,
-             &GetSystemMetricsOrig);
+        iat_hook("shell32.dll", "DragAcceptFiles", DragAcceptFilesHook);
+        iat_hook("shell32.dll", "ShellExecuteA", ShellExecuteAHook);
+        iat_hook("user32.dll", "GetClientRect", GetClientRectHook, &GetClientRectOrig);
+        iat_hook("user32.dll", "AdjustWindowRectEx", AdjustWindowRectExHook,
+                 &AdjustWindowRectExOrig);
+        iat_hook("user32.dll", "SetFocus", SetFocusHook);
+        iat_hook("user32.dll", "GetActiveWindow", GetActiveWindowHook);
+        iat_hook("user32.dll", "GetFocus", GetActiveWindowHook);
+        iat_hook("user32.dll", "CreateWindowExA", CreateWindowExAHook, &CreateWindowExAOrig);
+        iat_hook("user32.dll", "GetSystemMetrics", GetSystemMetricsHook, &GetSystemMetricsOrig);
         // Ok this might be overkill
-        // hook(mem::addr("QueryPerformanceFrequency", "kernel32.dll"),
+        // iat_hook("kernel32.dll", "QueryPerformanceFrequency",
         // QueryPerformanceFrequencyHook, &QueryPerformanceFrequencyOrig);
-        // hook(mem::addr("QueryPerformanceCounter", "kernel32.dll"), QueryPerformanceCounterHook,
+        // iat_hook("kernel32.dll", "QueryPerformanceCounter", QueryPerformanceCounterHook,
         // &QueryPerformanceCounterOrig);
         hook(mem::get_base() + 0x40720, FlushInputQueueHook);
-        hook(mem::addr("LoadLibraryA", "kernel32.dll"), LoadLibraryAHook, &LoadLibraryAOrig);
-        // hook(mem::addr("LoadLibraryW", "kernel32.dll"), LoadLibraryWHook, &LoadLibraryWOrig);
         // hook(mem::get_base() + 0x1f730, DestroyObjectHook, &DestroyObjectOrig);
         // hook(mem::get_base() + 0x485d0, ActHook, &ActOrig);
         // hook(mem::get_base() + 0x15740, EvaluateCondition, &EvaluateConditionO);
         auto cwd_len = GetCurrentDirectoryA(MAX_PATH, temp_path);
         ASS(cwd_len > 0);
         strcpy(temp_path + cwd_len, "\\temp");
-        hook(mem::addr("GetTempPathA", "kernel32.dll"), GetTempPathAHook);
+        iat_hook("kernel32.dll", "GetTempPathA", GetTempPathAHook);
         btas::pre_init();
     }
     if (conf.force_gdi) {
@@ -883,13 +865,14 @@ void init_game_loop() {
         *(short*)(mem::get_base() + 0x59a2a) = 8;
     }
     if ((conf.tas_mode || is_btas) && conf.au_mth) {
-        hook(mem::addr("timeSetEvent", "winmm.dll"), timeSetEventHook, &timeSetEventOrig);
-        hook(mem::addr("timeKillEvent", "winmm.dll"), timeKillEventHook, &timeKillEventOrig);
+        iat_hook("winmm.dll", "timeSetEvent", timeSetEventHook, &timeSetEventOrig);
+        iat_hook("winmm.dll", "timeKillEvent", timeKillEventHook, &timeKillEventOrig);
     }
     // Actually might be useful for normal mod menu
     if (!is_btas && !is_hourglass)
         hook(mem::get_base() + 0x47140, GetCollidingObjectListHook, &GetCollidingObjectListOrig);
     enable_hook();
+    enable_iat();
 }
 
 void init_temp_saves() {
@@ -902,41 +885,6 @@ void init_temp_saves() {
     DeleteFileA("SaveFile2.tmp.ini");
     DeleteFileA("SaveFile3.tmp.ini");
 }
-
-/*
-static const char*(__fastcall* Get_CStr)(void* param_1);
-static int __cdecl Ini_Item_Compare(void* param_1, void* param_2) {
-    // test
-    auto a = Get_CStr(param_1);
-    auto b = Get_CStr(param_2);
-    if (strcmp(a, "gastly") == 0) {
-        return 0;
-    }
-    return 1;
-#if 0
-    auto a = Get_CStr(param_1);
-    auto b = Get_CStr(param_2);
-    static std::vector<std::string> test_vec;
-    auto sa = std::string(a);
-    if (std::find(test_vec.begin(), test_vec.end(), sa) == test_vec.end()) {
-        test_vec.push_back(sa);
-        cout << sa << '\n';
-    }
-    // cout << "compare " << a << " and " << b << "\n";
-    return 0
-#endif
-}
-
-void*(__thiscall* IniState_GetValueOrig)(void* pthis, void* pOutValue, void* p2);
-void* __fastcall IniState_GetValueHook(void* pthis, void* edx, void* pOutValue, void* p2) {
-    auto ret = IniState_GetValueOrig(pthis, pOutValue, p2);
-    auto a = Get_CStr(p2);
-    if (strcmp(a, "gastly") == 0) {
-        cout << "got: " << Get_CStr(ret) << std::endl;
-    }
-    return ret;
-}
-*/
 
 static short __stdcall HandleRunObjectIniHook(void* pthis) {
     size_t me = (size_t)pthis;
@@ -990,22 +938,21 @@ void init_simple_hacks() {
             (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
     if (is_btas && !is_hourglass) {
-        hook(mem::addr("GetSystemTimeAsFileTime", "kernel32.dll"), GetSystemTimeAsFileTimeHook);
-        hook(mem::addr("GetProcessTimes", "kernel32.dll"), GetProcessTimesHook);
+        iat_hook("kernel32.dll", "GetSystemTimeAsFileTime", GetSystemTimeAsFileTimeHook);
+        iat_hook("kernel32.dll", "GetProcessTimes", GetProcessTimesHook);
     }
     ExecuteObjectAction = (decltype(ExecuteObjectAction))(mem::get_base() + 0x15180);
     Ordinal_78 = (decltype(Ordinal_78))(mem::get_base("mmfs2.dll") + 0x116e0);
     // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
-    hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook,
-         &DisplayRunObjectVPOrig);
-    hook(mem::addr("DisplayRunObject", "Perspective.mfx"), DisplayRunObjectPHook,
-         &DisplayRunObjectPOrig);
-    hook(mem::addr("rand", "msvcrt.dll"), randHook, &randOrig);
-    hook(mem::addr("_stricmp", "msvcrt.dll"), _stricmpHook, &_stricmpOrig);
-    hook(mem::addr("CreateFileA", "kernel32.dll"), CreateFileHook, &CreateFileOrig);
-    hook(mem::addr("SetWindowTextA", "user32.dll"), SetWindowTextAHook, &SetWindowTextAOrig);
-    hook(mem::addr("MessageBoxA", "user32.dll"), MessageBoxAHook, &MessageBoxAOrig);
+    // FIXME THEY ARE BROKEN MFX
+    iat_hook("Viewport.mfx", "DisplayRunObject", DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
+    iat_hook("Perspective.mfx", "DisplayRunObject", DisplayRunObjectPHook, &DisplayRunObjectPOrig);
+    iat_hook("msvcrt.dll", "rand", randHook, &randOrig);
+    iat_hook("msvcrt.dll", "_stricmp", _stricmpHook, &_stricmpOrig);
+    iat_hook("kernel32.dll", "CreateFileA", CreateFileHook, &CreateFileOrig);
+    iat_hook("user32.dll", "SetWindowTextA", SetWindowTextAHook, &SetWindowTextAOrig);
+    iat_hook("user32.dll", "MessageBoxA", MessageBoxAHook, &MessageBoxAOrig);
     hook(mem::get_base("kcmouse.mfx") + 0x1103, SetCursorYHook);
     hook(mem::get_base("kcmouse.mfx") + 0x1125, SetCursorXHook);
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
@@ -1015,9 +962,8 @@ void init_simple_hacks() {
         hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
-    // hook(mem::addr("HandleRunObject", "INI++.mfx"), HandleRunObjectIniHook);
-    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook,
-         &CreateRunObjectIniOrig);
+    // iat_hook("INI++.mfx", "HandleRunObject", HandleRunObjectIniHook);
+    iat_hook("INI++.mfx", "CreateRunObject", CreateRunObjectIniHook, &CreateRunObjectIniOrig);
 
     // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
     // hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);
@@ -1035,4 +981,5 @@ void init_simple_hacks() {
     if (!is_btas)
         init_temp_saves();
     refresh_admin_mode();
+    enable_iat();
 }

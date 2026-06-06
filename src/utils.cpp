@@ -7,10 +7,12 @@
 #include "mem.hpp"
 #include "ui.hpp"
 #include <Psapi.h>
+#include <TlHelp32.h>
 #include <Windows.h>
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 
 using std::cout;
@@ -21,12 +23,156 @@ void ass::show_err(const char* text) {
     std::free(buf);
 }
 
+struct HookTarget {
+    std::string funcName;
+    void* hookFunc;
+    void** origFunc;
+};
+
 HANDLE hproc = GetCurrentProcess();
 extern HWND hwnd;
 extern HWND mhwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
 static std::vector<int> key_states;
+
+static std::unordered_map<std::string, std::vector<HookTarget>> iat_map;
+
+void _reg_iat(const char* dll, const char* func_name, void* pNewFunc, void** ppOriginal) {
+#ifdef _DEBUG
+    ASS(c_ends_with(dll, ".dll") || c_ends_with(dll, ".mfx"));
+#endif
+    std::string str_dll(dll);
+    HookTarget target;
+    target.funcName = func_name;
+    target.hookFunc = pNewFunc;
+    target.origFunc = ppOriginal;
+#ifdef _DEBUG
+    auto& v = iat_map[str_dll];
+    auto it = std::find_if(v.begin(), v.end(), [target](const HookTarget& t2) {
+        return t2.funcName == target.funcName;
+    });
+    ASS(it == v.end());
+#endif
+    iat_map[str_dll].push_back(std::move(target));
+}
+
+static bool module_iat_apply(void* hModule) {
+    ASS(hModule);
+
+    auto pDosHeader = reinterpret_cast<PIMAGE_DOS_HEADER>(hModule);
+    ASS(pDosHeader->e_magic == IMAGE_DOS_SIGNATURE);
+
+    auto pNtHeaders = reinterpret_cast<PIMAGE_NT_HEADERS>(
+        (reinterpret_cast<BYTE*>(hModule) + pDosHeader->e_lfanew));
+    ASS(pNtHeaders->Signature == IMAGE_NT_SIGNATURE);
+
+    auto importDir = pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (importDir.VirtualAddress == 0)
+        return false;
+
+    auto pImportDesc = reinterpret_cast<PIMAGE_IMPORT_DESCRIPTOR>(
+        (reinterpret_cast<BYTE*>(hModule) + importDir.VirtualAddress));
+
+    for (; pImportDesc->Name != 0; pImportDesc++) {
+        std::string dllKey(
+            reinterpret_cast<char*>(reinterpret_cast<BYTE*>(hModule) + pImportDesc->Name));
+        std::transform(dllKey.begin(), dllKey.end(), dllKey.begin(), ::tolower);
+        auto it = iat_map.find(dllKey);
+        if (it == iat_map.end())
+            continue;
+
+        const auto& targets = it->second;
+        DWORD thunkOffset = pImportDesc->OriginalFirstThunk ? pImportDesc->OriginalFirstThunk
+                                                            : pImportDesc->FirstThunk;
+        if (thunkOffset == 0)
+            continue;
+
+        auto pOriginalThunk =
+            reinterpret_cast<PIMAGE_THUNK_DATA>(reinterpret_cast<BYTE*>(hModule) + thunkOffset);
+        auto pThunk = reinterpret_cast<PIMAGE_THUNK_DATA>(reinterpret_cast<BYTE*>(hModule) +
+                                                          pImportDesc->FirstThunk);
+
+        for (; pOriginalThunk->u1.AddressOfData != 0; pOriginalThunk++, pThunk++) {
+            if (!(pOriginalThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG)) {
+                auto pImportByName = reinterpret_cast<PIMAGE_IMPORT_BY_NAME>(
+                    reinterpret_cast<BYTE*>(hModule) + pOriginalThunk->u1.AddressOfData);
+                auto funcName = reinterpret_cast<char*>(pImportByName->Name);
+                auto target =
+                    std::find_if(targets.begin(), targets.end(), [funcName](const auto& t) {
+                        return strcmp(funcName, t.funcName.c_str()) == 0;
+                    });
+                if (target == targets.end())
+                    continue;
+                if (reinterpret_cast<PVOID>(pThunk->u1.Function) == target->hookFunc)
+                    continue;
+
+                DWORD dwOldProtect;
+                if (!VirtualProtect(&pThunk->u1.Function, sizeof(DWORD_PTR), PAGE_READWRITE,
+                                    &dwOldProtect)) {
+                    cout << "VirtualProtect failed to IAT hook\n";
+                    return false;
+                }
+
+                if (target->origFunc)
+                    *target->origFunc = reinterpret_cast<void*>(pThunk->u1.Function);
+
+                pThunk->u1.Function = reinterpret_cast<DWORD_PTR>(target->hookFunc);
+
+                ASS(VirtualProtect(&pThunk->u1.Function, sizeof(DWORD_PTR), dwOldProtect,
+                                   &dwOldProtect));
+            }
+        }
+    }
+    return true;
+}
+
+inline bool should_not_be_iated(const std::string& d) {
+    // TODO: Maybe use whitelist instead of blacklist?
+    return d == "ntdll.dll" || d == "boshyst.dll" || d == "vcruntime140d.dll" ||
+           d == "directxdatabasehelper.dll" || d == "textinputframework.dll" || d == "gpapi.dll" ||
+           d == "nvppe.dll" || d == "dxcore.dll" || d == "dxgi.dll" || d == "ddraw.dll" ||
+           d == "d3d9.dll" || d == "d3d8.dll" || d == "dsound.dll" || d == "nvd3dum.dll" ||
+           d == "nvgpucomp32.dll" || d == "nvldumd.dll" || d == "nvspcap.dll" ||
+           d == "winhttp.dll" || d == "mswsock.dll" || d == "nvmemmapstorage.dll" ||
+           d == "ws2_32.dll" || d == "dwmapi.dll" || d == "winmm.dll" || d == "comdlg32.dll" ||
+           d == "coremessaging.dll" || d == "coreuicomponents.dll" || d == "drvstore.dll" ||
+           d == "wintrust.dll" || d == "crypt32.dll" || d == "cryptnet.dll" ||
+           d == "cryptbase.dll" || d == "bcryptprimitives.dll" || d == "wininet.dll";
+}
+
+void enable_iat() {
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, 0);
+    // ASS(hSnapshot != INVALID_HANDLE_VALUE);
+    if (hSnapshot == INVALID_HANDLE_VALUE) {
+        cout << "CreateToolhelp32Snapshot failed\n";
+        return;
+    }
+
+    MODULEENTRY32W me = {0};
+    me.dwSize = sizeof(MODULEENTRY32);
+
+    if (Module32FirstW(hSnapshot, &me)) {
+        do {
+            auto mod_fn = unicode_to_utf8(me.szModule, false);
+            std::transform(mod_fn.begin(), mod_fn.end(), mod_fn.begin(), ::tolower);
+            if (!should_not_be_iated(mod_fn) && module_iat_apply(me.hModule)) {
+#if defined(_DEBUG) && 0
+                static std::vector<std::string> log_iat;
+                auto it = std::find(log_iat.begin(), log_iat.end(), mod_fn);
+                if (it == log_iat.end()) {
+                    log_iat.push_back(mod_fn);
+                    cout << "IATed " << mod_fn << '\n';
+                }
+#endif
+            }
+        } while (Module32NextW(hSnapshot, &me));
+    } else {
+        ASS(false);
+        cout << "Failed to retrieve module information (code: " << GetLastError() << ")\n";
+    }
+    CloseHandle(hSnapshot);
+}
 
 bool MyKeyState(int k) {
     HWND fg = GetForegroundWindow();

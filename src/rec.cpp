@@ -7,7 +7,6 @@
 #include "utils.hpp"
 #include <MinHook.h>
 #include <Windows.h>
-#include <cstdio>
 #include <cstdlib>
 #include <d3d9.h>
 #include <iostream>
