@@ -123,7 +123,7 @@ struct BTasState {
     // Re-record count
     int rerecords;
     // Save RNG seed for sure
-    short seed;
+    unsigned short seed;
 
     BTasState() { clear(); }
 
@@ -831,7 +831,7 @@ static void exec_event(BTasEvent& ev) {
     }
     case 4: {
         // Check hash RNG
-        int comp_val = st.seed;
+        int comp_val = static_cast<int>(st.seed);
         if (comp_val != ev.hash.val) {
             // I still have no idea why this happens
             last_msg =
@@ -897,6 +897,12 @@ static void exec_event(BTasEvent& ev) {
         cout << "audio event\n";
         break;
     }
+    case 11: {
+        // Set RNG seed
+        RunHeader* pState = get_state();
+        pState->RandomSeed = static_cast<unsigned short>(ev.click.x);
+        break;
+    }
     }
 }
 
@@ -928,8 +934,7 @@ bool btas::on_before_update() {
     if (st.frame == 0)
         init_temp_saves();
     // Sync seed for sure
-    ushort temp_seed = (ushort)st.seed;
-    pState->RandomSeed = *(short*)&temp_seed;
+    pState->RandomSeed = st.seed;
     if (is_replay) {
         for (; repl_index < (int)st.ev.size(); repl_index++) {
             BTasEvent& ev = st.ev[repl_index];
@@ -974,7 +979,7 @@ bool btas::on_before_update() {
                 ev.hash.val = st.cur_pos[0] ^ st.cur_pos[1];
                 ev.idx = 3;
             } else {
-                ev.hash.val = (int)st.seed;
+                ev.hash.val = static_cast<int>(st.seed);
                 ev.idx = 4;
             }
             ev.frame = st.frame;
@@ -998,7 +1003,7 @@ void btas::on_after_update(bool switched) {
         last_upd = false;
         // Time advance
         st.c1 = pState->lastFrameScore;
-        st.seed = (int)*(ushort*)&pState->RandomSeed;
+        st.seed = pState->RandomSeed;
         st.frame++;
         if (fix_needed && switched && is_replay) {
             for (size_t i = 0; i < st.ev.size(); i++) {
@@ -1271,7 +1276,7 @@ void btas::draw_tab() {
             import_replay(string(export_buf) + ".breplay");
         ImGui::Checkbox("Timer conditions fix", &timers_fix);
         static int rval[3] = {0, 0, 0};
-        ImGui::Text("Random seed: %i", st.seed);
+        ImGui::Text("Random seed: %i", static_cast<int>(st.seed));
         ImGui::InputInt("RNG value", &rval[0]);
         if (ImGui::InputInt("RNG range", &rval[1]))
             rval[1] = std::max(rval[1], 1);

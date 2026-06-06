@@ -1706,7 +1706,7 @@ struct RunHeader {
     undefined field181_0x189;
     undefined field182_0x18a;
     undefined field183_0x18b;
-    short RandomSeed;
+    ushort RandomSeed;
     undefined field185_0x18e;
     undefined field186_0x18f;
     int maybeScrollX; /* Created by retype action */
