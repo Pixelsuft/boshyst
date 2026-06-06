@@ -49,7 +49,7 @@ Before replaying TAS, set `tas_audio_capture` and `tas_audio_main_thread`. Then 
 Run `amerge.bat` script created in the game folder to join all sounds in a single output (it requires FFmpeg). <br />
 NOTE: Fading is not supported yet (kinda used in credits only).
 ## Useful links
-[Boshyst DLL (Windows 8+)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll)<br />
+[Boshyst DLL (Windows 7+)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll)<br />
 [Boshyst DLL (Windows XP compatible)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/xp/boshyst.dll)<br />
 [Modified wintasee.dll for hourglass r90](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee.dll) <br />
 [Modified wintasee.dll for hourglass r78](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/wintasee%20r78.dll) <br />
