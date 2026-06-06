@@ -8,5 +8,6 @@ Release
 ReleaseFast
 RelNoOpt
 x64
+joined.txt
 *.aps
 *.zip

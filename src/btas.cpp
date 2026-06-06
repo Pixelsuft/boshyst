@@ -1294,6 +1294,16 @@ void btas::draw_tab() {
             for (int i = 0; i < rval[2]; i++)
                 st.temp_ev.push_back(ev);
         }
+#if defined(_DEBUG)
+        ImGui::SameLine();
+        if (ImGui::Button("Push current seed")) {
+            BTasEvent ev;
+            ev.click.x = static_cast<int>(st.seed);
+            ev.frame = st.frame;
+            ev.idx = 11;
+            st.ev.insert(st.ev.begin() + repl_index++, ev);
+        }
+#endif
         static int mpos[2] = {0, 0};
         ImGui::InputInt2("Mouse pos for click", mpos);
         if (ImGui::Button("Push mouse click")) {
