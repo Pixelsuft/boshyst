@@ -245,7 +245,8 @@ static void import_replay(const std::string& path) {
             }
         }
         if (!st.ev.empty() && st.ev.back().frame > ev.frame) {
-            last_msg = "Invalid order";
+            last_msg =
+                "Invalid order (" + to_str(ev.frame) + " after " + to_str(st.ev.back().frame) + ")";
             return;
         }
         st.ev.push_back(ev);
@@ -900,7 +901,7 @@ static void exec_event(BTasEvent& ev) {
     case 11: {
         // Set RNG seed
         RunHeader* pState = get_state();
-        pState->RandomSeed = static_cast<unsigned short>(ev.click.x);
+        pState->RandomSeed = st.seed = static_cast<unsigned short>(ev.click.x);
         break;
     }
     }
