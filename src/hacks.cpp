@@ -945,9 +945,10 @@ void init_simple_hacks() {
     Ordinal_78 = (decltype(Ordinal_78))(mem::get_base("mmfs2.dll") + 0x116e0);
     // cout << std::hex << (mem::get_base("ForEach.mfx")) << std::endl;
     // hook(mem::get_base("INI++.mfx") + 0x15681, SuperINI_CryptHook);
-    // FIXME THEY ARE BROKEN MFX
-    iat_hook("Viewport.mfx", "DisplayRunObject", DisplayRunObjectVPHook, &DisplayRunObjectVPOrig);
-    iat_hook("Perspective.mfx", "DisplayRunObject", DisplayRunObjectPHook, &DisplayRunObjectPOrig);
+    hook(mem::addr("DisplayRunObject", "Viewport.mfx"), DisplayRunObjectVPHook,
+         &DisplayRunObjectVPOrig);
+    hook(mem::addr("DisplayRunObject", "Perspective.mfx"), DisplayRunObjectPHook,
+         &DisplayRunObjectPOrig);
     iat_hook("msvcrt.dll", "rand", randHook, &randOrig);
     iat_hook("msvcrt.dll", "_stricmp", _stricmpHook, &_stricmpOrig);
     iat_hook("kernel32.dll", "CreateFileA", CreateFileHook, &CreateFileOrig);
