@@ -1263,18 +1263,21 @@ void btas::draw_tab() {
             pState->rhNextFrameData = 0;
             ExecuteTriggeredEvent(0xfffefffd);
         }
-        ImGui::SameLine();
+        if (st.frame != 0)
+            ImGui::SameLine();
         if (st.frame != 0 && ImGui::Button("Export"))
             export_replay(string(export_buf) + ".breplay");
-#ifdef _DEBUG
-        const bool show_import_button = true;
-#else
-        const bool show_import_button = st.frame == 0;
-#endif
-        if (show_import_button)
-            ImGui::SameLine();
-        if (show_import_button && ImGui::Button("Import"))
+        bool colored_import = st.frame != 0;
+        if (colored_import) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.9f, 0.4f, 0.4f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Import"))
             import_replay(string(export_buf) + ".breplay");
+        if (colored_import)
+            ImGui::PopStyleColor(3);
         ImGui::Checkbox("Timer conditions fix", &timers_fix);
         static int rval[3] = {0, 0, 0};
         ImGui::Text("Random seed: %i", static_cast<int>(st.seed));
