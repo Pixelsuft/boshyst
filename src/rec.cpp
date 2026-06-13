@@ -42,7 +42,7 @@ extern BOOL(__stdcall* SetWindowTextAOrig)(HWND, LPCSTR);
 static void get_buf_size(LPDIRECT3DDEVICE9 pDevice, int& w_buf, int& h_buf) {
     if (pDevice == nullptr) {
         // Get default sizes
-        get_win_size(w_buf, h_buf);
+        get_win_size(w_buf, h_buf, false);
         return;
     }
     // Get D3D9 output size

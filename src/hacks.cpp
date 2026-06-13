@@ -369,7 +369,7 @@ static int __stdcall UpdateGameFrameHook() {
         auto player = (ObjectHeader*)get_player_ptr(scene_id);
         if (player) {
             int x, y, w, h;
-            get_win_size(w, h);
+            get_win_size(w, h, true);
             get_cursor_pos_orig(x, y);
             // TODO: how to map cursor pos into game properly (scaling) (need to hook
             // Viewport.mfx?)?
@@ -781,8 +781,8 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     HideObjectIfNeededOrig(obj);
 }
 
-static BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect);
-static BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
+BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect);
+BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
     if (hWnd == hwnd && (conf.force_size[0] != 0 || conf.force_size[1] != 0)) {
         lpRect->left = 0;
         lpRect->top = 0;

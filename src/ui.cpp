@@ -6,12 +6,10 @@
 #include "fs.hpp"
 #include "ghidra_headers.h"
 #include "init.hpp"
-#include "input.hpp"
 #include "mem.hpp"
 #include "rec.hpp"
 #include "utils.hpp"
 #include <Windows.h>
-#include <cstdint>
 #include <imgui.h>
 #include <iostream>
 #include <unordered_map>
@@ -66,7 +64,7 @@ static void post_draw() {
 
 static void draw_basic_text() {
     static int ws[2];
-    get_win_size(ws[0], ws[1]);
+    get_win_size(ws[0], ws[1], true);
     int scene_id = get_scene_id();
     ObjectHeader* pp = (ObjectHeader*)get_player_ptr(scene_id);
     int inGameFrames = *(int*)(*(size_t*)(mem::get_base() + 0x59a9c) + 0xd0);

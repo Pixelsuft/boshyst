@@ -34,6 +34,8 @@ extern HWND hwnd;
 extern HWND mhwnd;
 extern BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 extern SHORT(__stdcall* GetKeyStateOrig)(int k);
+extern BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect);
+extern BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect);
 static std::vector<int> key_states;
 
 static std::unordered_map<std::string, std::vector<HookTarget>> iat_map;
@@ -294,10 +296,13 @@ void* mem::ptr_from_offsets(const size_t* offsets, size_t n) {
     return ptr;
 }
 
-void get_win_size(int& w_buf, int& h_buf) {
+void get_win_size(int& w_buf, int& h_buf, bool fake) {
     RECT rect;
     memset(&rect, 0, sizeof(rect));
-    GetClientRect(hwnd, &rect);
+    if (fake)
+        GetClientRectHook(hwnd, &rect);
+    else
+        GetClientRectOrig(hwnd, &rect);
     w_buf = rect.right;
     h_buf = rect.bottom;
 }

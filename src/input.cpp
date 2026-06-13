@@ -29,7 +29,7 @@ BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
     if (is_btas) {
         int w, h;
-        get_win_size(w, h);
+        get_win_size(w, h, true);
         btas::my_mouse_pos(p->x, p->y);
         p->x = (long)(p->x * (float)w / 640.f);
         p->y = (long)(p->y * (float)h / 480.f);
@@ -70,7 +70,7 @@ bool input_tick() {
     if (is_btas)
         return ret;
     int w, h;
-    get_win_size(w, h);
+    get_win_size(w, h, true);
     // TODO: better way to handle??? (BTAS way?) (still need to be compatible with hourglass)
     for (auto it = config::mb.begin(); it != config::mb.end(); it++) {
         if (JustKeyState(it->first) == 1) {
