@@ -9,7 +9,7 @@ def parse_replay(fn, limit_frames=-1):
     ev = []
     for line in f:
         s = line.split(',,')[0].strip().rstrip(',').split(',')
-        if not s:
+        if len(s) < 2:
             continue
         frame = int(s[0])
         if frame < 0:

@@ -45,7 +45,7 @@ bool MyKeyState(int k);
 int JustKeyState(int k);
 wchar_t* utf8_to_unicode(const std::string& utf8);
 std::string unicode_to_utf8(wchar_t* buf, bool autofree);
-void get_win_size(int& w_buf, int& h_buf);
+void get_win_size(int& w_buf, int& h_buf, bool fake);
 void get_cursor_pos(int& x_buf, int& y_buf);
 void get_cursor_pos_orig(int& x_buf, int& y_buf);
 void update_save_encryption();
