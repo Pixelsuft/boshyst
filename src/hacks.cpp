@@ -30,6 +30,7 @@ static int next_bullet_x = 0;
 static int next_bullet_y = 0;
 static uint next_bullet_dir = 0;
 static bool audio_timer_hooked = false;
+static bool allow_hitbox_fix = false;
 static char temp_path[MAX_PATH];
 int bullet_id = 106;
 int bullet_speed = 70;
@@ -346,6 +347,9 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     auto ret = UpdateGameFrameOrig();
+
+    if (ret != 0)
+        allow_hitbox_fix = conf.hitbox_level != 0;
 
     if (audio_timer_hooked) {
         // TODO: conf::tas_better_precise_audio
@@ -757,21 +761,25 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     int mvtOffset = obj->hoAdpOffset;
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
     if (conf.hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
-        RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+        RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
         obj->runtimeFlags = obj->runtimeFlags & 0xdf;
         obj->isDirty = 1;
         obj->animFinished = 0;
         obj->collisionFlags = 0;
-        Ordinal_78(pState.hMainEngine, obj->spriteHandle, 1);
+        Ordinal_78(pState->hMainEngine, obj->spriteHandle, 1);
+        if (!allow_hitbox_fix)
+            return;
         int count = conf.hitbox_level;
-        for (int i = pState.activeObjectCount - 1; i > 20; i--) {
-            ObjectHeader* ptr = pState.objectList[i * 2];
-            if (!ptr || obj->handle == ptr->handle || std::abs(obj->xPos - ptr->xPos) > 0 ||
-                std::abs(obj->yPos - ptr->yPos) > 0)
+        count = 2;
+        for (int i = pState->activeObjectCount - 1; i > 20; i--) {
+            ObjectHeader* ptr = pState->objectList[i * 2];
+            if (!ptr || obj->handle == ptr->handle || obj->flags != 58164 ||
+                std::abs(obj->xPos - ptr->xPos) > 0 || std::abs(obj->yPos - ptr->yPos) > 0)
                 continue;
             statusFlags = (ushort*)((int)&ptr->eventTriggerTable + mvtOffset);
             *statusFlags &= ~1;
             HideObjectIfNeededOrig(ptr);
+            allow_hitbox_fix = false;
             count--;
             if (count == 0)
                 break;
@@ -781,7 +789,7 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     HideObjectIfNeededOrig(obj);
 }
 
-BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect);
+BOOL(__stdcall* GetClientRectOrig)(HWND hWnd, LPRECT lpRect) = GetClientRect;
 BOOL __stdcall GetClientRectHook(HWND hWnd, LPRECT lpRect) {
     if (hWnd == hwnd && (conf.force_size[0] != 0 || conf.force_size[1] != 0)) {
         lpRect->left = 0;
@@ -978,6 +986,7 @@ void init_simple_hacks() {
         ASS(WriteProcessMemory(hproc, (void*)(mem::get_base("INI++.mfx") + 0x1a5f7 + 1), &addr, 4,
                                &bW) &&
             bW == 4);
+        update_save_encryption();
     }
     if (!is_btas)
         init_temp_saves();

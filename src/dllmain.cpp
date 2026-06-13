@@ -28,6 +28,10 @@ bool is_hourglass = false;
 
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
     ASS(MH_Initialize() == MH_OK);
+#if 0
+    while (!IsDebuggerPresent())
+        Sleep(500);
+#endif
     init_game_loop();
     return 0;
 }

@@ -9,11 +9,8 @@
 #include "ui.hpp"
 #include "utils.hpp"
 #include <Windows.h>
-#include <iostream>
 #include <map>
 #include <vector>
-
-using std::cout;
 
 namespace config {
 extern std::map<int, std::vector<InputEvent>> mb;
@@ -25,7 +22,7 @@ LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM) = nullptr;
 static int cur_x = -100;
 static int cur_y = -100;
 
-BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p);
+BOOL(__stdcall* GetCursorPosOrig)(LPPOINT p) = GetCursorPos;
 static BOOL __stdcall GetCursorPosHook(LPPOINT p) {
     if (is_btas) {
         int w, h;
