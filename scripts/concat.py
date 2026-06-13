@@ -8,7 +8,9 @@ def parse_replay(fn, limit_frames=-1):
     rerecords = 0
     ev = []
     for line in f:
-        s = line.split(',,')[0].split(',')
+        s = line.split(',,')[0].strip().rstrip(',').split(',')
+        if not s:
+            continue
         frame = int(s[0])
         if frame < 0:
             if s[1] == 'total':
