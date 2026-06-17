@@ -613,7 +613,7 @@ static void b_state_load(int slot) {
         st.frame = st.sc_frame = 0;
         st.seed = 0;
         st.time = 0;
-        ExecuteTriggeredEvent(0xfffefffd);
+        // ExecuteTriggeredEvent(0xfffefffd);
         // We can't just keep loading, do it later via need_scene_state_slot
         return;
     }
@@ -638,7 +638,7 @@ static void b_state_load(int slot) {
         last_msg = string("Loading scene ") + to_str(scene_id);
         pState->rhNextFrame = 3;                     // Set scene flag
         pState->rhNextFrameData = scene_id | 0x8000; // Scene ID
-        ExecuteTriggeredEvent(0xfffefffd);
+        // ExecuteTriggeredEvent(0xfffefffd);
         // Same
         return;
     }
@@ -1006,9 +1006,11 @@ void btas::on_after_update(bool switched) {
         st.c1 = pState->lastFrameScore;
         st.seed = pState->RandomSeed;
         st.frame++;
+        // fix_needed = true;
         if (fix_needed && switched && is_replay) {
+            cout << "fixed on frame " << st.frame << std::endl;
             for (size_t i = 0; i < st.ev.size(); i++) {
-                if (st.ev[i].frame >= st.frame)
+                if (st.ev[i].frame > st.frame)
                     st.ev[i].frame++;
             }
             st.total++;
@@ -1261,7 +1263,7 @@ void btas::draw_tab() {
             last_msg = "Restarting game";
             pState->rhNextFrame = 4; // Restart flag
             pState->rhNextFrameData = 0;
-            ExecuteTriggeredEvent(0xfffefffd);
+            // ExecuteTriggeredEvent(0xfffefffd);
         }
         if (st.frame != 0)
             ImGui::SameLine();
