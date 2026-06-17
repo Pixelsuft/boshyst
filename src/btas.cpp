@@ -752,7 +752,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
     unsigned int ret;
     // Do we have value for that range (maxv) in our queue?
     if (it == st.rng_buf.end() || it->a != (int)maxv) {
-        ret = RandomOrig(maxv);
+        ret = (maxv != RAND_MAX) ? RandomOrig(maxv) : 0;
 #ifdef _DEBUG
         if (is_replay && MyKeyState('T')) {
             if (maxv > 3) {
@@ -773,7 +773,8 @@ unsigned int btas::get_rng(unsigned int maxv) {
         }
 #endif
     } else {
-        RandomOrig(maxv); // For consistency
+        if (maxv != RAND_MAX)
+            RandomOrig(maxv); // For consistency
         // Return our value
         ret = (unsigned int)it->b;
         st.rng_buf.erase(it);

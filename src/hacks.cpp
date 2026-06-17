@@ -77,14 +77,12 @@ static int __cdecl randHook() {
     // For MMKRandomPool.mfx (used very rarely)
     int ret;
     if (is_btas) {
-        // Ok let's just fix it to 0 so we don't have to deal with many shit, hopefully nobody will
-        // notice :)
-        // ret = btas::get_rng(RAND_MAX);
+        ret = btas::get_rng(RAND_MAX);
         // if (ret != RAND_MAX)
         //    return ret;
         // I don't think it's good to call orig rand
-        cout << "warn: game used rand()\n";
-        return 0;
+        cout << "warn: game used rand(): " << ret << "/" << RAND_MAX << "\n";
+        return ret;
     }
     if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (RAND_MAX + 1)))
         ret = (unsigned int)((float)RAND_MAX * fix_rng_val / 100.f);
@@ -408,6 +406,7 @@ unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
 static unsigned int __cdecl RandomHook(unsigned int maxv) {
     // Main random func
     unsigned int ret;
+    ASS(maxv != RAND_MAX);
     if (is_btas)
         ret = btas::get_rng(maxv);
     else if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (int)maxv)) {
