@@ -14,6 +14,7 @@ Menu should be opened (toggled by Insert as a default bind).
 Just also put [BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/btas.exe) into the game folder and launch the game via it. <br />
 Open the config to see binds. <br />
 Known problems:
+ - Mod menu sometimes can crash during startup (IAT hooking?)
  - Save files forgetting after loading a state (breaks in-game save logic, also some visual stuff which game thinks is locked) (mostly fixed)
  - RNG seed desyncs (also might be caused by changing visual settings) (TODO: somehow add option to disable shaders without affecting RNG)
  - Hitbox desyncs (TODO: research why `DirBlur x3.fx` affects that, might be caused by RNG)

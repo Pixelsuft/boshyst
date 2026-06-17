@@ -84,7 +84,7 @@ static bool module_iat_apply(void* hModule) {
         if (it == iat_map.end())
             continue;
 
-        const auto& targets = it->second;
+        auto& targets = it->second;
         DWORD thunkOffset = pImportDesc->OriginalFirstThunk ? pImportDesc->OriginalFirstThunk
                                                             : pImportDesc->FirstThunk;
         if (thunkOffset == 0)
@@ -101,7 +101,7 @@ static bool module_iat_apply(void* hModule) {
                     reinterpret_cast<BYTE*>(hModule) + pOriginalThunk->u1.AddressOfData);
                 auto funcName = reinterpret_cast<char*>(pImportByName->Name);
                 auto target =
-                    std::find_if(targets.begin(), targets.end(), [funcName](const auto& t) {
+                    std::find_if(targets.begin(), targets.end(), [funcName](const HookTarget& t) {
                         return strcmp(funcName, t.funcName.c_str()) == 0;
                     });
                 if (target == targets.end())
