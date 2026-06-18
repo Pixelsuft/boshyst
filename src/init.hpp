@@ -3,6 +3,7 @@
 extern bool inited;
 extern bool is_hourglass;
 extern bool gr_hooked;
+extern bool processed_first;
 
 bool fix_win32_theme();
 void audio_init();

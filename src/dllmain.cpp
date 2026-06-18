@@ -25,6 +25,7 @@ HWND mhwnd = nullptr;
 bool inited = false;
 bool gr_hooked = false;
 bool is_hourglass = false;
+bool processed_first = false;
 
 static DWORD WINAPI app_entry(LPVOID lpParameter) {
     ASS(MH_Initialize() == MH_OK);
@@ -49,6 +50,9 @@ typedef long(__stdcall* StretchRect)(LPDIRECT3DDEVICE9, IDirect3DSurface9*, cons
                                      IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
 static StretchRect oStretchRect = nullptr;
 
+typedef long(__stdcall* Present)(LPDIRECT3DDEVICE9, const RECT*, const RECT*, HWND, const RGNDATA*);
+static Present oPresent = nullptr;
+
 static long __stdcall hkReset(LPDIRECT3DDEVICE9 pDevice,
                               D3DPRESENT_PARAMETERS* pPresentationParameters) {
     // cout << "dev reset\n";
@@ -57,6 +61,19 @@ static long __stdcall hkReset(LPDIRECT3DDEVICE9 pDevice,
     ImGui_ImplDX9_CreateDeviceObjects();
 
     return result;
+}
+
+static void do_imgui(LPDIRECT3DDEVICE9 pDevice) {
+    // Render before we draw our GUI
+    if (conf.direct_render)
+        rec::rec_tick(pDevice);
+    ImGui_ImplDX9_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    ui::draw();
+    ImGui::EndFrame();
+    ImGui::Render();
+    ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 }
 
 static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {
@@ -80,19 +97,17 @@ static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {
         cout << "graphics inited\n";
 #endif
     }
-    // Render before we draw our GUI
-    if (conf.direct_render)
-        rec::rec_tick(pDevice);
+    if (!processed_first)
+        do_imgui(pDevice);
+    return oEndScene(pDevice);
+}
 
-    ImGui_ImplDX9_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-    ui::draw();
-    ImGui::EndFrame();
-    ImGui::Render();
-    ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
-    auto ret = oEndScene(pDevice);
-    return ret;
+static long __stdcall hkPresent(LPDIRECT3DDEVICE9 pDevice, const RECT* pSourceRect,
+                                const RECT* pDestRect, HWND hDestWindowOverride,
+                                const RGNDATA* pDirtyRegion) {
+    if (processed_first)
+        do_imgui(pDevice);
+    return oPresent(pDevice, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 }
 
 static long __stdcall hkSetSamplerState(LPDIRECT3DDEVICE9 pDevice, DWORD Sampler,
@@ -141,6 +156,7 @@ void try_to_hook_graphics() {
 #if SHOW_STAGES
     cout << "graphics hooking 5\n";
 #endif
+    ASS(kiero::bind(17, (void**)&oPresent, hkPresent) == kiero::Status::Success);
     ASS(kiero::bind(42, (void**)&oEndScene, hkEndScene) == kiero::Status::Success);
     ASS(kiero::bind(69, (void**)&oSetSamplerState, hkSetSamplerState) == kiero::Status::Success);
     ASS(kiero::bind(34, (void**)&oStretchRect, hkStretchRect) == kiero::Status::Success);

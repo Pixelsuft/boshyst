@@ -398,6 +398,7 @@ static int __stdcall UpdateGameFrameHook() {
     if (!conf.direct_render)
         rec::rec_tick(nullptr);
 
+    processed_first = true;
     last_upd2 = false;
     return ret;
 }
