@@ -3,6 +3,7 @@
 #include "fs.hpp"
 #include "hook.hpp"
 #include "mem.hpp"
+#include "utils.hpp"
 #include <Windows.h>
 #include <cstdint>
 #include <dsound.h>
@@ -58,7 +59,6 @@ struct WavHeader {
 struct AudioEvent {
     uint64_t timeOffset;
     LONG volume;
-    LONG pan;
     DWORD frequency;
 };
 
@@ -89,7 +89,7 @@ static int gen_uid(uint64_t mytime) {
 inline unsigned long audio_get_time() { return btas::get_time(); }
 
 inline string audio_get_fn(uint64_t a, int b) {
-    return "a_" + std::to_string(a) + "_" + std::to_string(b) + ".wav";
+    return "a_" + to_str(a) + "_" + to_str(b) + ".wav";
 }
 
 class IDSBProxy : public IDirectSoundBuffer {
@@ -105,10 +105,9 @@ class IDSBProxy : public IDirectSoundBuffer {
 
     void push_event() {
         DWORD newFreq;
-        LONG vol, pan;
+        LONG vol;
         pBuf->GetFrequency(&newFreq);
         pBuf->GetVolume(&vol);
-        pBuf->GetPan(&pan);
 
         uint64_t now = audio_get_time();
 
@@ -131,13 +130,18 @@ class IDSBProxy : public IDirectSoundBuffer {
         if (!cap.events.empty()) {
             auto& last = cap.events.back();
             if (last.timeOffset == offset) {
-                last = {offset, vol, pan, newFreq};
+                last.volume = vol;
+                last.frequency = newFreq;
                 return;
             }
-            if (last.frequency == newFreq && last.volume == vol && last.pan == pan)
+            if (last.frequency == newFreq && last.volume == vol)
                 return;
         }
-        cap.events.push_back({offset, vol, pan, newFreq});
+        AudioEvent ev;
+        ev.timeOffset = offset;
+        ev.volume = vol;
+        ev.frequency = newFreq;
+        cap.events.push_back(ev);
     }
 
     void reinit_wav() {
@@ -266,12 +270,7 @@ public:
         push_event();
         return hr;
     }
-    STDMETHOD(SetPan)(LONG p) override {
-        HRESULT hr = pBuf->SetPan(p);
-        CriticalSectionLock lock(g_audioCS);
-        push_event();
-        return hr;
-    }
+    STDMETHOD(SetPan)(LONG p) override { return pBuf->SetPan(p); }
     STDMETHOD(Stop)() override {
         CriticalSectionLock lock(g_audioCS);
         finalize_wav();
@@ -374,8 +373,8 @@ void on_audio_destroy() {
         return;
     conf.cap_au = false;
     CriticalSectionLock lock(g_audioCS);
-    for (IDSBProxy* c : cache)
-        c->finalize_wav();
+    for (auto it = cache.begin(); it != cache.end(); it++)
+        (*it)->finalize_wav();
     if (history.empty())
         return;
 
@@ -383,45 +382,39 @@ void on_audio_destroy() {
     string mix = "";
     size_t count = 0;
 
-    for (const auto& c : history) {
-        string finalLabel = "[f" + std::to_string(count) + "]";
+    for (auto it = history.begin(); it != history.end(); it++) {
+        auto& c = *it;
+        string finalLabel = "[f" + to_str(count) + "]";
         double totalDuration = static_cast<double>(c.endTime - c.startTime) / 1000.0;
         ASS(!c.events.empty());
         size_t numSegs = c.events.size();
-        filters.write("amovie=" + audio_get_fn(c.startTime, c.idx) +
-                      ",asplit=" + std::to_string(numSegs));
-        for (size_t e = 0; e < numSegs; e++) {
-            filters.write("[b" + std::to_string(count) + "s" + std::to_string(e) + "]");
-        }
+        filters.write("amovie=" + audio_get_fn(c.startTime, c.idx) + ",asplit=" + to_str(numSegs));
+        for (size_t e = 0; e < numSegs; e++)
+            filters.write("[b" + to_str(count) + "s" + to_str(e) + "]");
         filters.write_line(";");
         string segmentLabels = "";
         for (size_t e = 0; e < c.events.size(); e++) {
-            string branchIn = "[b" + std::to_string(count) + "s" + std::to_string(e) + "]";
-            string branchOut = "[p" + std::to_string(count) + "s" + std::to_string(e) + "]";
+            string branchIn = "[b" + to_str(count) + "s" + to_str(e) + "]";
+            string branchOut = "[p" + to_str(count) + "s" + to_str(e) + "]";
 
             double start = static_cast<double>(c.events[e].timeOffset) / 1000.0;
             double end = (e + 1 < c.events.size())
                              ? static_cast<double>(c.events[e + 1].timeOffset) / 1000.0
                              : totalDuration;
             double volLinear = std::pow(10.0, static_cast<double>(c.events[e].volume) / 2000.0);
-            double panNorm = static_cast<double>(c.events[e].pan) / 10000.0;
-            double leftGain = (panNorm <= 0.0) ? 1.0 : (1.0 - panNorm);
-            double rightGain = (panNorm >= 0.0) ? 1.0 : (1.0 + panNorm);
 
-            filters.write_line(
-                branchIn + "atrim=start=" + std::to_string(start) + ":end=" + std::to_string(end) +
-                ",asetrate=" + std::to_string(c.events[e].frequency) +
-                ",volume=" + std::to_string(volLinear) + ",aresample=48000" + branchOut + ";");
+            filters.write_line(branchIn + "atrim=start=" + to_str(start) + ":end=" + to_str(end) +
+                               ",asetrate=" + to_str(c.events[e].frequency) + ",volume=" +
+                               to_str(volLinear) + ",aresample=48000" + branchOut + ";");
 
             segmentLabels += branchOut;
         }
-        filters.write_line(segmentLabels + "concat=n=" + std::to_string(numSegs) +
-                           ":v=0:a=1,adelay=" + std::to_string(c.startTime) + ":all=1" +
-                           finalLabel + ";");
+        filters.write_line(segmentLabels + "concat=n=" + to_str(numSegs) +
+                           ":v=0:a=1,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";");
         mix += finalLabel;
         count++;
     }
-    filters.write(mix + "amix=inputs=" + std::to_string(count) + ":normalize=0[out]");
+    filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[out]");
     bfs::File bat("audio_merge.bat", 1);
     bat.write_line("@echo off");
     bat.write_line("cd temp_audio");
