@@ -387,17 +387,19 @@ static int __stdcall UpdateGameFrameHook() {
         }
     }
 
-    if (is_btas) {
+    if (is_btas)
         btas::on_after_update(ret != 0);
-        // Still like to maually render in btas mode
-        if (!fast_forward_skip)
-            ProcessFrameRendering();
+
+    if (is_btas && last_upd2 && !conf.force_gdi) {
+        // FIXME
+        // cout << "NO DRAW WTF!!!!!!!!!! ret=" << ret << '\n';
+        ProcessFrameRendering();
     }
 
     if (!conf.direct_render)
         rec::rec_tick(nullptr);
 
-    processed_first = !capturing; // FIXME: white screen blinking when using Present method
+    processed_first = true;
     last_upd2 = false;
     return ret;
 }

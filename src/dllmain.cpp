@@ -74,6 +74,7 @@ static void do_imgui(LPDIRECT3DDEVICE9 pDevice) {
     ImGui::EndFrame();
     ImGui::Render();
     ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+    last_upd2 = false;
 }
 
 static long __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice) {

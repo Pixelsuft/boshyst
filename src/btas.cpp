@@ -173,7 +173,6 @@ bool last_upd2 = false;
 
 bool is_btas = false;
 bool fast_forward = false;
-bool fast_forward_skip = false;
 bool is_paused = true;
 bool is_replay = false;
 bool b_loading_saving_state = false;
@@ -318,12 +317,6 @@ void btas::read_setting(const string& line, const string& line_orig) {
         bind.idx = 7;
         ASS(sscanf(line.substr(16).c_str(), "%i,%i,%i", &bind.key, &bind.mod, &bind.state.slot) ==
             3);
-    } else if (starts_with(line, "btas=toggle_fastforward_skip,")) {
-        bind.idx = 8;
-        ASS(sscanf(line.substr(29).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
-    } else if (starts_with(line, "btas=fastforward_skip,")) {
-        bind.idx = 9;
-        ASS(sscanf(line.substr(22).c_str(), "%i,%i", &bind.key, &bind.mod) == 2);
     } else if (starts_with(line, "btas=replay,")) {
         need_replay_load = line_orig;
         while (!need_replay_load.empty() && need_replay_load[0] != ',')
@@ -354,9 +347,7 @@ void btas::pre_init() {
                                  0x90, 0x90, 0x90, 0x90, 0x85, 0xC0, 0xEB, 0x00};
     uint8_t temp = 0xeb;
     DWORD bW;
-    // Disable automatic frame rendering
-    WPM(mem::get_base() + 0x1dcc1, buf, 5);
-    WPM(mem::get_base() + 0x365ec, &temp, 1); // Unreachable anyway
+    // WPM(mem::get_base() + 0x365ec, &temp, 1); // Unreachable anyway
     // Disable timers when moving window to prevent desync
     WPM(mem::get_base() + 0x4b74, buf, 5);
     WPM(mem::get_base() + 0x4b6d, buf, 5);
@@ -779,7 +770,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
         ret = (unsigned int)it->b;
         st.rng_buf.erase(it);
     }
-    if (!fast_forward && !fast_forward_skip) {
+    if (!fast_forward) {
         // Fill RNG log
         auto mit = rng_logger.find((int)maxv);
         if (mit == rng_logger.end()) {
@@ -1051,7 +1042,7 @@ void btas::on_after_update(bool switched) {
     }
     DWORD advance = slowmo ? 100 : 20;
     // TODO: less performance eating way
-    while (!fast_forward && !fast_forward_skip && now < (last_time + advance))
+    while (!fast_forward && now < (last_time + advance))
         now = timeGetTimeOrig();
     if (IsIconic(hwnd))
         Sleep(100);
@@ -1139,18 +1130,6 @@ void btas::on_key(int k, bool pressed) {
                 b_state_load(bind.state.slot);
             break;
         }
-        case 8: {
-            // Toggle fast forward with skipping
-            if (pressed && !show_menu)
-                fast_forward_skip = !fast_forward_skip;
-            break;
-        }
-        case 9: {
-            // Fast forward with skipping
-            if (!show_menu)
-                fast_forward_skip = pressed;
-            break;
-        }
         }
         bind.down = pressed;
         it++;
@@ -1175,7 +1154,7 @@ void btas::draw_info() {
     ImGui::Text("Scene: %i (%s)", get_scene_id(), get_scene_name());
     // ImGui::Text("Time: %u", cur_time);
     ImGui::Text("Message: %s", last_msg.c_str());
-    if (fast_forward || fast_forward_skip)
+    if (fast_forward)
         return;
     string cur_keys = "";
     for (auto it = st.prev.cbegin(); it != st.prev.cend(); it++) {
