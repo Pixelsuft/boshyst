@@ -397,7 +397,7 @@ static int __stdcall UpdateGameFrameHook() {
     if (!conf.direct_render)
         rec::rec_tick(nullptr);
 
-    processed_first = true;
+    processed_first = !capturing; // FIXME: white screen blinking when using Present method
     last_upd2 = false;
     return ret;
 }

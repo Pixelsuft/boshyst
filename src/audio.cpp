@@ -5,6 +5,7 @@
 #include "mem.hpp"
 #include "utils.hpp"
 #include <Windows.h>
+#include <algorithm>
 #include <cstdint>
 #include <dsound.h>
 #include <iostream>
@@ -57,14 +58,14 @@ struct WavHeader {
 #pragma pack(pop)
 
 struct AudioEvent {
-    uint64_t timeOffset;
+    ULONG timeOffset;
     LONG volume;
     DWORD frequency;
 };
 
 struct AudioCapture {
-    uint64_t startTime;
-    uint64_t endTime;
+    ULONG startTime;
+    ULONG endTime;
     std::vector<AudioEvent> events;
     int idx;
 
@@ -75,12 +76,12 @@ class IDSBProxy;
 static CRITICAL_SECTION g_audioCS;
 static std::vector<AudioCapture> history;
 static std::vector<IDSBProxy*> cache;
-static uint64_t last_time;
+static ULONG a_last_time;
 static int last_uid;
 
-static int gen_uid(uint64_t mytime) {
-    if (mytime != last_time) {
-        last_time = mytime;
+static int gen_uid(ULONG mytime) {
+    if (mytime != a_last_time) {
+        a_last_time = mytime;
         last_uid = 0;
     }
     return last_uid++;
@@ -88,14 +89,12 @@ static int gen_uid(uint64_t mytime) {
 
 inline unsigned long audio_get_time() { return btas::get_time(); }
 
-inline string audio_get_fn(uint64_t a, int b) {
-    return "a_" + to_str(a) + "_" + to_str(b) + ".wav";
-}
+inline string audio_get_fn(ULONG a, int b) { return "a_" + to_str(a) + "_" + to_str(b) + ".wav"; }
 
 class IDSBProxy : public IDirectSoundBuffer {
     AudioCapture cap;
     WavHeader header;
-    uint64_t lastRealTime;
+    ULONG lastRealTime;
     double virtualTimeAcc;
     bfs::File file;
     IDirectSoundBuffer* pBuf;
@@ -109,7 +108,7 @@ class IDSBProxy : public IDirectSoundBuffer {
         pBuf->GetFrequency(&newFreq);
         pBuf->GetVolume(&vol);
 
-        uint64_t now = audio_get_time();
+        ULONG now = audio_get_time();
 
         if (cap.events.empty()) {
             cap.startTime = now;
@@ -118,7 +117,7 @@ class IDSBProxy : public IDirectSoundBuffer {
             currentFreq = newFreq;
             originalFreq = newFreq;
         } else {
-            uint64_t deltaReal = now - lastRealTime;
+            ULONG deltaReal = now - lastRealTime;
             double scale =
                 (originalFreq > 0.0) ? (static_cast<double>(currentFreq) / originalFreq) : 1.0;
             virtualTimeAcc += static_cast<double>(deltaReal) * scale;
@@ -126,7 +125,7 @@ class IDSBProxy : public IDirectSoundBuffer {
             currentFreq = newFreq;
         }
 
-        uint64_t offset = static_cast<uint64_t>(virtualTimeAcc);
+        ULONG offset = static_cast<ULONG>(virtualTimeAcc);
         if (!cap.events.empty()) {
             auto& last = cap.events.back();
             if (last.timeOffset == offset) {
@@ -159,7 +158,7 @@ class IDSBProxy : public IDirectSoundBuffer {
 public:
     void finalize_wav() {
         if (file.is_open()) {
-            uint64_t now = audio_get_time();
+            ULONG now = audio_get_time();
             double scale = static_cast<double>(currentFreq) / static_cast<double>(originalFreq);
             virtualTimeAcc += static_cast<double>(now - lastRealTime) * scale;
             if (virtualTimeAcc <= 0.0) {
@@ -170,7 +169,7 @@ public:
                 ASS(rem_ret);
                 return;
             }
-            cap.endTime = cap.startTime + static_cast<uint64_t>(virtualTimeAcc);
+            cap.endTime = cap.startTime + static_cast<ULONG>(virtualTimeAcc);
             uint32_t finalFileSize = bytesWritten + 36;
             file.seek(4, bfs::SeekBegin);
             file.write(&finalFileSize, 4);
@@ -343,7 +342,7 @@ public:
 
 void audio_reinit_capture() {
     last_uid = 0;
-    last_time = 0;
+    a_last_time = 0;
 }
 
 static HRESULT(WINAPI* DirectSoundCreateOrig)(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk);
