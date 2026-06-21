@@ -419,9 +419,10 @@ void on_audio_destroy() {
     bat.write_line("cd temp_audio");
     bat.write_line(
         "ffmpeg -y -/filter_complex audio_filters.txt -map \"[out]\" -ar 48000 ../output.wav");
+    bat.write_line("cd ..");
     bat.write_line("echo Waiting to delete wav cache...");
     bat.write_line("pause");
-    bat.write_line("del a_*.wav");
-    bat.write_line("del audio_filters.txt");
+    bat.write_line("del temp_audio\\a_*.wav");
+    bat.write_line("del temp_audio\\audio_filters.txt");
     history.clear();
 }

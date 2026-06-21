@@ -392,6 +392,7 @@ static int __stdcall UpdateGameFrameHook() {
 
     if (is_btas && last_upd2 && !conf.force_gdi) {
         // FIXME
+        // 13.breplay: breaks on frame 114->115
         // cout << "NO DRAW WTF!!!!!!!!!! ret=" << ret << '\n';
         ProcessFrameRendering();
     }
