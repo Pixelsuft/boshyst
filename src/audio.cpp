@@ -3,16 +3,12 @@
 #include "fs.hpp"
 #include "hook.hpp"
 #include "mem.hpp"
-#include "utils.hpp"
 #include <Windows.h>
 #include <cstdint>
 #include <dsound.h>
 #include <iostream>
-#include <map>
 #include <string>
 #include <vector>
-
-// TODO: fix frequency set
 
 using std::cout;
 using std::string;
@@ -42,10 +38,10 @@ struct WavHeader {
     uint32_t dataLen;
 
     WavHeader() {
-        memcpy(riff, "RIFF", 4);
+        std::memcpy(riff, "RIFF", 4);
         fileSize = 0;
-        memcpy(wave, "WAVE", 4);
-        memcpy(fmt, "fmt ", 4);
+        std::memcpy(wave, "WAVE", 4);
+        std::memcpy(fmt, "fmt ", 4);
         fmtLen = 16;
         formatTag = 1;
         channels = 0;
@@ -53,331 +49,313 @@ struct WavHeader {
         byteRate = 0;
         blockAlign = 0;
         bitsPerSample = 0;
-        memcpy(data, "data", 4);
+        std::memcpy(data, "data", 4);
         dataLen = 0;
     }
 };
 #pragma pack(pop)
 
 struct AudioEvent {
-    unsigned long timeOffset; // Relative to cap.startTime
+    uint64_t timeOffset;
+    LONG volume;
+    LONG pan;
     DWORD frequency;
-    long volume;
-
-    AudioEvent(unsigned long to, DWORD f, long v) : timeOffset(to), frequency(f), volume(v) {}
 };
 
 struct AudioCapture {
-    bfs::File file;
-    WavHeader h;
-    unsigned long startTime;
-    unsigned long endTime;
-    uint32_t bytesWritten;
-    int idx;
+    uint64_t startTime;
+    uint64_t endTime;
     std::vector<AudioEvent> events;
-    DWORD lastFreq;
-    DWORD sampleRateOrig;
-    long lastVol;
+    int idx;
 
-    AudioCapture()
-        : startTime(0), endTime(0), bytesWritten(0), idx(0), lastFreq(0), lastVol(0),
-          sampleRateOrig(0) {}
-    AudioCapture(string fn)
-        : file(fn, 1), startTime(0), endTime(0), bytesWritten(0), idx(0), lastFreq(0), lastVol(0),
-          sampleRateOrig(0) {}
+    AudioCapture() : startTime(0), endTime(0), idx(0) {}
 };
 
-static std::map<IDirectSoundBuffer*, AudioCapture> g_captures;
-static std::vector<AudioCapture> g_history; // History for on_audio_destroy
+class IDSBProxy;
 static CRITICAL_SECTION g_audioCS;
+static std::vector<AudioCapture> history;
+static std::vector<IDSBProxy*> cache;
+static uint64_t last_time;
+static int last_uid;
 
-typedef HRESULT(WINAPI* DirectSoundCreate_t)(LPCGUID, LPDIRECTSOUND*, LPUNKNOWN);
-typedef HRESULT(STDMETHODCALLTYPE* CreateSoundBuffer_t)(IDirectSound*, LPCDSBUFFERDESC,
-                                                        LPDIRECTSOUNDBUFFER*, LPUNKNOWN);
-typedef HRESULT(STDMETHODCALLTYPE* Unlock_t)(IDirectSoundBuffer*, LPVOID, DWORD, LPVOID, DWORD);
-typedef int(__fastcall* tApplyFrequencyToBuffer)(IDirectSoundBuffer**, void*, DWORD);
-typedef int(__fastcall* tApplyVolumeToBuffer)(IDirectSoundBuffer**, void*, long);
-typedef int(__fastcall* tStopHardwareBuffer)(IDirectSoundBuffer**, void*);
-
-// static BOOL (__stdcall* SetFileInformationByHandlePtr)(HANDLE, FILE_INFO_BY_HANDLE_CLASS, LPVOID,
-// DWORD);
-static DirectSoundCreate_t fpDirectSoundCreate = nullptr;
-static CreateSoundBuffer_t fpCreateSoundBuffer = nullptr;
-static tApplyFrequencyToBuffer fpApplyFrequencyToBuffer = nullptr;
-static tApplyVolumeToBuffer fpApplyVolumeToBuffer = nullptr;
-static Unlock_t fpUnlock = nullptr;
-static tStopHardwareBuffer fpStopHardwareBuffer = nullptr;
-static int last_uid = 0;
-static unsigned long a_last_time = 0;
-
-static int gen_uid(unsigned long mytime) {
-    if (mytime != a_last_time) {
-        a_last_time = mytime;
+static int gen_uid(uint64_t mytime) {
+    if (mytime != last_time) {
+        last_time = mytime;
         last_uid = 0;
     }
     return last_uid++;
 }
 
-static unsigned long audio_get_time() { return btas::get_time(); }
+inline unsigned long audio_get_time() { return btas::get_time(); }
 
-static void setup_fixed_header(WavHeader& h, uint16_t channels, uint16_t bits) {
-    h.channels = channels;
-    h.sampleRate = 48000;
-    h.bitsPerSample = bits;
-    h.blockAlign = (channels * bits) / 8;
-    h.byteRate = h.sampleRate * h.blockAlign;
+inline string audio_get_fn(uint64_t a, int b) {
+    return "a_" + std::to_string(a) + "_" + std::to_string(b) + ".wav";
 }
 
-static void record_event(AudioCapture& cap, DWORD freq, long vol) {
-    unsigned long cur = audio_get_time();
-    unsigned long offset = (cur > cap.startTime) ? (cur - cap.startTime) : 0;
-    if (freq != cap.lastFreq || vol != cap.lastVol) {
-        cap.events.push_back(AudioEvent(offset, freq, vol));
-        cap.lastFreq = freq;
-        cap.lastVol = vol;
-    }
-}
+class IDSBProxy : public IDirectSoundBuffer {
+    AudioCapture cap;
+    WavHeader header;
+    uint64_t lastRealTime;
+    double virtualTimeAcc;
+    bfs::File file;
+    IDirectSoundBuffer* pBuf;
+    uint32_t bytesWritten;
+    DWORD currentFreq;
+    DWORD originalFreq;
 
-static void write_original_raw(AudioCapture& cap, const char* data, uint32_t len) {
-    cap.file.write(data, len);
-    cap.bytesWritten += len;
-}
+    void push_event() {
+        DWORD newFreq;
+        LONG vol, pan;
+        pBuf->GetFrequency(&newFreq);
+        pBuf->GetVolume(&vol);
+        pBuf->GetPan(&pan);
 
-static void finalize_wav(AudioCapture& cap) {
-    if (cap.file.is_open()) {
-        cap.endTime = audio_get_time();
-        uint32_t finalFileSize = cap.bytesWritten + 36;
+        uint64_t now = audio_get_time();
 
-        cap.file.seek(4, bfs::SeekBegin);
-        cap.file.write((char*)&finalFileSize, 4);
-        cap.file.seek(24, bfs::SeekBegin);
-        cap.file.write((char*)&cap.h.sampleRate, 4); // Write ORIGINAL rate
-        cap.file.seek(28, bfs::SeekBegin);
-        cap.file.write((char*)&cap.h.byteRate, 4); // Write ORIGINAL byte rate
-        cap.file.seek(40, bfs::SeekBegin);
-        cap.file.write((char*)&cap.bytesWritten, 4);
-        cap.file.close();
-
-        g_history.push_back(std::move(cap));
-    }
-}
-
-void on_audio_destroy() {
-    if (!conf.cap_au)
-        return;
-    CriticalSectionLock lock(g_audioCS);
-    for (auto it = g_captures.begin(); it != g_captures.end(); it++)
-        finalize_wav(it->second);
-    g_captures.clear();
-
-    if (g_history.empty())
-        return;
-
-    bfs::File filterFile("audio_filters.txt", 1);
-    bfs::File batFile("audio_merge.bat", 1);
-
-    std::string filters = "";
-    std::string mix = "";
-
-    for (size_t i = 0; i < g_history.size(); ++i) {
-        auto& c = g_history[i];
-        std::string fn = "temp_audio/audio_" + to_str(c.startTime) + "_" + to_str(c.idx) + ".wav";
-        std::string finalLabel = "[final" + to_str(i) + "]";
-        double totalDuration =
-            (c.endTime > c.startTime) ? (double)(c.endTime - c.startTime) / 1000.0 : 0.0;
-
-        if (c.events.empty()) {
-            // Case 1: Simple file
-            filters += "amovie=" + fn + ",atrim=duration=" + to_str(totalDuration) +
-                       ",aresample=48000,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel +
-                       ";\n";
+        if (cap.events.empty()) {
+            cap.startTime = now;
+            lastRealTime = now;
+            virtualTimeAcc = 0;
+            currentFreq = newFreq;
+            originalFreq = newFreq;
         } else {
-            // Case 2: Frequency segments
-            int numSegs = (int)c.events.size();
+            uint64_t deltaReal = now - lastRealTime;
+            double scale =
+                (originalFreq > 0.0) ? (static_cast<double>(currentFreq) / originalFreq) : 1.0;
+            virtualTimeAcc += static_cast<double>(deltaReal) * scale;
+            lastRealTime = now;
+            currentFreq = newFreq;
+        }
 
-            // 1. Load and split source
-            filters += "amovie=" + fn + ",asplit=" + to_str(numSegs);
-            for (int e = 0; e < numSegs; ++e) {
-                filters += "[b" + to_str(i) + "s" + to_str(e) + "]";
+        uint64_t offset = static_cast<uint64_t>(virtualTimeAcc);
+        if (!cap.events.empty()) {
+            auto& last = cap.events.back();
+            if (last.timeOffset == offset) {
+                last = {offset, vol, pan, newFreq};
+                return;
             }
-            filters += ";\n";
+            if (last.frequency == newFreq && last.volume == vol && last.pan == pan)
+                return;
+        }
+        cap.events.push_back({offset, vol, pan, newFreq});
+    }
 
-            // 2. Process each split branch
-            std::string segmentLabels = "";
-            for (size_t e = 0; e < c.events.size(); ++e) {
-                std::string branchIn = "[b" + to_str(i) + "s" + to_str(e) + "]";
-                std::string branchOut = "[p" + to_str(i) + "s" + to_str(e) + "]";
+    void reinit_wav() {
+        auto cur_time = audio_get_time();
+        auto idx = gen_uid(cur_time);
+        file = bfs::File(string("temp_audio\\") + audio_get_fn(cur_time, idx), 1);
+        file.write(&header, sizeof(WavHeader));
+        bytesWritten = 0;
+        cap.startTime = cap.endTime = cur_time;
+        cap.idx = idx;
+        cap.events.clear();
+        push_event();
+    }
 
-                double start = (double)c.events[e].timeOffset / 1000.0;
-                double end = (e + 1 < c.events.size()) ? (double)c.events[e + 1].timeOffset / 1000.0
-                                                       : totalDuration;
-                double volLinear = pow(10.0, (double)c.events[e].volume / 2000.0);
-
-                filters += branchIn + "atrim=start=" + to_str(start) + ":end=" + to_str(end) +
-                           ",asetrate=" + to_str(c.events[e].frequency) +
-                           ",volume=" + to_str(volLinear) + ",aresample=48000" + branchOut + ";\n";
-
-                segmentLabels += branchOut;
+public:
+    void finalize_wav() {
+        if (file.is_open()) {
+            uint64_t now = audio_get_time();
+            double scale = static_cast<double>(currentFreq) / static_cast<double>(originalFreq);
+            virtualTimeAcc += static_cast<double>(now - lastRealTime) * scale;
+            if (virtualTimeAcc <= 0.0) {
+                cout << "audio got virtualTimeAcc <= 0" << std::endl;
+                file.close();
+                auto rem_ret =
+                    remove_file(string("temp_audio\\") + audio_get_fn(cap.startTime, cap.idx));
+                ASS(rem_ret);
+                return;
             }
-
-            // 3. Concat branches and apply delay
-            filters += segmentLabels + "concat=n=" + to_str(numSegs) +
-                       ":v=0:a=1,adelay=" + to_str(c.startTime) + ":all=1" + finalLabel + ";\n";
-        }
-        mix += finalLabel;
-    }
-
-    filters += mix + "amix=inputs=" + to_str(g_history.size()) + ":normalize=0[out]";
-
-    // FFmpeg 2026 syntax: -/filter_complex reads from file
-    std::string batContent = "@echo off\nffmpeg -y -/filter_complex audio_filters.txt -map "
-                             "\"[out]\" -ar 48000 output.wav\npause";
-
-    filterFile.write(filters.c_str(), filters.size());
-    batFile.write(batContent.c_str(), batContent.size());
-
-    g_history.clear();
-}
-
-static void reinit_wav(AudioCapture& cap) {
-    auto cur_time = audio_get_time();
-    auto idx = gen_uid(cur_time);
-    string fn = "temp_audio\\audio_" + to_str(cur_time) + "_" + to_str(idx) + ".wav";
-    cap.file = bfs::File(fn, 1);
-    cap.file.write((char*)&cap.h, sizeof(WavHeader));
-    cap.bytesWritten = 0;
-    cap.startTime = cur_time;
-    cap.idx = idx;
-    cap.events.clear();
-    cap.events.push_back(AudioEvent(0, cap.lastFreq, cap.lastVol)); // Hacky
-    // cout << "reinit " << cap.h.sampleRate << " " << cap.lastVol << "\n";
-}
-
-void audio_stop() {
-    // User stops audio or scene changes/reset
-    if (!conf.cap_au)
-        return;
-    CriticalSectionLock lock(g_audioCS);
-    for (auto it = g_captures.begin(); it != g_captures.end(); it++)
-        finalize_wav(it->second);
-    g_captures.clear();
-}
-
-static int __fastcall hkApplyFrequencyToBuffer(IDirectSoundBuffer** pThis, void* edx, DWORD freq) {
-    // IDK but hooking dsound directly doesnt work
-    CriticalSectionLock lock(g_audioCS);
-    auto it = g_captures.find(*pThis);
-    if (it != g_captures.end()) {
-        DWORD targetFreq = freq;
-        if (targetFreq == 0) {
-            targetFreq = it->second.sampleRateOrig;
-            // cout << "reset to " << targetFreq << "\n";
-        }
-        if (targetFreq >= 100 && targetFreq <= 100000) {
-            record_event(it->second, targetFreq, it->second.lastVol);
+            cap.endTime = cap.startTime + static_cast<uint64_t>(virtualTimeAcc);
+            uint32_t finalFileSize = bytesWritten + 36;
+            file.seek(4, bfs::SeekBegin);
+            file.write(&finalFileSize, 4);
+            file.seek(24, bfs::SeekBegin);
+            file.write(&header.sampleRate, 4);
+            file.seek(28, bfs::SeekBegin);
+            file.write(&header.byteRate, 4);
+            file.seek(40, bfs::SeekBegin);
+            file.write(&bytesWritten, 4);
+            file.close();
+            if (cap.endTime > cap.startTime) {
+                history.push_back(cap);
+                return;
+            }
+            cout << "audio got endTime <= startTime" << std::endl;
+            auto rem_ret =
+                remove_file(string("temp_audio\\") + audio_get_fn(cap.startTime, cap.idx));
+            ASS(rem_ret);
         }
     }
 
-    return fpApplyFrequencyToBuffer(pThis, edx, freq);
-}
-
-static int __fastcall hkApplyVolumeToBuffer(IDirectSoundBuffer** pThis, void* edx, long volume) {
-    CriticalSectionLock lock(g_audioCS);
-    auto it = g_captures.find(*pThis);
-    if (it != g_captures.end()) {
-        record_event(it->second, it->second.lastFreq, volume);
-    }
-    return fpApplyVolumeToBuffer(pThis, edx, volume);
-}
-
-static int __fastcall hkStopHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
-    CriticalSectionLock lock(g_audioCS);
-    auto it = g_captures.find(*pThis);
-    if (it != g_captures.end()) {
-        // cout << "hkStopHardwareBuffer\n";
-        finalize_wav(it->second);
-        // cout << "stop\n";
-    }
-    return fpStopHardwareBuffer(pThis, edx);
-}
-
-static void __fastcall hkReleaseHardwareBuffer(IDirectSoundBuffer** pThis, void* edx) {
-    CriticalSectionLock lock(g_audioCS);
-    auto it = g_captures.find(*pThis);
-    if (it != g_captures.end()) {
-        finalize_wav(it->second);
-        // cout << "release\n";
-        g_captures.erase(it);
-    }
-    *pThis = nullptr;
-}
-
-static HRESULT STDMETHODCALLTYPE DetourUnlock(IDirectSoundBuffer* pThis, LPVOID pv1, DWORD db1,
-                                              LPVOID pv2, DWORD db2) {
-    CriticalSectionLock lock(g_audioCS);
-    auto it = g_captures.find(pThis);
-    if (it != g_captures.end()) {
-        if (!it->second.file.is_open()) {
-            reinit_wav(it->second);
-            return fpUnlock(pThis, pv1, db1, pv2, db2);
-        }
-        if (pv1 && db1 > 0)
-            write_original_raw(it->second, (char*)pv1, db1);
-        if (pv2 && db2 > 0)
-            write_original_raw(it->second, (char*)pv2, db2);
-    }
-    return fpUnlock(pThis, pv1, db1, pv2, db2);
-}
-
-static HRESULT STDMETHODCALLTYPE DetourCreateSoundBuffer(IDirectSound* pThis, LPCDSBUFFERDESC desc,
-                                                         LPDIRECTSOUNDBUFFER* buffer,
-                                                         LPUNKNOWN unk) {
-    HRESULT hr = fpCreateSoundBuffer(pThis, desc, buffer, unk);
-    if (SUCCEEDED(hr) && buffer && *buffer && desc->lpwfxFormat) {
+    IDSBProxy(IDirectSoundBuffer* pReal, LPCDSBUFFERDESC desc) {
+        pBuf = pReal;
+        header.sampleRate = desc->lpwfxFormat->nSamplesPerSec;
+        header.channels = desc->lpwfxFormat->nChannels;
+        header.bitsPerSample = desc->lpwfxFormat->wBitsPerSample;
+        header.blockAlign = desc->lpwfxFormat->nBlockAlign;
+        header.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
+        originalFreq = desc->lpwfxFormat->nSamplesPerSec;
+        currentFreq = originalFreq;
+        bytesWritten = 0;
+        lastRealTime = 0;
+        virtualTimeAcc = 0.0;
+        reinit_wav();
         CriticalSectionLock lock(g_audioCS);
-        AudioCapture cap;
-        cap.sampleRateOrig = desc->lpwfxFormat->nSamplesPerSec;
-        cap.h.sampleRate = desc->lpwfxFormat->nSamplesPerSec;
-        cap.h.channels = desc->lpwfxFormat->nChannels;
-        cap.h.bitsPerSample = desc->lpwfxFormat->wBitsPerSample;
-        cap.h.blockAlign = desc->lpwfxFormat->nBlockAlign;
-        cap.h.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
-        cap.lastFreq = cap.h.sampleRate;
-        reinit_wav(cap);
-        g_captures[*buffer] = std::move(cap);
-        if (fpUnlock == nullptr) {
-            cout << "audio enabling hooks 2\n";
-            void* target = (*(void***)*buffer)[19]; // Unlock
-            hook(target, DetourUnlock, &fpUnlock);
-            enable_hook(target);
-        }
+        cache.push_back(this);
     }
-    return hr;
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj) override {
+        return pBuf->QueryInterface(riid, ppvObj);
+    }
+    STDMETHOD_(ULONG, AddRef)() override { return pBuf->AddRef(); }
+    STDMETHOD_(ULONG, Release)() override {
+        ULONG count = pBuf->Release();
+        if (count == 0) {
+            auto it = std::find(cache.begin(), cache.end(), this);
+            ASS(it != cache.end());
+            cache.erase(it);
+            delete this;
+        }
+        return count;
+    }
+    STDMETHOD(GetCaps)(LPDSBCAPS pDSBCaps) override { return pBuf->GetCaps(pDSBCaps); }
+    STDMETHOD(GetCurrentPosition)(LPDWORD pdwCurrentPlayCursor,
+                                  LPDWORD pdwCurrentWriteCursor) override {
+        return pBuf->GetCurrentPosition(pdwCurrentPlayCursor, pdwCurrentWriteCursor);
+    }
+    STDMETHOD(GetFormat)(LPWAVEFORMATEX pwfxFormat, DWORD dwSizeAllocated,
+                         LPDWORD pdwSizeWritten) override {
+        return pBuf->GetFormat(pwfxFormat, dwSizeAllocated, pdwSizeWritten);
+    }
+    STDMETHOD(GetVolume)(LPLONG plVolume) override { return pBuf->GetVolume(plVolume); }
+    STDMETHOD(GetPan)(LPLONG plPan) override { return pBuf->GetPan(plPan); }
+    STDMETHOD(GetFrequency)(LPDWORD pdwFrequency) override {
+        return pBuf->GetFrequency(pdwFrequency);
+    }
+    STDMETHOD(GetStatus)(LPDWORD pdwStatus) override { return pBuf->GetStatus(pdwStatus); }
+
+    STDMETHOD(Initialize)(LPDIRECTSOUND pDirectSound, LPCDSBUFFERDESC pcDSBufferDesc) override {
+        return pBuf->Initialize(pDirectSound, pcDSBufferDesc);
+    }
+    STDMETHOD(Lock)(DWORD dwOffset, DWORD dwBytes, LPVOID* ppvAudioPtr1, LPDWORD pdwAudioBytes1,
+                    LPVOID* ppvAudioPtr2, LPDWORD pdwAudioBytes2, DWORD dwFlags) override {
+        return pBuf->Lock(dwOffset, dwBytes, ppvAudioPtr1, pdwAudioBytes1, ppvAudioPtr2,
+                          pdwAudioBytes2, dwFlags);
+    }
+    STDMETHOD(Play)(DWORD dwReserved1, DWORD dwPriority, DWORD dwFlags) override {
+        // cout << "DirectSoundBuffer::Play\n";
+        return pBuf->Play(dwReserved1, dwPriority, dwFlags);
+    }
+    STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) override {
+        auto ret = pBuf->SetCurrentPosition(dwNewPosition);
+        // cout << "DirectSoundBuffer::SetCurrentPosition\n";
+        return ret;
+    }
+    STDMETHOD(SetFormat)(LPCWAVEFORMATEX pcfxFormat) override {
+        return pBuf->SetFormat(pcfxFormat);
+    }
+    STDMETHOD(SetFrequency)(DWORD f) override {
+        HRESULT hr = pBuf->SetFrequency(f);
+        CriticalSectionLock lock(g_audioCS);
+        push_event();
+        return hr;
+    }
+    STDMETHOD(SetVolume)(LONG v) override {
+        HRESULT hr = pBuf->SetVolume(v);
+        CriticalSectionLock lock(g_audioCS);
+        push_event();
+        return hr;
+    }
+    STDMETHOD(SetPan)(LONG p) override {
+        HRESULT hr = pBuf->SetPan(p);
+        CriticalSectionLock lock(g_audioCS);
+        push_event();
+        return hr;
+    }
+    STDMETHOD(Stop)() override {
+        CriticalSectionLock lock(g_audioCS);
+        finalize_wav();
+        // cout << "DirectSoundBuffer::Stop\n";
+        return pBuf->Stop();
+    }
+    STDMETHOD(Unlock)(LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) override {
+        CriticalSectionLock lock(g_audioCS);
+        if (!file.is_open()) {
+            reinit_wav();
+            return pBuf->Unlock(pv1, db1, pv2, db2);
+        }
+        if (pv1 && db1 > 0) {
+            file.write(pv1, db1);
+            bytesWritten += db1;
+        }
+        if (pv2 && db2 > 0) {
+            file.write(pv2, db2);
+            bytesWritten += db2;
+        }
+        return pBuf->Unlock(pv1, db1, pv2, db2);
+    }
+    STDMETHOD(Restore)() override { return pBuf->Restore(); }
+};
+
+class IDSProxy : public IDirectSound {
+    IDirectSound* pDev;
+
+public:
+    IDSProxy(IDirectSound* pReal) : pDev(pReal) {}
+    virtual ~IDSProxy() {}
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj) override {
+        return pDev->QueryInterface(riid, ppvObj);
+    }
+    STDMETHOD_(ULONG, AddRef)() override { return pDev->AddRef(); }
+    STDMETHOD_(ULONG, Release)() override {
+        ULONG count = pDev->Release();
+        // Again, IDSProxy should be deleted manually
+        if (count == 0)
+            delete this;
+        return count;
+    }
+    STDMETHOD(CreateSoundBuffer)(LPCDSBUFFERDESC pcDSBufferDesc, LPDIRECTSOUNDBUFFER* ppDSBuffer,
+                                 LPUNKNOWN pUnkOuter) override {
+        HRESULT hr = pDev->CreateSoundBuffer(pcDSBufferDesc, ppDSBuffer, pUnkOuter);
+        if (SUCCEEDED(hr) && ppDSBuffer && *ppDSBuffer && pcDSBufferDesc->lpwfxFormat) {
+            cout << "wrapping IDirectSoundBuffer into IDSBProxy\n";
+            *ppDSBuffer = new IDSBProxy(*ppDSBuffer, pcDSBufferDesc);
+        }
+        return hr;
+    }
+    STDMETHOD(GetCaps)(LPDSCAPS pDSCaps) override { return pDev->GetCaps(pDSCaps); }
+    STDMETHOD(DuplicateSoundBuffer)(LPDIRECTSOUNDBUFFER pDSBufferOriginal,
+                                    LPDIRECTSOUNDBUFFER* ppDSBufferDuplicate) override {
+        ASS(false);
+        return DSERR_OUTOFMEMORY;
+    }
+    STDMETHOD(SetCooperativeLevel)(HWND hwnd, DWORD dwLevel) override {
+        return pDev->SetCooperativeLevel(hwnd, dwLevel);
+    }
+    STDMETHOD(Compact)() override { return pDev->Compact(); }
+    STDMETHOD(GetSpeakerConfig)(LPDWORD pdwSpeakerConfig) override {
+        return pDev->GetSpeakerConfig(pdwSpeakerConfig);
+    }
+    STDMETHOD(SetSpeakerConfig)(DWORD dwSpeakerConfig) override {
+        return pDev->SetSpeakerConfig(dwSpeakerConfig);
+    }
+    STDMETHOD(Initialize)(LPCGUID pcGuidDevice) override { return pDev->Initialize(pcGuidDevice); }
+};
+
+void audio_reinit_capture() {
+    last_uid = 0;
+    last_time = 0;
 }
 
-static HRESULT WINAPI DetourDirectSoundCreate(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk) {
+static HRESULT(WINAPI* DirectSoundCreateOrig)(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk);
+static HRESULT WINAPI DirectSoundCreateHook(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk) {
     if (conf.no_au)
         return DSERR_NODRIVER;
-    HRESULT hr = fpDirectSoundCreate(guid, ds, unk);
-    if (SUCCEEDED(hr) && ds && *ds && fpCreateSoundBuffer == nullptr) {
-        cout << "audio enabling hooks 1\n";
-        void* target = (*(void***)*ds)[3];
-        hook(target, DetourCreateSoundBuffer, &fpCreateSoundBuffer);
-        enable_hook(target);
-        // Somewhy hooking freq from dsound doesnt work
-        // Hooking more mmf2 funcs directly to avoid vtable shit
-        target = (void*)(mem::get_base("mmfs2.dll") + 0x451d0);
-        hook(target, hkApplyFrequencyToBuffer, &fpApplyFrequencyToBuffer);
-        enable_hook(target);
-        target = (void*)(mem::get_base("mmfs2.dll") + 0x45190);
-        hook(target, hkApplyVolumeToBuffer, &fpApplyVolumeToBuffer);
-        enable_hook(target);
-        target = (void*)(mem::get_base("mmfs2.dll") + 0x45060);
-        hook(target, hkStopHardwareBuffer, &fpStopHardwareBuffer);
-        enable_hook(target);
-        target = (void*)(mem::get_base("mmfs2.dll") + 0x45050);
-        hook(target, hkReleaseHardwareBuffer);
-        enable_hook(target);
+    HRESULT hr = DirectSoundCreateOrig(guid, ds, unk);
+    if (SUCCEEDED(hr) && ds && *ds) {
+        cout << "wrapping IDirectSound into IDSProxy\n";
+        *ds = new IDSProxy(*ds);
+        ASS(*ds != nullptr);
     }
     return hr;
 }
@@ -386,15 +364,72 @@ void audio_init() {
     if (!conf.cap_au && !conf.no_au)
         return;
     InitializeCriticalSection(&g_audioCS);
-    /*
-    auto handle = GetModuleHandleW(L"kernel32.dll");
-    if (handle)
-        SetFileInformationByHandlePtr =
-    (decltype(SetFileInformationByHandlePtr))GetProcAddress(handle, "SetFileInformationByHandle");
-    else
-        SetFileInformationByHandlePtr = nullptr;
-    */
     // Let's use minhook here because the game uses ordinal import
-    hook(mem::addr("DirectSoundCreate", "dsound.dll"), DetourDirectSoundCreate,
-         &fpDirectSoundCreate);
+    hook(mem::addr("DirectSoundCreate", "dsound.dll"), DirectSoundCreateHook,
+         &DirectSoundCreateOrig);
+}
+
+void on_audio_destroy() {
+    if (!conf.cap_au)
+        return;
+    conf.cap_au = false;
+    CriticalSectionLock lock(g_audioCS);
+    for (IDSBProxy* c : cache)
+        c->finalize_wav();
+    if (history.empty())
+        return;
+
+    bfs::File filters("temp_audio\\audio_filters.txt", 1);
+    string mix = "";
+    size_t count = 0;
+
+    for (const auto& c : history) {
+        string finalLabel = "[f" + std::to_string(count) + "]";
+        double totalDuration = static_cast<double>(c.endTime - c.startTime) / 1000.0;
+        ASS(!c.events.empty());
+        size_t numSegs = c.events.size();
+        filters.write("amovie=" + audio_get_fn(c.startTime, c.idx) +
+                      ",asplit=" + std::to_string(numSegs));
+        for (size_t e = 0; e < numSegs; e++) {
+            filters.write("[b" + std::to_string(count) + "s" + std::to_string(e) + "]");
+        }
+        filters.write_line(";");
+        string segmentLabels = "";
+        for (size_t e = 0; e < c.events.size(); e++) {
+            string branchIn = "[b" + std::to_string(count) + "s" + std::to_string(e) + "]";
+            string branchOut = "[p" + std::to_string(count) + "s" + std::to_string(e) + "]";
+
+            double start = static_cast<double>(c.events[e].timeOffset) / 1000.0;
+            double end = (e + 1 < c.events.size())
+                             ? static_cast<double>(c.events[e + 1].timeOffset) / 1000.0
+                             : totalDuration;
+            double volLinear = std::pow(10.0, static_cast<double>(c.events[e].volume) / 2000.0);
+            double panNorm = static_cast<double>(c.events[e].pan) / 10000.0;
+            double leftGain = (panNorm <= 0.0) ? 1.0 : (1.0 - panNorm);
+            double rightGain = (panNorm >= 0.0) ? 1.0 : (1.0 + panNorm);
+
+            filters.write_line(
+                branchIn + "atrim=start=" + std::to_string(start) + ":end=" + std::to_string(end) +
+                ",asetrate=" + std::to_string(c.events[e].frequency) +
+                ",volume=" + std::to_string(volLinear) + ",aresample=48000" + branchOut + ";");
+
+            segmentLabels += branchOut;
+        }
+        filters.write_line(segmentLabels + "concat=n=" + std::to_string(numSegs) +
+                           ":v=0:a=1,adelay=" + std::to_string(c.startTime) + ":all=1" +
+                           finalLabel + ";");
+        mix += finalLabel;
+        count++;
+    }
+    filters.write(mix + "amix=inputs=" + std::to_string(count) + ":normalize=0[out]");
+    bfs::File bat("audio_merge.bat", 1);
+    bat.write_line("@echo off");
+    bat.write_line("cd temp_audio");
+    bat.write_line(
+        "ffmpeg -y -/filter_complex audio_filters.txt -map \"[out]\" -ar 48000 ../output.wav");
+    bat.write_line("echo Waiting to delete wav cache...");
+    bat.write_line("pause");
+    bat.write_line("del a_*.wav");
+    bat.write_line("del audio_filters.txt");
+    history.clear();
 }

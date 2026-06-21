@@ -101,3 +101,13 @@ void File::close() {
         handle = INVALID_HANDLE_VALUE;
     }
 }
+
+bool remove_file(const std::string& path) {
+    wchar_t* w_path = utf8_to_unicode(path);
+    ASS(w_path != nullptr);
+    bool ret = (DeleteFileW(w_path) != FALSE);
+    if (!ret && GetLastError() != ERROR_FILE_NOT_FOUND)
+        ret = false;
+    std::free(w_path);
+    return ret;
+}
