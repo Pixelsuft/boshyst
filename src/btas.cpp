@@ -356,10 +356,10 @@ void btas::pre_init() {
     // WPM(mem::get_base() + 0x365db, buf, 5);
     // WPM(mem::get_base() + 0x36630, buf, 5);
     WPM(mem::get_base() + 0x1d6d7, buf, 6);
-    WPM(mem::get_base() + 0x4659f, buf, 5);
+    // WPM(mem::get_base() + 0x4659f, buf, 5);
     WPM(mem::get_base() + 0x2a74, buf, 2);
     WPM(mem::get_base() + 0x2a49, &temp, 1);
-    WPM(mem::get_base() + 0x2a53, &temp, 1); // No throttling
+    // WPM(mem::get_base() + 0x2a53, &temp, 1);
     // Disable controller options menu
     WPM(mem::get_base() + 0x43036, buf, 5);
     WPM(mem::get_base() + 0x4304e, buf, 5);
