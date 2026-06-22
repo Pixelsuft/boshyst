@@ -42,3 +42,4 @@ public:
 bool state_save(bfs::File* file);
 bool state_load(bfs::File* file);
 bool remove_file(const std::string& path);
+bool file_exists(const std::string& path);

@@ -64,12 +64,13 @@ struct AudioEvent {
 };
 
 struct AudioCapture {
+    std::vector<AudioEvent> events;
+    uint64_t hash;
     ULONG startTime;
     ULONG endTime;
-    std::vector<AudioEvent> events;
     int idx;
 
-    AudioCapture() : startTime(0), endTime(0), idx(0) {}
+    AudioCapture() : startTime(0), endTime(0), idx(0), hash(0) {}
 };
 
 class IDSBProxy;
@@ -87,20 +88,38 @@ static int gen_uid(ULONG mytime) {
     return last_uid++;
 }
 
+uint64_t hash_vector_fnv1a(const std::vector<uint8_t>& vec) {
+    if (vec.size() > 500 * 1024 || true)
+        return 0;
+    const uint64_t fnv_prime = 0x100000001B3ULL;
+    const uint64_t fnv_offset_basis = 0xCBF29CE484222325ULL;
+    uint64_t hash = fnv_offset_basis;
+    for (auto it = vec.begin(); it != vec.end(); it++) {
+        hash ^= *it;
+        hash *= fnv_prime;
+    }
+    return hash;
+}
+
 inline unsigned long audio_get_time() { return btas::get_time(); }
 
-inline string audio_get_fn(ULONG a, int b) { return "a_" + to_str(a) + "_" + to_str(b) + ".wav"; }
+inline string audio_get_fn(uint64_t hash, ULONG start_time, int idx) {
+    if (hash == 0)
+        return "a" + to_str(start_time) + "_" + to_str(idx) + ".wav";
+    else
+        return "ah" + to_str(hash) + ".wav";
+}
 
 class IDSBProxy : public IDirectSoundBuffer {
-    AudioCapture cap;
     WavHeader header;
-    ULONG lastRealTime;
+    AudioCapture cap;
+    std::vector<uint8_t> audioBuffer;
     double virtualTimeAcc;
-    bfs::File file;
     IDirectSoundBuffer* pBuf;
-    uint32_t bytesWritten;
+    ULONG lastRealTime;
     DWORD currentFreq;
     DWORD originalFreq;
+    bool inited;
 
     void push_event() {
         DWORD newFreq;
@@ -146,9 +165,8 @@ class IDSBProxy : public IDirectSoundBuffer {
     void reinit_wav() {
         auto cur_time = audio_get_time();
         auto idx = gen_uid(cur_time);
-        file = bfs::File(string("temp_audio\\") + audio_get_fn(cur_time, idx), 1);
-        file.write(&header, sizeof(WavHeader));
-        bytesWritten = 0;
+        audioBuffer.clear();
+        inited = true;
         cap.startTime = cap.endTime = cur_time;
         cap.idx = idx;
         cap.events.clear();
@@ -157,37 +175,36 @@ class IDSBProxy : public IDirectSoundBuffer {
 
 public:
     void finalize_wav() {
-        if (file.is_open()) {
+        if (inited) {
+            inited = false;
             ULONG now = audio_get_time();
             double scale = static_cast<double>(currentFreq) / static_cast<double>(originalFreq);
             virtualTimeAcc += static_cast<double>(now - lastRealTime) * scale;
             if (virtualTimeAcc <= 0.0) {
-                cout << "audio got virtualTimeAcc <= 0" << std::endl;
-                file.close();
-                auto rem_ret =
-                    remove_file(string("temp_audio\\") + audio_get_fn(cap.startTime, cap.idx));
-                ASS(rem_ret);
+                // cout << "audio got virtualTimeAcc <= 0" << std::endl;
                 return;
             }
             cap.endTime = cap.startTime + static_cast<ULONG>(virtualTimeAcc);
-            uint32_t finalFileSize = bytesWritten + 36;
-            file.seek(4, bfs::SeekBegin);
-            file.write(&finalFileSize, 4);
-            file.seek(24, bfs::SeekBegin);
-            file.write(&header.sampleRate, 4);
-            file.seek(28, bfs::SeekBegin);
-            file.write(&header.byteRate, 4);
-            file.seek(40, bfs::SeekBegin);
-            file.write(&bytesWritten, 4);
-            file.close();
-            if (cap.endTime > cap.startTime) {
-                history.push_back(cap);
+            if (cap.endTime > cap.startTime && !audioBuffer.empty()) {
+                cap.hash = hash_vector_fnv1a(audioBuffer);
+                header.fileSize = audioBuffer.size() + 36;
+                header.dataLen = audioBuffer.size();
+
+                auto path = string("temp_audio\\") + audio_get_fn(cap.hash, cap.startTime, cap.idx);
+                if (!file_exists(path)) {
+                    bfs::File file(path, 1);
+                    if (file.is_open()) {
+                        file.write(&header, sizeof(WavHeader));
+                        file.write(audioBuffer.data(), audioBuffer.size());
+                        file.close();
+                        history.push_back(cap);
+                    }
+                } else {
+                    history.push_back(cap);
+                }
                 return;
             }
-            cout << "audio got endTime <= startTime" << std::endl;
-            auto rem_ret =
-                remove_file(string("temp_audio\\") + audio_get_fn(cap.startTime, cap.idx));
-            ASS(rem_ret);
+            // cout << "audio got endTime <= startTime" << std::endl;
         }
     }
 
@@ -200,7 +217,6 @@ public:
         header.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
         originalFreq = desc->lpwfxFormat->nSamplesPerSec;
         currentFreq = originalFreq;
-        bytesWritten = 0;
         lastRealTime = 0;
         virtualTimeAcc = 0.0;
         reinit_wav();
@@ -278,18 +294,16 @@ public:
     }
     STDMETHOD(Unlock)(LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) override {
         CriticalSectionLock lock(g_audioCS);
-        if (!file.is_open()) {
+        if (!inited) {
             reinit_wav();
             return pBuf->Unlock(pv1, db1, pv2, db2);
         }
-        if (pv1 && db1 > 0) {
-            file.write(pv1, db1);
-            bytesWritten += db1;
-        }
-        if (pv2 && db2 > 0) {
-            file.write(pv2, db2);
-            bytesWritten += db2;
-        }
+        if (pv1 && db1 > 0)
+            audioBuffer.insert(audioBuffer.end(), reinterpret_cast<uint8_t*>(pv1),
+                               reinterpret_cast<uint8_t*>(pv1) + db1);
+        if (pv2 && db2 > 0)
+            audioBuffer.insert(audioBuffer.end(), reinterpret_cast<uint8_t*>(pv2),
+                               reinterpret_cast<uint8_t*>(pv2) + db2);
         return pBuf->Unlock(pv1, db1, pv2, db2);
     }
     STDMETHOD(Restore)() override { return pBuf->Restore(); }
@@ -316,7 +330,7 @@ public:
                                  LPUNKNOWN pUnkOuter) override {
         HRESULT hr = pDev->CreateSoundBuffer(pcDSBufferDesc, ppDSBuffer, pUnkOuter);
         if (SUCCEEDED(hr) && ppDSBuffer && *ppDSBuffer && pcDSBufferDesc->lpwfxFormat) {
-            cout << "wrapping IDirectSoundBuffer into IDSBProxy\n";
+            // cout << "wrapping IDirectSoundBuffer into IDSBProxy\n";
             *ppDSBuffer = new IDSBProxy(*ppDSBuffer, pcDSBufferDesc);
         }
         return hr;
@@ -387,7 +401,8 @@ void on_audio_destroy() {
         double totalDuration = static_cast<double>(c.endTime - c.startTime) / 1000.0;
         ASS(!c.events.empty());
         size_t numSegs = c.events.size();
-        filters.write("amovie=" + audio_get_fn(c.startTime, c.idx) + ",asplit=" + to_str(numSegs));
+        filters.write("amovie=" + audio_get_fn(c.hash, c.startTime, c.idx) +
+                      ",asplit=" + to_str(numSegs));
         for (size_t e = 0; e < numSegs; e++)
             filters.write("[b" + to_str(count) + "s" + to_str(e) + "]");
         filters.write_line(";");
@@ -422,7 +437,7 @@ void on_audio_destroy() {
     bat.write_line("cd ..");
     bat.write_line("echo Waiting to delete wav cache...");
     bat.write_line("pause");
-    bat.write_line("del temp_audio\\a_*.wav");
+    bat.write_line("del temp_audio\\a*.wav");
     bat.write_line("del temp_audio\\audio_filters.txt");
     history.clear();
 }

@@ -102,7 +102,7 @@ void File::close() {
     }
 }
 
-bool remove_file(const std::string& path) {
+bool remove_file(const string& path) {
     wchar_t* w_path = utf8_to_unicode(path);
     ASS(w_path != nullptr);
     bool ret = (DeleteFileW(w_path) != FALSE);
@@ -110,4 +110,12 @@ bool remove_file(const std::string& path) {
         ret = false;
     std::free(w_path);
     return ret;
+}
+
+bool file_exists(const string& path) {
+    wchar_t* w_path = utf8_to_unicode(path);
+    ASS(w_path != nullptr);
+    auto dwAttrib = GetFileAttributesW(w_path);
+    std::free(w_path);
+    return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 }
