@@ -88,17 +88,57 @@ static int gen_uid(ULONG mytime) {
     return last_uid++;
 }
 
-uint64_t hash_vector_fnv1a(const std::vector<uint8_t>& vec) {
-    if (vec.size() > 500 * 1024 || true)
+static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
+    // Still bad
+    if (vec.size() >= 1024 * 1024)
         return 0;
-    const uint64_t fnv_prime = 0x100000001B3ULL;
-    const uint64_t fnv_offset_basis = 0xCBF29CE484222325ULL;
-    uint64_t hash = fnv_offset_basis;
-    for (auto it = vec.begin(); it != vec.end(); it++) {
-        hash ^= *it;
-        hash *= fnv_prime;
+
+    const uint32_t c1 = 0xcc9e2d51;
+    const uint32_t c2 = 0x1b873593;
+
+    uint32_t h1 = 0x9e3779b9;
+
+    const uint8_t* data = &vec[0];
+    const size_t len = vec.size();
+    const size_t nblocks = len / 4;
+
+    const uint32_t* blocks = reinterpret_cast<const uint32_t*>(data);
+    for (size_t i = 0; i < nblocks; ++i) {
+        uint32_t k1 = blocks[i];
+
+        k1 *= c1;
+        k1 = (k1 << 15) | (k1 >> 17);
+        k1 *= c2;
+
+        h1 ^= k1;
+        h1 = (h1 << 13) | (h1 >> 19);
+        h1 = h1 * 5 + 0xe6546b64;
     }
-    return hash;
+
+    const uint8_t* tail = data + nblocks * 4;
+    uint32_t k1 = 0;
+
+    switch (len & 3) {
+    case 3:
+        k1 ^= static_cast<uint32_t>(tail[2]) << 16;
+    case 2:
+        k1 ^= static_cast<uint32_t>(tail[1]) << 8;
+    case 1:
+        k1 ^= static_cast<uint32_t>(tail[0]);
+        k1 *= c1;
+        k1 = (k1 << 15) | (k1 >> 17);
+        k1 *= c2;
+        h1 ^= k1;
+    };
+
+    h1 ^= len;
+    h1 ^= h1 >> 16;
+    h1 *= 0x85ebca6b;
+    h1 ^= h1 >> 13;
+    h1 *= 0xc2b2ae35;
+    h1 ^= h1 >> 16;
+
+    return static_cast<size_t>(h1);
 }
 
 inline unsigned long audio_get_time() { return btas::get_time(); }
@@ -186,7 +226,7 @@ public:
             }
             cap.endTime = cap.startTime + static_cast<ULONG>(virtualTimeAcc);
             if (cap.endTime > cap.startTime && !audioBuffer.empty()) {
-                cap.hash = hash_vector_fnv1a(audioBuffer);
+                cap.hash = hash_vector(audioBuffer);
                 header.fileSize = audioBuffer.size() + 36;
                 header.dataLen = audioBuffer.size();
 
@@ -200,6 +240,7 @@ public:
                         history.push_back(cap);
                     }
                 } else {
+                    // cout << "audio skipped duplicate\n";
                     history.push_back(cap);
                 }
                 return;
