@@ -389,8 +389,9 @@ static int __stdcall UpdateGameFrameHook() {
 
     if (is_btas)
         btas::on_after_update(ret != 0);
-
+#ifndef _DEBUG
     ASS(!is_btas || !last_upd2 || conf.force_gdi);
+#endif
     if (is_btas && last_upd2 && !conf.force_gdi) {
         // FIXME
         // 13.breplay: breaks on frame 114->115
@@ -974,8 +975,8 @@ void init_simple_hacks() {
         hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
-    // iat_hook("INI++.mfx", "HandleRunObject", HandleRunObjectIniHook);
-    iat_hook("INI++.mfx", "CreateRunObject", CreateRunObjectIniHook, &CreateRunObjectIniOrig);
+    // hook(mem::addr("HandleRunObject", "INI++.mfx"), HandleRunObjectIniHook);
+    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook, &CreateRunObjectIniOrig);
 
     // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
     // hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);

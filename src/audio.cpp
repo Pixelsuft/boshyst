@@ -89,7 +89,6 @@ static int gen_uid(ULONG mytime) {
 }
 
 static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
-    // Still bad
     if (vec.size() >= 1024 * 1024)
         return 0;
 
