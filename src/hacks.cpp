@@ -267,9 +267,9 @@ static void(__cdecl* ActOrig)(ActionHeader* act);
 static void __cdecl ActHook(ActionHeader* act) {
     // unused
     auto act2 = act;
-    RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
+    RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
     // *(ushort*)(pState.currentExecutingEvent + 4) &= ~0x1e;
-    auto cnt = (uint) * (byte*)(pState.currentExecutingEvent + 3);
+    auto cnt = (uint) * (byte*)(pState->currentExecutingEvent + 3);
     auto c = act->eventCode;
     // if (c >= 0 && c != 2 && c != 32 && c != 33 && c != 34 && c != 36 && c != 41 && c != 58 && c
     // != 61 && c != 57)
@@ -291,7 +291,7 @@ static void __cdecl ActHook(ActionHeader* act) {
             act++;
         }
         // act2 += 1;
-        // *(byte*)(pState.currentExecutingEvent + 3) -= 9;
+        // *(byte*)(pState->currentExecutingEvent + 3) -= 9;
         ActOrig(act2);
         return;
     }
@@ -374,9 +374,9 @@ static int __stdcall UpdateGameFrameHook() {
             get_cursor_pos_orig(x, y);
             // TODO: how to map cursor pos into game properly (scaling) (need to hook
             // Viewport.mfx?)?
-            RunHeader& pState = **(RunHeader**)(mem::get_base() + 0x59a9c);
-            player->xPos = pState.currentViewportX + x * 640 / w;
-            player->yPos = pState.currentViewportY + y * 480 / h;
+            RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
+            player->xPos = pState->currentViewportX + x * 640 / w;
+            player->yPos = pState->currentViewportY + y * 480 / h;
             if (0) {
                 if (MyKeyState('A')) {
                     player->xPos = spawn_x;
@@ -390,11 +390,12 @@ static int __stdcall UpdateGameFrameHook() {
     if (is_btas)
         btas::on_after_update(ret != 0);
 
+    ASS(!is_btas || !last_upd2 || conf.force_gdi);
     if (is_btas && last_upd2 && !conf.force_gdi) {
         // FIXME
         // 13.breplay: breaks on frame 114->115
-        // cout << "NO DRAW WTF!!!!!!!!!! ret=" << ret << '\n';
-        ProcessFrameRendering();
+        cout << "NO DRAW WTF!!!!!!!!!! ret=" << ret << '\n';
+        // ProcessFrameRendering();
     }
 
     if (!conf.direct_render)

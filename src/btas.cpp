@@ -352,6 +352,8 @@ void btas::pre_init() {
     WPM(mem::get_base() + 0x4b74, buf, 5);
     WPM(mem::get_base() + 0x4b6d, buf, 5);
     WPM(mem::get_base() + 0x4c29, &temp, 1);
+    // FIXME: draw a frame the game may skip FSR
+    WPM(mem::get_base() + 0x1ec59, buf, 2);
     // Disable CRun_SyncFrameRate, MsgWaitForMultipleObjects and some other sync stuff when needed
     // WPM(mem::get_base() + 0x365db, buf, 5);
     // WPM(mem::get_base() + 0x36630, buf, 5);
