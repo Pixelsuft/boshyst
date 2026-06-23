@@ -437,7 +437,7 @@ void btas::init() {
     WPM(mem::get_base("Lacewing.mfx") + 0x88cb, buf, 5);
     WPM(mem::get_base("Lacewing.mfx") + 0xb340, buf, 5);
 
-    std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) { return a.key > b.key; });
+    std::sort(binds.begin(), binds.end(), [](BTasBind a, BTasBind b) { return a.key < b.key; });
     st.time = 0;
     next_step = slowmo = false;
     auto h = GetModuleHandleW(L"winmm.dll");
@@ -741,7 +741,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
     if (maxv == 0 || maxv == 1)
         return 0;
     auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), (int)maxv,
-                               [](const IntPair& a, int range) { return a.a > range; });
+                               [](const IntPair& a, int range) { return a.a < range; });
     unsigned int ret;
     // Do we have value for that range (maxv) in our queue?
     if (it == st.rng_buf.end() || it->a != (int)maxv) {
@@ -850,7 +850,7 @@ static void exec_event(BTasEvent& ev) {
         st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
         // TODO: optimize?
         std::stable_sort(st.rng_buf.begin(), st.rng_buf.end(),
-                         [](const IntPair& a, const IntPair& b) { return a.a > b.a; });
+                         [](const IntPair& a, const IntPair& b) { return a.a < b.a; });
         break;
     }
     case 7: {
@@ -859,13 +859,10 @@ static void exec_event(BTasEvent& ev) {
             st.rng_buf.clear();
             break;
         }
-        // TODO: optimize?
-        while (1) {
-            auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range,
-                                       [](const IntPair& a, int range) { return a.a > range; });
-            if (it == st.rng_buf.end() || it->a != ev.rng.range)
-                break;
-            st.rng_buf.erase(it);
+        auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range,
+                                   [](const IntPair& a, int range) { return a.a < range; });
+        while (it != st.rng_buf.end() && it->a == ev.rng.range) {
+            it = st.rng_buf.erase(it);
         }
         break;
     }
@@ -1058,7 +1055,7 @@ void btas::offset_time(int offset) { st.time += offset; }
 
 void btas::on_key(int k, bool pressed) {
     auto it = std::lower_bound(binds.begin(), binds.end(), k,
-                               [](const BTasBind& b, int key) { return b.key > key; });
+                               [](const BTasBind& b, int key) { return b.key < key; });
     int current_mod = (MyKeyState(VK_CONTROL) ? 1 : 0) | (MyKeyState(VK_SHIFT) ? 2 : 0);
     while (it != binds.end()) {
         BTasBind& bind = *it;
