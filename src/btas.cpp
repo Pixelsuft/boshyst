@@ -744,8 +744,9 @@ unsigned int btas::get_rng(unsigned int maxv) {
     auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), (int)maxv,
                                [](const IntPair& a, int range) { return a.a < range; });
     unsigned int ret;
+    bool our_value = it != st.rng_buf.end() && it->a == (int)maxv;
     // Do we have value for that range (maxv) in our queue?
-    if (it == st.rng_buf.end() || it->a != (int)maxv || last_upd) {
+    if (!our_value) {
         ret = (maxv != RAND_MAX) ? RandomOrig(maxv) : 0;
 #ifdef _DEBUG
         if (is_replay && last_upd && MyKeyState('T')) {
@@ -786,7 +787,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
             if (!str.empty())
                 str += ", ";
             str += to_str(ret);
-            if (it != st.rng_buf.end() && it->a == (int)maxv)
+            if (our_value)
                 str += '!';
         } else if (str.back() != '.')
             str += "...";
