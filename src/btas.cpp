@@ -153,7 +153,7 @@ static std::vector<BTasBind> binds;
 static std::vector<int> holding;
 // Same but for replay to not cause problems when pressing real keys
 static std::vector<int> repl_holding;
-static std::unordered_map<int, std::vector<int>> rng_logger;
+static std::unordered_map<int, std::pair<std::string, int>> rng_logger;
 static string last_msg;
 static string need_replay_load = "";
 static BTasState st;
@@ -728,7 +728,7 @@ static void b_state_load(int slot) {
         }
         import_timers_fix();
         pState->lastFrameScore = st.c1;
-        // pState.RandomSeed = st.seed;
+        pState->RandomSeed = st.seed;
     }
     // pState.rhNextFrame = 0;
     // cout << "state loaded\n";
@@ -779,7 +779,18 @@ unsigned int btas::get_rng(unsigned int maxv) {
             rng_logger.clear();
             prev_frame_rng = st.frame;
         }
-        rng_logger[(int)maxv].push_back((int)ret);
+        auto& pair = rng_logger[(int)maxv];
+        auto& str = pair.first;
+        pair.second++;
+        if (str.size() < 128) {
+            if (!str.empty())
+                str += ", ";
+            str += to_str(ret);
+            if (it != st.rng_buf.end() && it->a == (int)maxv)
+                str += '!';
+        }
+        else if (str.back() != '.')
+            str += "...";
     }
     return ret;
 }
@@ -1194,13 +1205,8 @@ void btas::draw_info() {
     }
     ImGui::Text("Keys: %s", cur_keys.size() > 1 ? cur_keys.substr(2).c_str() : "");
     ImGui::Text("Prev RNG (frame %i): ", prev_frame_rng);
-    for (auto mit = rng_logger.begin(); mit != rng_logger.end(); mit++) {
-        std::string rng_text = to_str(mit->first) + " (x" + to_str(mit->second.size()) + "): ";
-        for (auto it = mit->second.begin(); it != mit->second.end(); it++)
-            rng_text += to_str(*it) + ", ";
-        rng_text.resize(rng_text.size() - 2);
-        ImGui::TextUnformatted(rng_text.c_str());
-    }
+    for (auto mit = rng_logger.begin(); mit != rng_logger.end(); mit++)
+        ImGui::Text("%i (x%i): %s", mit->first, mit->second.second, mit->second.first.c_str());
 }
 
 void btas::draw_tab() {
