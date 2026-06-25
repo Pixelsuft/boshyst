@@ -788,8 +788,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
             str += to_str(ret);
             if (it != st.rng_buf.end() && it->a == (int)maxv)
                 str += '!';
-        }
-        else if (str.back() != '.')
+        } else if (str.back() != '.')
             str += "...";
     }
     return ret;
@@ -990,7 +989,6 @@ bool btas::on_before_update() {
             // cout << "Hashing frame " << st.frame << std::endl;
         }
     }
-    rng_logger.clear();
     last_upd = true;
     last_upd2 = true;
     st.prev = is_replay ? repl_holding : holding;
