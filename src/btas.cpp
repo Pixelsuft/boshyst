@@ -745,7 +745,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
                                [](const IntPair& a, int range) { return a.a < range; });
     unsigned int ret;
     // Do we have value for that range (maxv) in our queue?
-    if (it == st.rng_buf.end() || it->a != (int)maxv) {
+    if (it == st.rng_buf.end() || it->a != (int)maxv || last_upd) {
         ret = (maxv != RAND_MAX) ? RandomOrig(maxv) : 0;
 #ifdef _DEBUG
         if (is_replay && MyKeyState('T')) {
@@ -773,7 +773,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
         ret = (unsigned int)it->b;
         st.rng_buf.erase(it);
     }
-    if (!fast_forward) {
+    if (!fast_forward && last_upd) {
         // Fill RNG log
         if (prev_frame_rng != st.frame) {
             rng_logger.clear();
