@@ -165,6 +165,7 @@ static bool next_step = false;
 static bool slowmo = false;
 static bool reset_on_replay = false;
 static int repl_index = 0;
+static int prev_frame_rng = 0;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
 static bool fix_needed = false; // TODO: remove when everything is fixed
@@ -774,13 +775,11 @@ unsigned int btas::get_rng(unsigned int maxv) {
     }
     if (!fast_forward) {
         // Fill RNG log
-        auto mit = rng_logger.find((int)maxv);
-        if (mit == rng_logger.end()) {
-            std::vector<int> new_vec;
-            new_vec.push_back((int)ret);
-            rng_logger[(int)maxv] = new_vec;
-        } else
-            mit->second.push_back((int)ret);
+        if (prev_frame_rng != st.frame) {
+            rng_logger.clear();
+            prev_frame_rng = st.frame;
+        }
+        rng_logger[(int)maxv].push_back((int)ret);
     }
     return ret;
 }
@@ -1194,9 +1193,9 @@ void btas::draw_info() {
         }
     }
     ImGui::Text("Keys: %s", cur_keys.size() > 1 ? cur_keys.substr(2).c_str() : "");
-    ImGui::TextUnformatted("Last frame RNG: ");
+    ImGui::Text("Prev RNG (frame %i): ", prev_frame_rng);
     for (auto mit = rng_logger.begin(); mit != rng_logger.end(); mit++) {
-        std::string rng_text = to_str(mit->first) + " (" + to_str(mit->second.size()) + "): ";
+        std::string rng_text = to_str(mit->first) + " (x" + to_str(mit->second.size()) + "): ";
         for (auto it = mit->second.begin(); it != mit->second.end(); it++)
             rng_text += to_str(*it) + ", ";
         rng_text.resize(rng_text.size() - 2);
@@ -1260,13 +1259,13 @@ void btas::draw_tab() {
         if (colored_import)
             ImGui::PopStyleColor(3);
         ImGui::Checkbox("Timer conditions fix", &timers_fix);
-        static int rval[3] = {0, 0, 0};
+        static int rval[3] = {0, 0, 1};
         ImGui::Text("Random seed: %i", static_cast<int>(st.seed));
         ImGui::InputInt("RNG value", &rval[0]);
-        if (ImGui::InputInt("RNG range", &rval[1]))
-            rval[1] = std::max(rval[1], 1);
+        ImGui::InputInt("RNG range", &rval[1]);
         if (ImGui::InputInt("RNG repeat (0 - clear range)", &rval[2]))
             rval[2] = std::max(rval[2], 0);
+        rval[1] = std::max(rval[1], rval[2] == 0 ? 0 : 1);
         if (ImGui::Button("Push RNG")) {
             BTasEvent ev;
             ev.rng.val = rval[0];
@@ -1279,14 +1278,16 @@ void btas::draw_tab() {
             for (int i = 0; i < rval[2]; i++)
                 st.temp_ev.push_back(ev);
         }
-#if defined(_DEBUG)
-        ImGui::SameLine();
-        if (ImGui::Button("Push current seed")) {
-            BTasEvent ev;
-            ev.click.x = static_cast<int>(st.seed);
-            ev.frame = st.frame;
-            ev.idx = 11;
-            st.ev.insert(st.ev.begin() + repl_index++, ev);
+#if defined(_DEBUG) || 1
+        if (is_replay) {
+            ImGui::SameLine();
+            if (ImGui::Button("Push current seed")) {
+                BTasEvent ev;
+                ev.click.x = static_cast<int>(st.seed);
+                ev.frame = st.frame;
+                ev.idx = 11;
+                st.ev.insert(st.ev.begin() + repl_index++, ev);
+            }
         }
 #endif
         static int mpos[2] = {0, 0};
