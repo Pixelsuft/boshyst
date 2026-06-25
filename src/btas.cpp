@@ -748,7 +748,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
     if (it == st.rng_buf.end() || it->a != (int)maxv || last_upd) {
         ret = (maxv != RAND_MAX) ? RandomOrig(maxv) : 0;
 #ifdef _DEBUG
-        if (is_replay && MyKeyState('T')) {
+        if (is_replay && last_upd && MyKeyState('T')) {
             if (maxv > 3) {
                 BTasEvent ev;
                 ev.rng.range = maxv;
@@ -758,11 +758,11 @@ unsigned int btas::get_rng(unsigned int maxv) {
                 st.ev.insert(st.ev.begin() + repl_index++, ev);
                 cout << "Inserted RNG (" << st.frame << "): " << ret << "/" << maxv << "\n";
             }
-        } else if (is_replay && MyKeyState('U')) {
+        } else if (is_replay && last_upd && MyKeyState('U')) {
             if (maxv > 3) {
                 ret = maxv * 10;
             }
-        } else if (is_replay && MyKeyState('J')) {
+        } else if (is_replay && last_upd && MyKeyState('J')) {
             ret = 0;
         }
 #endif

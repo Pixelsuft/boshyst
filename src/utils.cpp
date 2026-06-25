@@ -152,7 +152,7 @@ void enable_iat() {
     }
 
     MODULEENTRY32W me = {0};
-    me.dwSize = sizeof(MODULEENTRY32);
+    me.dwSize = sizeof(MODULEENTRY32W);
 
     if (Module32FirstW(hSnapshot, &me)) {
         do {
