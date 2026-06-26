@@ -388,7 +388,7 @@ static int __stdcall UpdateGameFrameHook() {
     }
 
     if (is_btas)
-        btas::on_after_update(ret != 0);
+        btas::on_after_update(false);
 #ifndef _DEBUG
     ASS(!is_btas || !last_upd2 || conf.force_gdi);
 #endif
@@ -976,7 +976,8 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
     // hook(mem::addr("HandleRunObject", "INI++.mfx"), HandleRunObjectIniHook);
-    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook, &CreateRunObjectIniOrig);
+    hook(mem::addr("CreateRunObject", "INI++.mfx"), CreateRunObjectIniHook,
+         &CreateRunObjectIniOrig);
 
     // hook(mem::get_base("INI++.mfx") + 0x153e0, Ini_Item_Compare);
     // hook(mem::get_base("INI++.mfx") + 0x1d980, IniState_GetValueHook, &IniState_GetValueOrig);

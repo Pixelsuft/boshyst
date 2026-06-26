@@ -12,7 +12,7 @@ void launch_bullet(int x, int y, int dir);
 namespace btas {
 short TasGetKeyState(int k);
 bool on_before_update();
-void on_after_update(bool switched);
+void on_after_update(bool from_ui);
 unsigned long get_time();
 void offset_time(int offset);
 void read_setting(const std::string& line, const std::string& line_orig);

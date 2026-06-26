@@ -26,6 +26,7 @@ using std::string;
 extern HANDLE hproc;
 extern HWND hwnd;
 extern HWND mhwnd;
+extern bool last_reset;
 extern DWORD(__stdcall* timeGetTimeOrig)();
 extern LRESULT(__stdcall* SusProc)(HWND, UINT, WPARAM, LPARAM);
 extern unsigned int(__cdecl* RandomOrig)(unsigned int maxv);
@@ -729,6 +730,8 @@ static void b_state_load(int slot) {
         import_timers_fix();
         pState->lastFrameScore = st.c1;
         pState->RandomSeed = st.seed;
+        prev_frame_rng = 0;
+        rng_logger.clear();
     }
     // pState.rhNextFrame = 0;
     // cout << "state loaded\n";
@@ -750,7 +753,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
         ret = (maxv != RAND_MAX) ? RandomOrig(maxv) : 0;
 #ifdef _DEBUG
         if (is_replay && last_upd && MyKeyState('T')) {
-            if (maxv > 3) {
+            if (maxv > 4) {
                 BTasEvent ev;
                 ev.rng.range = maxv;
                 ev.rng.val = ret;
@@ -998,16 +1001,20 @@ bool btas::on_before_update() {
     return false;
 }
 
-void btas::on_after_update(bool switched) {
+void btas::on_after_update(bool from_ui) {
     RunHeader* pState = get_state();
     if (last_upd) {
         last_upd = false;
+#if _DEBUG
+        if (last_reset)
+            cout << "frame reset at " << st.frame << std::endl;
+#endif
         // Time advance
         st.c1 = pState->lastFrameScore;
         st.seed = pState->RandomSeed;
         st.frame++;
         // fix_needed = true;
-        if (fix_needed && switched && is_replay) {
+        if (fix_needed && last_reset && is_replay) {
             cout << "fixed on frame " << st.frame << std::endl;
             for (size_t i = 0; i < st.ev.size(); i++) {
                 if (st.ev[i].frame > st.frame)
@@ -1043,6 +1050,8 @@ void btas::on_after_update(bool switched) {
             last_msg = "Switched to recording";
         }
     }
+    if (from_ui)
+        return;
     if (is_hourglass) {
         // Simulate 50FPS for hourglass
         Sleep(20);
@@ -1145,8 +1154,10 @@ void btas::on_key(int k, bool pressed) {
 }
 
 void btas::draw_info() {
+    if (last_upd)
+        on_after_update(true);
     if (fix_needed)
-        ImGui::Text("Fixing old replay");
+        ImGui::TextUnformatted("Fixing old replay");
     ImGui::Text("Frames%s: %i / %i, %i, %i", is_replay ? " [PLAY]" : "", st.frame, st.total,
                 get_state()->frameCount, st.sc_frame);
     ImGui::Text("Re-records: %i", st.rerecords);
@@ -1197,6 +1208,9 @@ void btas::draw_info() {
         case VK_F5:
             cur_keys += ", F5";
             break;
+        case VK_F9:
+            cur_keys += ", F9";
+            break;
         case VK_ESCAPE:
             cur_keys += ", ESC";
             break;
@@ -1239,6 +1253,9 @@ void btas::draw_tab() {
             repl_index = 0;
             is_paused = true;
             is_replay = false;
+            processed_first = false;
+            prev_frame_rng = 0;
+            rng_logger.clear();
             repl_holding.clear();
             st.clear_arr();
             st.clear();

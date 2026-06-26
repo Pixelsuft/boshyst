@@ -10,7 +10,6 @@
 #include <cstdlib>
 #include <d3d9.h>
 #include <iostream>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,7 +18,6 @@ using std::cout;
 namespace config {
 extern std::string cap_cmd;
 } // namespace config
-extern bool last_reset;
 
 extern HWND hwnd;
 extern HWND mhwnd;
