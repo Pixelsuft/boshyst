@@ -838,7 +838,7 @@ void init_game_loop() {
     iat_hook("kernel32.dll", "LoadLibraryA", LoadLibraryAHook, &LoadLibraryAOrig);
     iat_hook("kernel32.dll", "LoadLibraryW", LoadLibraryWHook, &LoadLibraryWOrig);
     if (is_btas) {
-        if (is_hourglass)
+        if (is_hourglass && 0)
             timeGetTimeOrig = (decltype(timeGetTimeOrig))mem::addr("timeGetTime", "winmm.dll");
         else {
             iat_hook("winmm.dll", "timeGetTime", timeGetTimeHook, &timeGetTimeOrig);
@@ -949,7 +949,7 @@ void init_simple_hacks() {
         EditWindowProcOrig =
             (WNDPROC)SetWindowLongPtrA(::mhwnd, GWLP_WNDPROC, (LONG)EditWindowProcHook);
     }
-    if (is_btas && !is_hourglass) {
+    if (is_btas && (!is_hourglass || 1)) {
         iat_hook("kernel32.dll", "GetSystemTimeAsFileTime", GetSystemTimeAsFileTimeHook);
         iat_hook("kernel32.dll", "GetProcessTimes", GetProcessTimesHook);
     }

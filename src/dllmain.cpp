@@ -203,7 +203,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         is_hourglass = GetModuleHandleA("wintasee.dll") != nullptr;
         is_btas = !is_hourglass && GetModuleHandleA("Viewport.mfx") == nullptr;
         // Hacky if needed to work under hourglass
-        if (PathFileExistsA("is_btas.txt"))
+        if (is_hourglass && PathFileExistsA("is_btas.txt"))
             is_btas = true;
 #if defined(_DEBUG)
         if (true) {
