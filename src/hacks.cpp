@@ -108,8 +108,8 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
     } else if (conf.god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
         // god mode
         return -1;
-    } else if (conf.no_trans && strcmp(s1, "teleporting") == 0) {
-        // no teleport effects
+    } else if (conf.no_trans && strcmp(s1, "teleporting") == 0 && get_scene_id() != 10) {
+        // no teleport effects (broken in world 4)
         return -1;
     }
     /*else if (conf.hitbox_level > 0 && strlen(s1) > 1) {

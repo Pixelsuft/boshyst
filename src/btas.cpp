@@ -633,6 +633,7 @@ static void b_state_load(int slot) {
         last_msg = string("Loading scene ") + to_str(scene_id);
         pState->rhNextFrame = 3;                     // Set scene flag
         pState->rhNextFrameData = scene_id | 0x8000; // Scene ID
+        is_paused = true;
         // ExecuteTriggeredEvent(0xfffefffd);
         // Same
         return;
@@ -753,7 +754,7 @@ unsigned int btas::get_rng(unsigned int maxv) {
         ret = (maxv != RAND_MAX) ? RandomOrig(maxv) : 0;
 #ifdef _DEBUG
         if (is_replay && last_upd && MyKeyState('T')) {
-            if (maxv > 4) {
+            if (maxv > 4 && maxv != 360) {
                 BTasEvent ev;
                 ev.rng.range = maxv;
                 ev.rng.val = ret;
