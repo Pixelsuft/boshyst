@@ -566,6 +566,9 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     if (is_btas && c_ends_with(lpLibFileName, "mmf2d3d8.dll")) {
         cout << "Failing to load mmf2d3d8.dll\n";
         return nullptr;
+    } else if (c_ends_with(lpLibFileName, "uxtheme.dll")) {
+        // Keep modern theming
+        return nullptr;
     }
     HMODULE ret = LoadLibraryAOrig(lpLibFileName);
     // Disable extra threads for performance
