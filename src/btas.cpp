@@ -169,7 +169,6 @@ static int repl_index = 0;
 static int prev_frame_rng = 0;
 static char export_buf[MAX_PATH];
 static bool export_hash = true;
-static bool fix_needed = false; // TODO: remove when everything is fixed
 bool last_upd = false;
 bool last_upd2 = false;
 
@@ -621,7 +620,6 @@ static void b_state_load(int slot) {
         last_msg = "Wrong state version";
         return;
     }
-    fix_needed = st_ver < 4;
     int scene_id;
     load_bin(f, scene_id);
     if (!is_replay && scene_id != get_scene_id()) {
@@ -1014,8 +1012,8 @@ void btas::on_after_update(bool from_ui) {
         st.c1 = pState->lastFrameScore;
         st.seed = pState->RandomSeed;
         st.frame++;
-        // fix_needed = true;
-        if (fix_needed && last_reset && is_replay) {
+        if (last_reset && is_replay && 0) {
+            // Old fixes
             cout << "fixed on frame " << st.frame << std::endl;
             for (size_t i = 0; i < st.ev.size(); i++) {
                 if (st.ev[i].frame > st.frame)
@@ -1059,7 +1057,6 @@ void btas::on_after_update(bool from_ui) {
         return;
     }
     DWORD advance = slowmo ? 100 : 20;
-    // TODO: less performance eating way
     while (!fast_forward && now < (last_time + advance))
         now = timeGetTimeOrig();
     if (IsIconic(hwnd))
@@ -1157,8 +1154,6 @@ void btas::on_key(int k, bool pressed) {
 void btas::draw_info() {
     if (last_upd)
         on_after_update(true);
-    if (fix_needed)
-        ImGui::TextUnformatted("Fixing old replay");
     ImGui::Text("Frames%s: %i / %i, %i, %i", is_replay ? " [PLAY]" : "", st.frame, st.total,
                 get_state()->frameCount, st.sc_frame);
     ImGui::Text("Re-records: %i", st.rerecords);
@@ -1224,8 +1219,6 @@ void btas::draw_info() {
 }
 
 void btas::draw_tab() {
-    if (!is_replay && 0)
-        is_paused = true; // TODO: configure that
     // RECT test;
     // GetClientRect(::hwnd, &test);
     // cout << test.right << "x" << test.bottom << '\n';

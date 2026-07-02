@@ -81,7 +81,7 @@ static int __cdecl randHook() {
         // if (ret != RAND_MAX)
         //    return ret;
         // I don't think it's good to call orig rand
-#ifdef _DEBUG
+#if defined(_DEBUG) && 0
         cout << "warn: game used rand(): " << ret << "/" << RAND_MAX << "\n";
 #endif
         return ret;
@@ -105,7 +105,6 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
         // Extra: Add, Invert, Sub, Mono, Blend, XOR, OR, AND
         // cout << "!!!: " << s1 << " " << s2 << '\n';
         // s1 = "Sub";
-        // TODO: check FUN_00426f90
         return -1;
     } else if (conf.god && (strcmp(s1, "Die") == 0 || strcmp(s1, "die") == 0)) {
         // god mode
@@ -404,7 +403,7 @@ static int __stdcall UpdateGameFrameHook() {
     if (!conf.direct_render)
         rec::rec_tick(nullptr);
 
-    processed_first = true;
+    processed_first = !is_hourglass; // Hourglass does not like Present hook
     last_upd2 = false;
     return ret;
 }
@@ -579,7 +578,7 @@ static HMODULE __stdcall LoadLibraryAHook(LPCSTR lpLibFileName) {
     DWORD bW;
     if (is_btas && c_ends_with(lpLibFileName, "mmfs2.dll")) {
         // hook(mem::addr("DirectDrawCreate", "ddraw.dll"), DirectDrawCreateHook);
-        // TODO: hook mmfs2 dll funcs directly here
+        // TODO: hook mmfs2 dll funcs directly here?
         audio_init();
         enable_hook();
     } else if (is_btas && c_ends_with(lpLibFileName, "Lacewing.mfx")) {
@@ -840,7 +839,7 @@ void init_game_loop() {
     if (!UpdateGameFrameOrig)
         hook(mem::get_base() + 0x365a0, UpdateGameFrameHook, &UpdateGameFrameOrig);
     iat_hook("kernel32.dll", "LoadLibraryA", LoadLibraryAHook, &LoadLibraryAOrig);
-    iat_hook("kernel32.dll", "LoadLibraryW", LoadLibraryWHook, &LoadLibraryWOrig);
+    // iat_hook("kernel32.dll", "LoadLibraryW", LoadLibraryWHook, &LoadLibraryWOrig);
     if (is_btas) {
         if (is_hourglass && 0)
             timeGetTimeOrig = (decltype(timeGetTimeOrig))mem::addr("timeGetTime", "winmm.dll");

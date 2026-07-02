@@ -20,6 +20,7 @@
 
 using std::cout;
 
+static DWORD pid = 0;
 HWND hwnd = nullptr;
 HWND mhwnd = nullptr;
 bool inited = false;
@@ -170,14 +171,32 @@ void try_to_hook_graphics() {
 #endif
 }
 
+static BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM lParam) {
+    DWORD winPid;
+
+    if (!GetWindowThreadProcessId(hWnd, &winPid) || winPid != pid)
+        return TRUE;
+
+    char buffer[256];
+    if (!GetClassNameA(hWnd, buffer, 256) || strcmp(buffer, "Mf2MainClassTh") != 0)
+        return TRUE;
+
+    if (!GetWindowTextA(hWnd, buffer, 256) || strcmp(buffer, "I Wanna Be The Boshy") != 0)
+        return TRUE;
+
+    hwnd = hWnd;
+    return FALSE;
+}
+
 void try_to_init() {
+    pid = GetCurrentProcessId();
+    ASS(pid != 0);
 #if SHOW_STAGES
     cout << "before hooking 1\n";
 #endif
     // These values might be already set in BTAS mode
-    // TODO: search in windows of the current process
     if (!hwnd)
-        hwnd = FindWindowA(nullptr, "I Wanna Be The Boshy");
+        EnumWindows(EnumWindowsProc, 0);
     if (!mhwnd)
         mhwnd = FindWindowExA(hwnd, nullptr, "Mf2EditClassTh", nullptr);
     ASS(mhwnd != nullptr);

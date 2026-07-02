@@ -102,7 +102,7 @@ static bool module_iat_apply(void* hModule) {
                 auto funcName = reinterpret_cast<char*>(pImportByName->Name);
                 auto target =
                     std::find_if(targets.begin(), targets.end(), [funcName](const HookTarget& t) {
-                        return strcmp(funcName, t.funcName.c_str()) == 0;
+                        return t.funcName == funcName;
                     });
                 if (target == targets.end())
                     continue;
@@ -140,7 +140,8 @@ inline bool should_not_be_iated(const std::string& d) {
            d == "ws2_32.dll" || d == "dwmapi.dll" || d == "winmm.dll" || d == "comdlg32.dll" ||
            d == "coremessaging.dll" || d == "coreuicomponents.dll" || d == "drvstore.dll" ||
            d == "wintrust.dll" || d == "crypt32.dll" || d == "cryptnet.dll" ||
-           d == "cryptbase.dll" || d == "bcryptprimitives.dll" || d == "wininet.dll";
+           d == "cryptbase.dll" || d == "bcryptprimitives.dll" || d == "wininet.dll" ||
+           d == "advapi32.dll";
 }
 
 void enable_iat() {
