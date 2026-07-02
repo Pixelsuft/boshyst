@@ -68,15 +68,15 @@ struct AudioCapture {
     uint64_t hash;
     ULONG startTime;
     ULONG endTime;
-    int idx;
 
-    AudioCapture() : startTime(0), endTime(0), idx(0), hash(0) {}
+    AudioCapture() : startTime(0), endTime(0), hash(0) {}
 };
 
 class IDSBProxy;
 static CRITICAL_SECTION g_audioCS;
 static std::vector<AudioCapture> history;
 static std::vector<IDSBProxy*> cache;
+static std::vector<uint64_t> hash_input;
 static ULONG a_last_time;
 static int last_uid;
 
@@ -88,10 +88,14 @@ static int gen_uid(ULONG mytime) {
     return last_uid++;
 }
 
-static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
-    if (vec.size() >= 1024 * 1024)
-        return 0;
+static void reg_hash(uint64_t hash) {
+    auto it = std::lower_bound(hash_input.begin(), hash_input.end(), hash);
+    if (it != hash_input.end() && *it == hash)
+        return;
+    hash_input.insert(it, hash);
+}
 
+static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
     const uint32_t c1 = 0xcc9e2d51;
     const uint32_t c2 = 0x1b873593;
 
@@ -141,13 +145,6 @@ static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
 }
 
 inline unsigned long audio_get_time() { return btas::get_time(); }
-
-inline string audio_get_fn(uint64_t hash, ULONG start_time, int idx) {
-    if (hash == 0)
-        return "a" + to_str(start_time) + "_" + to_str(idx) + ".wav";
-    else
-        return "ah" + to_str(hash) + ".wav";
-}
 
 class IDSBProxy : public IDirectSoundBuffer {
     WavHeader header;
@@ -203,11 +200,9 @@ class IDSBProxy : public IDirectSoundBuffer {
 
     void reinit_wav() {
         auto cur_time = audio_get_time();
-        auto idx = gen_uid(cur_time);
         audioBuffer.clear();
         inited = true;
         cap.startTime = cap.endTime = cur_time;
-        cap.idx = idx;
         cap.events.clear();
         push_event();
     }
@@ -229,7 +224,7 @@ public:
                 header.fileSize = audioBuffer.size() + 36;
                 header.dataLen = audioBuffer.size();
 
-                auto path = string("temp_audio\\") + audio_get_fn(cap.hash, cap.startTime, cap.idx);
+                auto path = string("temp_audio\\a") + to_str(cap.hash) + ".wav";
                 if (!file_exists(path)) {
                     bfs::File file(path, 1);
                     if (file.is_open()) {
@@ -237,6 +232,7 @@ public:
                         file.write(audioBuffer.data(), audioBuffer.size());
                         file.close();
                         history.push_back(cap);
+                        reg_hash(cap.hash);
                     }
                 } else {
                     // cout << "audio skipped duplicate\n";
@@ -424,14 +420,16 @@ void audio_init() {
 void on_audio_destroy() {
     if (!conf.cap_au)
         return;
-    conf.cap_au = false;
     CriticalSectionLock lock(g_audioCS);
+    is_paused = true;
+    // conf.cap_au = false;
     for (auto it = cache.begin(); it != cache.end(); it++)
         (*it)->finalize_wav();
     if (history.empty())
         return;
 
     bfs::File filters("temp_audio\\audio_filters.txt", 1);
+    ASS(filters.is_open());
     string mix = "";
     size_t count = 0;
 
@@ -441,8 +439,7 @@ void on_audio_destroy() {
         double totalDuration = static_cast<double>(c.endTime - c.startTime) / 1000.0;
         ASS(!c.events.empty());
         size_t numSegs = c.events.size();
-        filters.write("amovie=" + audio_get_fn(c.hash, c.startTime, c.idx) +
-                      ",asplit=" + to_str(numSegs));
+        filters.write("amovie=a" + to_str(c.hash) + ".wav,asplit=" + to_str(numSegs));
         for (size_t e = 0; e < numSegs; e++)
             filters.write("[b" + to_str(count) + "s" + to_str(e) + "]");
         filters.write_line(";");
@@ -469,15 +466,17 @@ void on_audio_destroy() {
         count++;
     }
     filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[out]");
+    filters.close();
     bfs::File bat("audio_merge.bat", 1);
     bat.write_line("@echo off");
     bat.write_line("cd temp_audio");
-    bat.write_line(
-        "ffmpeg -y -/filter_complex audio_filters.txt -map \"[out]\" -ar 48000 ../output.wav");
+    bat.write_line("ffmpeg -safe 0 -y -/filter_complex audio_filters.txt -map \"[out]\" -ar "
+                   "48000 ../output.wav");
     bat.write_line("cd ..");
     bat.write_line("echo Waiting to delete wav cache...");
     bat.write_line("pause");
     bat.write_line("del temp_audio\\a*.wav");
     bat.write_line("del temp_audio\\audio_filters.txt");
     history.clear();
+    hash_input.clear();
 }
