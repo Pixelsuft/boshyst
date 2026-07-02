@@ -859,10 +859,10 @@ static void exec_event(BTasEvent& ev) {
     }
     case 6: {
         // Push RNG value for range in our queue
-        st.rng_buf.push_back(IntPair(ev.rng.range, ev.rng.val));
-        // TODO: optimize?
-        std::stable_sort(st.rng_buf.begin(), st.rng_buf.end(),
-                         [](const IntPair& a, const IntPair& b) { return a.a < b.a; });
+        IntPair elem(ev.rng.range, ev.rng.val);
+        auto it = std::upper_bound(st.rng_buf.begin(), st.rng_buf.end(), elem.a,
+                                   [](int value, const IntPair& pair) { return value < pair.a; });
+        st.rng_buf.insert(it, elem);
         break;
     }
     case 7: {
@@ -872,10 +872,13 @@ static void exec_event(BTasEvent& ev) {
             break;
         }
         auto it = std::lower_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range,
-                                   [](const IntPair& a, int range) { return a.a < range; });
-        while (it != st.rng_buf.end() && it->a == ev.rng.range) {
-            it = st.rng_buf.erase(it);
-        }
+                                   [](const IntPair& pair, int value) { return pair.a < value; });
+        if (it == st.rng_buf.end())
+            break;
+        auto end_it =
+            std::upper_bound(st.rng_buf.begin(), st.rng_buf.end(), ev.rng.range,
+                             [](int value, const IntPair& pair) { return value < pair.a; });
+        st.rng_buf.erase(it, end_it);
         break;
     }
     case 8: {

@@ -172,6 +172,7 @@ static void ui_menu_draw() {
             }
             ImGui::Checkbox("God mode", &conf.god);
             ImGui::Checkbox("Teleport with mouse", &conf.tp_on_click);
+            ImGui::Checkbox("No save object spamming", &conf.no_save_object_spamming);
             /*
             pState->rhNextFrame
             1 - next

@@ -150,13 +150,15 @@ static int(__cdecl* CreateObjectOrig)(ushort parentHandle, ushort objectInfoID, 
 static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, int posX, int posY,
                                     void* creationParam, ushort creationFlags, uint initialDir,
                                     int layerIndex) {
-    if (objectInfoID == 243) {
+    if (objectInfoID == 243 && conf.no_save_object_spamming) {
         // Somewhy game spams this (kinda INI++) object
         // blocking it reduces ammount of crashes
         // cout << "save object spam prevented" << '\n';
         return -1;
-    } else if ((objectInfoID == 269 || objectInfoID == 105) && conf.show_hitbox) {
-        // Nyan cat trail, meat boy trail
+    } else if (((objectInfoID == 269) /*|| (objectInfoID == 105 && parentHandle == 42)*/) &&
+               conf.show_hitbox) {
+        // Nyan cat trail + meat boy trail
+        // FIXME: disabling meat boy trail breaks TASing
         return -1;
     } else if (0) {
         // 7105 269 6756x1231
@@ -974,8 +976,7 @@ void init_simple_hacks() {
     hook(mem::get_base() + 0x1f890, RandomHook, &RandomOrig);
     if (!is_btas)
         hook(mem::get_base() + 0x10ac0, LaunchObjectActionHook, &LaunchObjectActionOrig);
-    if (conf.no_save_object_spamming)
-        hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
+    hook(mem::get_base() + 0x1e2d0, CreateObjectHook, &CreateObjectOrig);
     hook(mem::get_base() + 0x20f0, HideObjectIfNeededHook, &HideObjectIfNeededOrig);
     hook(mem::get_base() + 0x3f550, FindBestModeCallbackHook, &FindBestModeCallbackOrig);
     // hook(mem::addr("HandleRunObject", "INI++.mfx"), HandleRunObjectIniHook);
