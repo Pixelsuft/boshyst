@@ -465,13 +465,10 @@ static void on_audio_auto_destroy() {
     }
     filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[out]");
     filters.close();
-    bfs::File bat("audio_merge" + to_str(fn_counter) + ".bat", 1);
+    bfs::File bat("temp_audio\\audio_merge" + to_str(fn_counter) + ".bat", 1);
     bat.write_line("@echo off");
-    bat.write_line("cd temp_audio");
-    bat.write_line(string("ffmpeg -safe 0 -y -/filter_complex audio_filters") + to_str(fn_counter) +
-                   ".txt -map \"[out]\" -ar 48000 ../output" + to_str(fn_counter) + ".wav");
-    bat.write_line("cd ..");
-    bat.write_line(string("del temp_audio\\audio_filters") + to_str(fn_counter) + ".txt");
+    bat.write_line("ffmpeg -y -/filter_complex audio_filters" + to_str(fn_counter) +
+                   ".txt -map \"[out]\" -ar 48000 output" + to_str(fn_counter) + ".wav");
     history.clear();
     hash_input.clear();
     fn_counter++;
@@ -491,21 +488,30 @@ void on_audio_destroy() {
     conf.cap_au = false;
     bfs::File bat("audio_merge.bat", 1);
     bat.write_line("@echo off");
+    bat.write_line("cd temp_audio");
     for (int i = 0; i < fn_counter; i++)
-        bat.write_line("audio_merge" + to_str(i) + ".bat");
+        bat.write_line("call audio_merge" + to_str(i) + ".bat");
     bat.write("ffmpeg");
     for (int i = 0; i < fn_counter; i++)
         bat.write(" -i output" + to_str(i) + ".wav");
     bat.write_line(" -filter_complex \"amix=inputs=" + to_str(fn_counter) +
-                   ":duration=longest:normalize=0\" output.wav");
+                   ":duration=longest:normalize=0\" ../output.wav");
+    bat.write_line("cd ..");
     bat.write_line("pause");
     bat.write_line("echo Waiting to delete cache...");
+    bat.write_line("del temp_audio\\audio_filters*.txt");
+    bat.write_line("del temp_audio\\audio_merge*.bat");
     bat.write_line("del temp_audio\\a*.wav");
+    bat.write_line("del temp_audio\\output*.wav");
 }
 
-void on_audio_update() {
-    if (history.size() < 16)
+void on_audio_update(bool switcing) {
+    if (!conf.cap_au)
         return;
-    cout << "audio history is too big, splitting\n";
-    on_audio_auto_destroy();
+    if (history.size() >= 1024 || (switcing && history.size() >= 512)) {
+        cout << "audio history is too big, splitting\n";
+        if (!switcing)
+            cout << "WARNING: expect audio distortion\n";
+        on_audio_auto_destroy();
+    }
 }

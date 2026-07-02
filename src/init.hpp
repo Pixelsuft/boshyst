@@ -12,4 +12,4 @@ void init_temp_saves();
 void try_to_hook_graphics();
 void init_simple_hacks();
 void on_audio_destroy();
-void on_audio_update();
+void on_audio_update(bool switching);
