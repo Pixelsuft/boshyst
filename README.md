@@ -47,7 +47,7 @@ Capture starts from the frame you **will** see, and ends with the frame you **cu
 Warning: game window should **not** be resized while recording.
 ## Recording audio
 Before replaying TAS, set `tas_audio_capture` and `tas_audio_main_thread`. Then replay TAS **without** using fast forward. Then stop audio recording and close the game. <br />
-Run `amerge.bat` script created in the game folder to join all sounds in a single output (it requires FFmpeg). <br />
+Run `audio_merge.bat` script created in the game folder to join all sounds in a single output (it requires FFmpeg). TAS playback can be paused if too many audio is needed to join, run the merge script and continue playback. <br />
 NOTE: Fading is not supported yet (kinda used in credits only).
 ## Useful links
 [Boshyst DLL (Windows 7+)](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/boshyst.dll)<br />

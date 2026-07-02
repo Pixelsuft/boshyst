@@ -352,19 +352,8 @@ static int __stdcall UpdateGameFrameHook() {
         allow_hitbox_fix = conf.show_hitbox;
 
     if (audio_timer_hooked) {
-        // TODO: conf::tas_better_precise_audio
-        if (1) {
-            AudioTimerCallback(1337228, 0, 0, 0, 0);
-        } else {
-            static int audio_fake_timer = 0;
-            audio_fake_timer += 20;
-            if (audio_fake_timer >= 50) {
-                audio_fake_timer -= 50;
-                btas::offset_time(-audio_fake_timer);
-                AudioTimerCallback(1337228, 0, 0, 0, 0);
-                btas::offset_time(audio_fake_timer);
-            }
-        }
+        AudioTimerCallback(1337228, 0, 0, 0, 0);
+        on_audio_update();
     }
 
     if (!is_btas && !show_menu && conf.tp_on_click && MyKeyState(VK_LBUTTON)) {

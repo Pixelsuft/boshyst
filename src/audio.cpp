@@ -79,6 +79,7 @@ static std::vector<IDSBProxy*> cache;
 static std::vector<uint64_t> hash_input;
 static ULONG a_last_time;
 static int last_uid;
+static int fn_counter;
 
 static int gen_uid(ULONG mytime) {
     if (mytime != a_last_time) {
@@ -411,24 +412,21 @@ static HRESULT WINAPI DirectSoundCreateHook(LPCGUID guid, LPDIRECTSOUND* ds, LPU
 void audio_init() {
     if (!conf.cap_au && !conf.no_au)
         return;
+    fn_counter = 0;
     InitializeCriticalSection(&g_audioCS);
     // Let's use minhook here because the game uses ordinal import
     hook(mem::addr("DirectSoundCreate", "dsound.dll"), DirectSoundCreateHook,
          &DirectSoundCreateOrig);
 }
 
-void on_audio_destroy() {
+static void on_audio_auto_destroy() {
     if (!conf.cap_au)
         return;
     CriticalSectionLock lock(g_audioCS);
-    is_paused = true;
-    // conf.cap_au = false;
-    for (auto it = cache.begin(); it != cache.end(); it++)
-        (*it)->finalize_wav();
     if (history.empty())
         return;
 
-    bfs::File filters("temp_audio\\audio_filters.txt", 1);
+    bfs::File filters("temp_audio\\audio_filters" + to_str(fn_counter) + ".txt", 1);
     ASS(filters.is_open());
     string mix = "";
     size_t count = 0;
@@ -467,16 +465,47 @@ void on_audio_destroy() {
     }
     filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[out]");
     filters.close();
-    bfs::File bat("audio_merge.bat", 1);
+    bfs::File bat("audio_merge" + to_str(fn_counter) + ".bat", 1);
     bat.write_line("@echo off");
     bat.write_line("cd temp_audio");
-    bat.write_line("ffmpeg -safe 0 -y -/filter_complex audio_filters.txt -map \"[out]\" -ar "
-                   "48000 ../output.wav");
+    bat.write_line(string("ffmpeg -safe 0 -y -/filter_complex audio_filters") + to_str(fn_counter) +
+                   ".txt -map \"[out]\" -ar 48000 ../output" + to_str(fn_counter) + ".wav");
     bat.write_line("cd ..");
-    bat.write_line("echo Waiting to delete wav cache...");
-    bat.write_line("pause");
-    bat.write_line("del temp_audio\\a*.wav");
-    bat.write_line("del temp_audio\\audio_filters.txt");
+    bat.write_line(string("del temp_audio\\audio_filters") + to_str(fn_counter) + ".txt");
     history.clear();
     hash_input.clear();
+    fn_counter++;
+}
+
+void on_audio_destroy() {
+    if (!conf.cap_au)
+        return;
+    if (1) {
+        CriticalSectionLock lock(g_audioCS);
+        for (auto it = cache.begin(); it != cache.end(); it++)
+            (*it)->finalize_wav();
+        cout << "WAV finalized\n";
+    }
+    on_audio_auto_destroy();
+    is_paused = true;
+    conf.cap_au = false;
+    bfs::File bat("audio_merge.bat", 1);
+    bat.write_line("@echo off");
+    for (int i = 0; i < fn_counter; i++)
+        bat.write_line("audio_merge" + to_str(i) + ".bat");
+    bat.write("ffmpeg");
+    for (int i = 0; i < fn_counter; i++)
+        bat.write(" -i output" + to_str(i) + ".wav");
+    bat.write_line(" -filter_complex \"amix=inputs=" + to_str(fn_counter) +
+                   ":duration=longest:normalize=0\" output.wav");
+    bat.write_line("pause");
+    bat.write_line("echo Waiting to delete cache...");
+    bat.write_line("del temp_audio\\a*.wav");
+}
+
+void on_audio_update() {
+    if (history.size() < 16)
+        return;
+    cout << "audio history is too big, splitting\n";
+    on_audio_auto_destroy();
 }
