@@ -144,7 +144,7 @@ static void create_default_config(const string& path) {
     ASS(file.write_line("admin_mode = 0 // Admin mode"));
     ASS(file.write_line("god = 0 // God mode"));
     ASS(file.write_line("teleport_with_mouse = 0 // Teleport player using mouse"));
-    ASS(file.write_line("hitbox_level = 0 // Can be changed to 1 or 2 to show default player"));
+    ASS(file.write_line("show_hitbox = 0 // Show default player character when using custom"));
     ASS(file.write_line("pixel_filter = 0 // Make textures look pixelated instead of blurry"));
     ASS(file.write_line("font_scale = 1.0 // Here you can make UI bigger"));
     ASS(file.write_line("disable_viewport = 0 // Disable camera manipulation"));
@@ -306,8 +306,8 @@ void config::read() {
             conf.pixel_filter = read_int(line) != 0;
         else if (starts_with(line, "skip_messageboxes="))
             conf.skip_msg = read_int(line) != 0;
-        else if (starts_with(line, "hitbox_level="))
-            conf.hitbox_level = std::max(read_int(line), 0);
+        else if (starts_with(line, "show_hitbox="))
+            conf.show_hitbox = read_int(line) != 0;
         else if (starts_with(line, "menu_hotkey="))
             conf.menu_hotkey = read_int(line);
         else if (starts_with(line, "menu="))

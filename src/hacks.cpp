@@ -81,7 +81,9 @@ static int __cdecl randHook() {
         // if (ret != RAND_MAX)
         //    return ret;
         // I don't think it's good to call orig rand
+#ifdef _DEBUG
         cout << "warn: game used rand(): " << ret << "/" << RAND_MAX << "\n";
+#endif
         return ret;
     }
     if (fix_rng && (lock_rng_range == 0 || lock_rng_range == (RAND_MAX + 1)))
@@ -112,7 +114,7 @@ static int __cdecl _stricmpHook(const char* s1, const char* s2) {
         // no teleport effects (broken in world 4)
         return -1;
     }
-    /*else if (conf.hitbox_level > 0 && strlen(s1) > 1) {
+    /*else if (conf.show_hitbox && strlen(s1) > 1) {
         cout << "test str: " << s1 << '\n';
     }*/
     // menuChosen, NameTags, jump, doublejump, teleporting, save, Save, shoot, shooot, restart,
@@ -154,8 +156,8 @@ static int __cdecl CreateObjectHook(ushort parentHandle, ushort objectInfoID, in
         // blocking it reduces ammount of crashes
         // cout << "save object spam prevented" << '\n';
         return -1;
-    } else if (objectInfoID == 269 && conf.hitbox_level > 0) {
-        // Nyan cat trail
+    } else if ((objectInfoID == 269 || objectInfoID == 105) && conf.show_hitbox) {
+        // Nyan cat trail, meat boy trail
         return -1;
     } else if (0) {
         // 7105 269 6756x1231
@@ -346,7 +348,7 @@ static int __stdcall UpdateGameFrameHook() {
     auto ret = UpdateGameFrameOrig();
 
     if (ret != 0)
-        allow_hitbox_fix = conf.hitbox_level != 0;
+        allow_hitbox_fix = conf.show_hitbox;
 
     if (audio_timer_hooked) {
         // TODO: conf::tas_better_precise_audio
@@ -767,7 +769,7 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
     // Ugly shit for showing hitbox (original player)
     int mvtOffset = obj->hoAdpOffset;
     ushort* statusFlags = (ushort*)((int)&obj->eventTriggerTable + mvtOffset);
-    if (conf.hitbox_level != 0 && obj && obj == get_player_ptr(get_scene_id())) {
+    if (conf.show_hitbox && obj && obj == get_player_ptr(get_scene_id())) {
         RunHeader* pState = *(RunHeader**)(mem::get_base() + 0x59a9c);
         obj->runtimeFlags = obj->runtimeFlags & 0xdf;
         obj->isDirty = 1;
@@ -776,8 +778,7 @@ static void __cdecl HideObjectIfNeededHook(ObjectHeader* obj) {
         Ordinal_78(pState->hMainEngine, obj->spriteHandle, 1);
         if (!allow_hitbox_fix)
             return;
-        int count = conf.hitbox_level;
-        count = 2;
+        int count = 2;
         for (int i = pState->activeObjectCount - 1; i > 20; i--) {
             ObjectHeader* ptr = pState->objectList[i * 2];
             if (!ptr || obj->handle == ptr->handle || obj->flags != 58164 ||

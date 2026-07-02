@@ -164,8 +164,7 @@ static void ui_menu_draw() {
             ImGui::Checkbox("No perspective", &conf.no_ps);
             ImGui::Checkbox("No shaders", &conf.no_sh);
             ImGui::Checkbox("No transitions", &conf.no_trans);
-            if (ImGui::InputInt("Show hitbox level (BETA)", &conf.hitbox_level))
-                conf.hitbox_level = std::max(conf.hitbox_level, 0);
+            ImGui::Checkbox("Show hitbox (BETA)", &conf.show_hitbox);
         }
         if (!is_btas && ImGui::CollapsingHeader("Gameplay")) {
             if (ImGui::Checkbox("Admin mode", &conf.admin_mode)) {

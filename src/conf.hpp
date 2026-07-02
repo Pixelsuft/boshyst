@@ -9,7 +9,6 @@ public:
     int force_size[2];
     int menu_hotkey;
     int rapid_bind;
-    int hitbox_level;
     int cap_start;
     int cap_cnt;
     bool no_vp;
@@ -43,6 +42,7 @@ public:
     bool no_encryption;
     bool no_save_object_spamming;
     bool admin_mode;
+    bool show_hitbox;
 };
 
 extern Config conf;
