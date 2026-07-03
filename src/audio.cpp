@@ -442,7 +442,10 @@ static void on_audio_auto_destroy() {
         mix += finalLabel;
         count++;
     }
-    filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[out]");
+    filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[mixed];");
+    // Fill audio with nothing to exactly match needed duration
+    double target_duration_sec = static_cast<double>(audio_get_time()) / 1000.0;
+    filters.write_line("[mixed]apad=whole_dur=" + to_str(target_duration_sec) + "[out]");
     filters.close();
     bfs::File bat("temp_audio\\audio_merge" + to_str(fn_counter) + ".bat", 1);
     bat.write_line("@echo off");
@@ -467,19 +470,22 @@ void on_audio_destroy() {
     on_audio_auto_destroy();
     is_paused = true;
     conf.cap_au = false;
+    bfs::File inputs("temp_audio\\audio_inputs.txt", 1);
+    ASS(inputs.is_open());
+    for (int i = 0; i < fn_counter; i++)
+        inputs.write_line("file 'output" + to_str(i) + ".wav'");
+    inputs.close();
     bfs::File bat("audio_merge.bat", 1);
+    ASS(bat.is_open());
     bat.write_line("@echo off");
     bat.write_line("cd temp_audio");
     for (int i = 0; i < fn_counter; i++)
         bat.write_line("call audio_merge" + to_str(i) + ".bat");
-    bat.write("ffmpeg");
-    for (int i = 0; i < fn_counter; i++)
-        bat.write(" -i output" + to_str(i) + ".wav");
-    bat.write_line(" -filter_complex \"amix=inputs=" + to_str(fn_counter) +
-                   ":duration=longest:normalize=0\" ../output.wav");
+    bat.write_line("ffmpeg -y -f concat -i audio_inputs.txt -c copy ../output.wav");
     bat.write_line("cd ..");
     bat.write_line("pause");
     bat.write_line("echo Waiting to delete cache...");
+    bat.write_line("del temp_audio\\audio_inputs.txt");
     bat.write_line("del temp_audio\\audio_filters*.txt");
     bat.write_line("del temp_audio\\audio_merge*.bat");
     bat.write_line("del temp_audio\\a*.wav");
