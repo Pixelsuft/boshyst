@@ -260,7 +260,7 @@ static BOOL __stdcall SetWindowTextAHook(HWND hwnd, LPCSTR cap) {
     last_reset = true;
     if (strcmp(cap, "I Wanna Be The Boshy") == 0) {
         // This happens only when chaning/resetting scene lul
-        on_audio_update(true);
+        on_audio_change();
         if (capturing)
             return FALSE;
     }
@@ -352,10 +352,8 @@ static int __stdcall UpdateGameFrameHook() {
     if (ret != 0)
         allow_hitbox_fix = conf.show_hitbox;
 
-    if (audio_timer_hooked) {
+    if (audio_timer_hooked)
         AudioTimerCallback(1337228, 0, 0, 0, 0);
-        on_audio_update(false);
-    }
 
     if (!is_btas && !show_menu && conf.tp_on_click && MyKeyState(VK_LBUTTON)) {
         // Teleport player with mouse

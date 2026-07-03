@@ -76,25 +76,9 @@ class IDSBProxy;
 static CRITICAL_SECTION g_audioCS;
 static std::vector<AudioCapture> history;
 static std::vector<IDSBProxy*> cache;
-static std::vector<uint64_t> hash_input;
-static ULONG a_last_time;
+static ULONG last_time_offset;
 static int last_uid;
 static int fn_counter;
-
-static int gen_uid(ULONG mytime) {
-    if (mytime != a_last_time) {
-        a_last_time = mytime;
-        last_uid = 0;
-    }
-    return last_uid++;
-}
-
-static void reg_hash(uint64_t hash) {
-    auto it = std::lower_bound(hash_input.begin(), hash_input.end(), hash);
-    if (it != hash_input.end() && *it == hash)
-        return;
-    hash_input.insert(it, hash);
-}
 
 static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
     const uint32_t c1 = 0xcc9e2d51;
@@ -145,7 +129,7 @@ static uint64_t hash_vector(const std::vector<uint8_t>& vec) {
     return static_cast<size_t>(h1);
 }
 
-inline unsigned long audio_get_time() { return btas::get_time(); }
+inline unsigned long audio_get_time() { return btas::get_time() - last_time_offset; }
 
 class IDSBProxy : public IDirectSoundBuffer {
     WavHeader header;
@@ -233,7 +217,6 @@ public:
                         file.write(audioBuffer.data(), audioBuffer.size());
                         file.close();
                         history.push_back(cap);
-                        reg_hash(cap.hash);
                     }
                 } else {
                     // cout << "audio skipped duplicate\n";
@@ -267,6 +250,8 @@ public:
     STDMETHOD_(ULONG, Release)() override {
         ULONG count = pBuf->Release();
         if (count == 0) {
+            // CriticalSectionLock lock(g_audioCS);
+            // unsafe but otherwise softlocks
             auto it = std::find(cache.begin(), cache.end(), this);
             ASS(it != cache.end());
             cache.erase(it);
@@ -391,11 +376,6 @@ public:
     STDMETHOD(Initialize)(LPCGUID pcGuidDevice) override { return pDev->Initialize(pcGuidDevice); }
 };
 
-void audio_reinit_capture() {
-    last_uid = 0;
-    a_last_time = 0;
-}
-
 static HRESULT(WINAPI* DirectSoundCreateOrig)(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk);
 static HRESULT WINAPI DirectSoundCreateHook(LPCGUID guid, LPDIRECTSOUND* ds, LPUNKNOWN unk) {
     if (conf.no_au)
@@ -412,6 +392,7 @@ static HRESULT WINAPI DirectSoundCreateHook(LPCGUID guid, LPDIRECTSOUND* ds, LPU
 void audio_init() {
     if (!conf.cap_au && !conf.no_au)
         return;
+    last_time_offset = 0;
     fn_counter = 0;
     InitializeCriticalSection(&g_audioCS);
     // Let's use minhook here because the game uses ordinal import
@@ -420,8 +401,6 @@ void audio_init() {
 }
 
 static void on_audio_auto_destroy() {
-    if (!conf.cap_au)
-        return;
     CriticalSectionLock lock(g_audioCS);
     if (history.empty())
         return;
@@ -468,10 +447,13 @@ static void on_audio_auto_destroy() {
     bfs::File bat("temp_audio\\audio_merge" + to_str(fn_counter) + ".bat", 1);
     bat.write_line("@echo off");
     bat.write_line("ffmpeg -y -/filter_complex audio_filters" + to_str(fn_counter) +
-                   ".txt -map \"[out]\" -ar 48000 output" + to_str(fn_counter) + ".wav");
+                   ".txt -map \"[out]\" -ac 2 -ar 48000 output" + to_str(fn_counter) + ".wav");
     history.clear();
-    hash_input.clear();
+    last_time_offset += audio_get_time();
     fn_counter++;
+#ifdef _DEBUG
+    cout << "audio was split\n";
+#endif
 }
 
 void on_audio_destroy() {
@@ -481,7 +463,6 @@ void on_audio_destroy() {
         CriticalSectionLock lock(g_audioCS);
         for (auto it = cache.begin(); it != cache.end(); it++)
             (*it)->finalize_wav();
-        cout << "WAV finalized\n";
     }
     on_audio_auto_destroy();
     is_paused = true;
@@ -505,13 +486,15 @@ void on_audio_destroy() {
     bat.write_line("del temp_audio\\output*.wav");
 }
 
-void on_audio_update(bool switcing) {
+void on_audio_change() {
     if (!conf.cap_au)
         return;
-    if (history.size() >= 1024 || (switcing && history.size() >= 512)) {
-        cout << "audio history is too big, splitting\n";
-        if (!switcing)
-            cout << "WARNING: expect audio distortion\n";
+    ASS(cache.size() == 0);
+    if (cache.size() == 0)
         on_audio_auto_destroy();
-    }
+#ifdef _DEBUG
+    else
+        cout << "WARN: audio was not split because cache was not empty: " << cache.size()
+             << std::endl;
+#endif
 }
