@@ -483,8 +483,8 @@ void on_audio_destroy() {
         bat.write_line("call audio_merge" + to_str(i) + ".bat");
     bat.write_line("ffmpeg -f concat -i audio_inputs.txt -c copy ../output.wav");
     bat.write_line("cd ..");
-    bat.write_line("pause");
     bat.write_line("echo Waiting to delete cache...");
+    bat.write_line("pause");
     bat.write_line("del temp_audio\\audio_inputs.txt");
     bat.write_line("del temp_audio\\audio_filters*.txt");
     bat.write_line("del temp_audio\\audio_merge*.bat");
