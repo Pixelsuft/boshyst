@@ -153,7 +153,7 @@ class IDSBProxy : public IDirectSoundBuffer {
         if (cap.events.empty()) {
             cap.startTime = now;
             lastRealTime = now;
-            virtualTimeAcc = 0;
+            virtualTimeAcc = 0.0;
             currentFreq = newFreq;
             originalFreq = newFreq;
         } else {
@@ -209,7 +209,7 @@ public:
                 header.fileSize = audioBuffer.size() + 36;
                 header.dataLen = audioBuffer.size();
 
-                auto path = string("temp_audio\\a") + to_str(cap.hash) + ".wav";
+                string path = "temp_audio\\a" + to_str(cap.hash) + ".wav";
                 if (!file_exists(path)) {
                     bfs::File file(path, 1);
                     if (file.is_open()) {
@@ -444,15 +444,18 @@ static void on_audio_auto_destroy() {
     }
     filters.write(mix + "amix=inputs=" + to_str(count) + ":normalize=0[mixed];");
     // Fill audio with nothing to exactly match needed duration
-    double target_duration_sec = static_cast<double>(audio_get_time()) / 1000.0;
-    filters.write_line("[mixed]apad=whole_dur=" + to_str(target_duration_sec) + "[out]");
+    unsigned long cur_time = audio_get_time();
+    string target_duration = to_str(static_cast<double>(cur_time) / 1000.0);
+    filters.write_line("[mixed]apad=whole_dur=" + target_duration + "[out]");
     filters.close();
     bfs::File bat("temp_audio\\audio_merge" + to_str(fn_counter) + ".bat", 1);
     bat.write_line("@echo off");
+    // IDK why it requires trimming (-t) when audio restarting is disabled
     bat.write_line("ffmpeg -y -/filter_complex audio_filters" + to_str(fn_counter) +
-                   ".txt -map \"[out]\" -ac 2 -ar 48000 output" + to_str(fn_counter) + ".wav");
+                   ".txt -map \"[out]\" -ac 2 -ar 48000 -t " + target_duration + " output" +
+                   to_str(fn_counter) + ".wav");
     history.clear();
-    last_time_offset += audio_get_time();
+    last_time_offset += cur_time;
     fn_counter++;
 #ifdef _DEBUG
     cout << "audio was split\n";
