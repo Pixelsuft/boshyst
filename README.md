@@ -14,10 +14,9 @@ Menu should be opened (toggled by Insert as a default bind).
 Just also put [BTAS launcher](https://github.com/Pixelsuft/boshyst/raw/refs/heads/main/build/btas.exe) into the game folder and launch the game via it. <br />
 Open the config to see binds. <br />
 Known problems:
- - Mod menu sometimes can crash during startup (IAT hooking?)
  - Save files forgetting after loading a state (breaks in-game save logic, also some visual stuff which game thinks is locked) (mostly fixed)
  - RNG seed desyncs (also might be caused by changing visual settings) (TODO: somehow add option to disable shaders without affecting RNG)
- - Hitbox desyncs (TODO: research why `DirBlur x3.fx` affects that, might be caused by RNG)
+ - Collision desyncs
  - Some input problems (you can shoot right after loading a state even if you shot right before saving; pressing C right after load won't work => desyncs)
  - ~~May crash when loading a state (seems to be memory corruption, also happens without BTAS, would be really difficult to fix) (seems to be using software render with `MESA` + `WineD3D` reduces ammount of crashes)~~ seems to be our bug (hopefully) fixed by using pointers instead of references for decompiled game structs for some reason
 ## Building and running

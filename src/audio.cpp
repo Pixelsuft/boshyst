@@ -197,7 +197,8 @@ public:
         if (inited) {
             inited = false;
             ULONG now = audio_get_time();
-            double scale = static_cast<double>(currentFreq) / static_cast<double>(originalFreq);
+            double scale =
+                (originalFreq > 0.0) ? (static_cast<double>(currentFreq) / originalFreq) : 1.0;
             virtualTimeAcc += static_cast<double>(now - lastRealTime) * scale;
             if (virtualTimeAcc <= 0.0) {
                 // cout << "audio got virtualTimeAcc <= 0" << std::endl;
@@ -206,8 +207,10 @@ public:
             cap.endTime = cap.startTime + static_cast<ULONG>(virtualTimeAcc);
             if (cap.endTime > cap.startTime && !audioBuffer.empty()) {
                 cap.hash = hash_vector(audioBuffer);
-                header.fileSize = audioBuffer.size() + 36;
-                header.dataLen = audioBuffer.size();
+                size_t validSize = (audioBuffer.size() / header.blockAlign) * header.blockAlign;
+                ASS(validSize == audioBuffer.size());
+                header.fileSize = validSize + 36;
+                header.dataLen = validSize;
 
                 string path = "temp_audio\\a" + to_str(cap.hash) + ".wav";
                 if (!file_exists(path)) {
@@ -239,6 +242,7 @@ public:
         currentFreq = originalFreq;
         lastRealTime = 0;
         virtualTimeAcc = 0.0;
+        inited = false;
         reinit_wav();
         CriticalSectionLock lock(g_audioCS);
         cache.push_back(this);
