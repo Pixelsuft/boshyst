@@ -1060,11 +1060,9 @@ void btas::on_after_update(bool from_ui) {
         return;
     }
     DWORD advance = last_time + (slowmo ? 100 : 20);
-    if (conf.cap_au && !conf.no_au)
-        advance += 5;
     while ((!fast_forward || (conf.cap_au && !conf.no_au)) && now < advance)
         now = timeGetTimeOrig();
-    if (IsIconic(hwnd))
+    if (IsIconic(hwnd) && !(conf.cap_au && !conf.no_au))
         Sleep(100);
     last_time = now;
     // cout << "after " << GetCurrentThreadId() << std::endl;
