@@ -1061,7 +1061,7 @@ void btas::on_after_update(bool from_ui) {
     }
     DWORD advance = last_time + (slowmo ? 100 : 20);
     // advance += 10;
-    while ((!fast_forward || (conf.cap_au && !conf.no_au)) && now < advance)
+    while (!fast_forward && now < advance)
         now = timeGetTimeOrig();
     if (IsIconic(hwnd) && !(conf.cap_au && !conf.no_au))
         Sleep(100);

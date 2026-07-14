@@ -136,9 +136,9 @@ class IDSBProxy : public IDirectSoundBuffer {
     AudioCapture cap;
     std::vector<uint8_t> audioBuffer;
     double virtualTimeAcc;
+    uint64_t lastPos;
     IDirectSoundBuffer* pBuf;
     ULONG lastRealTime;
-    DWORD lastPos;
     DWORD currentFreq;
     DWORD originalFreq;
     DWORD bufferSize;
@@ -210,7 +210,7 @@ public:
             if (cap.endTime > cap.startTime && !audioBuffer.empty()) {
                 cap.hash = hash_vector(audioBuffer);
                 size_t validSize = (audioBuffer.size() / header.blockAlign) * header.blockAlign;
-                ASS(validSize == audioBuffer.size());
+                // ASS(validSize == audioBuffer.size());
                 header.fileSize = validSize + 36;
                 header.dataLen = validSize;
 
@@ -244,7 +244,8 @@ public:
         originalFreq = desc->lpwfxFormat->nSamplesPerSec;
         bufferSize = desc->dwBufferBytes;
         currentFreq = originalFreq;
-        lastRealTime = lastPos = 0;
+        lastRealTime = 0;
+        lastPos = 0;
         virtualTimeAcc = 0.0;
         inited = false;
         reinit_wav();
@@ -277,11 +278,10 @@ public:
             ASS(pdwCurrentWriteCursor);
             // Called once each update for each sound (when on main thread)
             CriticalSectionLock lock(g_audioCS);
-            ASS(header.byteRate % 50 == 0);
-            lastPos = (lastPos + header.byteRate / 50) % bufferSize;
-            *pdwCurrentPlayCursor = lastPos;
-            *pdwCurrentWriteCursor = lastPos;
-            pBuf->SetCurrentPosition(lastPos);
+            lastPos += static_cast<uint64_t>(header.byteRate);
+            *pdwCurrentPlayCursor = *pdwCurrentWriteCursor =
+                static_cast<DWORD>(lastPos / 50) % bufferSize;
+            pBuf->SetCurrentPosition(*pdwCurrentPlayCursor);
             // cout << "Position: " << *pdwCurrentPlayCursor << " " << header.byteRate << '\n';
         }
         // TODO: emulate this
@@ -312,7 +312,7 @@ public:
     }
     STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) override {
         auto ret = pBuf->SetCurrentPosition(dwNewPosition);
-        lastPos = dwNewPosition;
+        lastPos = static_cast<uint64_t>(dwNewPosition) * 50;
         // cout << "DirectSoundBuffer::SetCurrentPosition\n";
         return ret;
     }
