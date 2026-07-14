@@ -138,8 +138,10 @@ class IDSBProxy : public IDirectSoundBuffer {
     double virtualTimeAcc;
     IDirectSoundBuffer* pBuf;
     ULONG lastRealTime;
+    DWORD lastPos;
     DWORD currentFreq;
     DWORD originalFreq;
+    DWORD bufferSize;
     bool inited;
 
     void push_event() {
@@ -227,6 +229,7 @@ public:
                 }
                 return;
             }
+            audioBuffer.clear();
             // cout << "audio got endTime <= startTime" << std::endl;
         }
     }
@@ -239,8 +242,9 @@ public:
         header.blockAlign = desc->lpwfxFormat->nBlockAlign;
         header.byteRate = desc->lpwfxFormat->nAvgBytesPerSec;
         originalFreq = desc->lpwfxFormat->nSamplesPerSec;
+        bufferSize = desc->dwBufferBytes;
         currentFreq = originalFreq;
-        lastRealTime = 0;
+        lastRealTime = lastPos = 0;
         virtualTimeAcc = 0.0;
         inited = false;
         reinit_wav();
@@ -266,7 +270,22 @@ public:
     STDMETHOD(GetCaps)(LPDSBCAPS pDSBCaps) override { return pBuf->GetCaps(pDSBCaps); }
     STDMETHOD(GetCurrentPosition)(LPDWORD pdwCurrentPlayCursor,
                                   LPDWORD pdwCurrentWriteCursor) override {
-        return pBuf->GetCurrentPosition(pdwCurrentPlayCursor, pdwCurrentWriteCursor);
+        auto hr = pBuf->GetCurrentPosition(pdwCurrentPlayCursor, pdwCurrentWriteCursor);
+        if (SUCCEEDED(hr)) {
+            ASS(conf.au_mth);
+            ASS(pdwCurrentPlayCursor);
+            ASS(pdwCurrentWriteCursor);
+            // Called once each update for each sound (when on main thread)
+            CriticalSectionLock lock(g_audioCS);
+            ASS(header.byteRate % 50 == 0);
+            lastPos = (lastPos + header.byteRate / 50) % bufferSize;
+            *pdwCurrentPlayCursor = lastPos;
+            *pdwCurrentWriteCursor = lastPos;
+            pBuf->SetCurrentPosition(lastPos);
+            // cout << "Position: " << *pdwCurrentPlayCursor << " " << header.byteRate << '\n';
+        }
+        // TODO: emulate this
+        return hr;
     }
     STDMETHOD(GetFormat)(LPWAVEFORMATEX pwfxFormat, DWORD dwSizeAllocated,
                          LPDWORD pdwSizeWritten) override {
@@ -293,6 +312,7 @@ public:
     }
     STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) override {
         auto ret = pBuf->SetCurrentPosition(dwNewPosition);
+        lastPos = dwNewPosition;
         // cout << "DirectSoundBuffer::SetCurrentPosition\n";
         return ret;
     }
@@ -315,7 +335,6 @@ public:
     STDMETHOD(Stop)() override {
         CriticalSectionLock lock(g_audioCS);
         finalize_wav();
-        // cout << "DirectSoundBuffer::Stop\n";
         return pBuf->Stop();
     }
     STDMETHOD(Unlock)(LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) override {
