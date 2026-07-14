@@ -136,7 +136,6 @@ class IDSBProxy : public IDirectSoundBuffer {
     AudioCapture cap;
     std::vector<uint8_t> audioBuffer;
     double virtualTimeAcc;
-    uint64_t lastPos;
     IDirectSoundBuffer* pBuf;
     ULONG lastRealTime;
     DWORD currentFreq;
@@ -245,7 +244,6 @@ public:
         bufferSize = desc->dwBufferBytes;
         currentFreq = originalFreq;
         lastRealTime = 0;
-        lastPos = 0;
         virtualTimeAcc = 0.0;
         inited = false;
         reinit_wav();
@@ -273,18 +271,14 @@ public:
                                   LPDWORD pdwCurrentWriteCursor) override {
         auto hr = pBuf->GetCurrentPosition(pdwCurrentPlayCursor, pdwCurrentWriteCursor);
         if (SUCCEEDED(hr)) {
-            ASS(conf.au_mth);
             ASS(pdwCurrentPlayCursor);
-            ASS(pdwCurrentWriteCursor);
-            // Called once each update for each sound (when on main thread)
             CriticalSectionLock lock(g_audioCS);
-            lastPos += static_cast<uint64_t>(header.byteRate);
-            *pdwCurrentPlayCursor = *pdwCurrentWriteCursor =
-                static_cast<DWORD>(lastPos / 50) % bufferSize;
+            *pdwCurrentPlayCursor =
+                static_cast<DWORD>((audio_get_time() - cap.startTime) * header.byteRate / 1000) %
+                bufferSize;
             pBuf->SetCurrentPosition(*pdwCurrentPlayCursor);
             // cout << "Position: " << *pdwCurrentPlayCursor << " " << header.byteRate << '\n';
         }
-        // TODO: emulate this
         return hr;
     }
     STDMETHOD(GetFormat)(LPWAVEFORMATEX pwfxFormat, DWORD dwSizeAllocated,
@@ -311,30 +305,35 @@ public:
         return pBuf->Play(dwReserved1, dwPriority, dwFlags);
     }
     STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) override {
-        auto ret = pBuf->SetCurrentPosition(dwNewPosition);
-        lastPos = static_cast<uint64_t>(dwNewPosition) * 50;
+        HRESULT hr = pBuf->SetCurrentPosition(dwNewPosition);
         // cout << "DirectSoundBuffer::SetCurrentPosition\n";
-        return ret;
+        return hr;
     }
     STDMETHOD(SetFormat)(LPCWAVEFORMATEX pcfxFormat) override {
         return pBuf->SetFormat(pcfxFormat);
     }
     STDMETHOD(SetFrequency)(DWORD f) override {
         HRESULT hr = pBuf->SetFrequency(f);
-        CriticalSectionLock lock(g_audioCS);
-        push_event();
+        if (SUCCEEDED(hr)) {
+            CriticalSectionLock lock(g_audioCS);
+            push_event();
+        }
         return hr;
     }
     STDMETHOD(SetVolume)(LONG v) override {
         HRESULT hr = pBuf->SetVolume(v);
-        CriticalSectionLock lock(g_audioCS);
-        push_event();
+        if (SUCCEEDED(hr)) {
+            CriticalSectionLock lock(g_audioCS);
+            push_event();
+        }
         return hr;
     }
     STDMETHOD(SetPan)(LONG p) override { return pBuf->SetPan(p); }
     STDMETHOD(Stop)() override {
-        CriticalSectionLock lock(g_audioCS);
-        finalize_wav();
+        if (true) {
+            CriticalSectionLock lock(g_audioCS);
+            finalize_wav();
+        }
         return pBuf->Stop();
     }
     STDMETHOD(Unlock)(LPVOID pv1, DWORD db1, LPVOID pv2, DWORD db2) override {
