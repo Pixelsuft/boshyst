@@ -273,11 +273,10 @@ public:
         if (SUCCEEDED(hr)) {
             ASS(pdwCurrentPlayCursor);
             CriticalSectionLock lock(g_audioCS);
-            *pdwCurrentPlayCursor =
-                static_cast<DWORD>((audio_get_time() - cap.startTime) * header.byteRate / 1000) %
-                bufferSize;
+            auto needed = (audio_get_time() - cap.startTime) * header.byteRate / 1000;
+            needed = (needed / header.blockAlign * header.blockAlign) % bufferSize;
+            *pdwCurrentPlayCursor = needed;
             pBuf->SetCurrentPosition(*pdwCurrentPlayCursor);
-            // cout << "Position: " << *pdwCurrentPlayCursor << " " << header.byteRate << '\n';
         }
         return hr;
     }
@@ -306,7 +305,7 @@ public:
     }
     STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) override {
         HRESULT hr = pBuf->SetCurrentPosition(dwNewPosition);
-        // cout << "DirectSoundBuffer::SetCurrentPosition\n";
+        // cout << "DirectSoundBuffer::SetCurrentPosition " << dwNewPosition << "\n";
         return hr;
     }
     STDMETHOD(SetFormat)(LPCWAVEFORMATEX pcfxFormat) override {
@@ -348,7 +347,9 @@ public:
         if (pv2 && db2 > 0)
             audioBuffer.insert(audioBuffer.end(), reinterpret_cast<uint8_t*>(pv2),
                                reinterpret_cast<uint8_t*>(pv2) + db2);
-        return pBuf->Unlock(pv1, db1, pv2, db2);
+        auto hr = pBuf->Unlock(pv1, db1, pv2, db2);
+        // ASS(hr == S_OK);
+        return hr;
     }
     STDMETHOD(Restore)() override { return pBuf->Restore(); }
 };
